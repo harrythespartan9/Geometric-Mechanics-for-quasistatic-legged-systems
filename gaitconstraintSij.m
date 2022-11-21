@@ -1,4 +1,4 @@
-function g = gcSij(kin, aa, ll, ank)
+function g = gaitconstraintSij(kin, aa, ll, ank)
 
 % Unpack the kinematic structure
 ksq_12_func = kin.ksq_f;
