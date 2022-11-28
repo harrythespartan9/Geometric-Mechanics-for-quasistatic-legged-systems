@@ -52,6 +52,10 @@ end
 ksq_ij_func = k.ksq_ij{k.cs_idx};
 ank = k.ank;
 
+% Take the indices that just satisfy the shape-space bounds
+idxm = (yim < ank) & (yim > -ank) & (yjm < ank) & (yjm > -ank);
+idxM = (yiM < ank) & (yiM > -ank) & (yjM < ank) & (yjM > -ank);
+
 dnum = 100; % Change this based on need; discretization of shape-space  
 
 xx = linspace(-ank,ank,dnum); % shape-space points         
@@ -61,8 +65,8 @@ yy = xx;
 ksq_sweep = ksq_ij_func(0, k.aa, k.ll, ai, aj); % ksq values
 ksq_M = ksq_ij_func(0, k.aa, k.ll, xx, yy);
 ksq_m = ksq_ij_func(0, k.aa, k.ll, xx, -yy);
-ksq_phi_m = ksq_ij_func(0, k.aa, k.ll, yim, yjm);
-ksq_phi_M = ksq_ij_func(0, k.aa, k.ll, yiM, yjM);
+ksq_phi_m = ksq_ij_func(0, k.aa, k.ll, yim(idxm), yjm(idxm));
+ksq_phi_M = ksq_ij_func(0, k.aa, k.ll, yiM(idxM), yjM(idxM));
 
 figure('units','pixels','position',[0 0 1920 1080],'Color','w') % plot
 p1 = surf(ai,aj,ksq_sweep,'EdgeColor','none','FaceAlpha',0.25);
@@ -73,10 +77,10 @@ colormap(jet);
 % constrained with an upper and lower achievable limit
 p2 = line(xx,yy,ksq_M,'Color','k','LineStyle','-.');
 p3 = line(xx,-yy,ksq_m,'Color','k','LineStyle','--');
-line(yim,yjm,ksq_phi_m,'Color', circ,'LineStyle','-', 'LineWidth', 1.2,...
-    'DisplayName',['$\phi^m_{' num2str(cs_txt) '}$']); % smallest gait
-line(yiM,yjM,ksq_phi_M,'Color', circ,'LineStyle','-', 'LineWidth', 2.4,...
-    'DisplayName',['$\phi^M_{' num2str(cs_txt) '}$']); % largest gait (fixed linewidth scaling)
+line(yim(idxm),yjm(idxm),ksq_phi_m,'Color', circ,'LineStyle','-', 'LineWidth', 1.2,...
+    'DisplayName',['$' num2str(10*mulm) '% \phi_{' num2str(cs_txt) '}$']); % smallest gait
+line(yiM(idxM),yjM(idxM),ksq_phi_M,'Color', circ,'LineStyle','-', 'LineWidth', 2.4,...
+    'DisplayName',['$' num2str(10*mulM) '% \phi_{' num2str(cs_txt) '}$']); % largest gait (fixed linewidth scaling)
 xlabel(['$\alpha_' num2str(cs1_txt) '$'],'Interpreter','latex',FontSize=20);
 ylabel(['$\alpha_' num2str(cs2_txt) '$'],'Interpreter','latex',FontSize=20);
 title(['$k^2_{' num2str(cs_txt) '}$'],'Interpreter','latex',FontSize=20);
