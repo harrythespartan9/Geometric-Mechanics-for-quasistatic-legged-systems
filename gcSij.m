@@ -1,4 +1,6 @@
-function [k,si,sj,t] = gcSij(k,cs1,cs2)
+% This script computes the gait constraints on the rigid body system with
+% non-slipping legs. It outputs the updated kinematic structure
+function [k,si,sj,t,bF] = gcSij(k,cs1,cs2)
 
 % Get the functions needed from the structure------------------------------
 k = returnSijfxn(k,cs1,cs2);
@@ -19,5 +21,26 @@ ank = k.ank;
     % ode solver generated one---------------------------------------------
     si = sinefit(t,y(:,1)); % get each shape element from the solution
     sj = sinefit(t,y(:,2)); % return these two fits.
+
+% Shape-space bounds violation---------------------------------------------
+    % Run the bounds violation check and obtain the time interval where the
+    % points are violated.
+    [boundFi,tauIntervali,tauValidi] = shapebounds(si);
+    [boundFj,tauIntervalj,tauValidj] = shapebounds(sj);
+
+    % Pack the results into the kinematic structure.
+
+    k.bF{k.cs_idx} = [boundFi; boundFj]; % bound flag
+
+    ni = tauIntervali; nj = tauIntervalj;
+    if ni > nj
+        tauIntervalj = [tauIntervalj,nan(1,ni-nj)];
+        tauValidj = [tauValidj,nan(1,ni-nj)];
+    elseif ni < nj
+        tauIntervali = [tauIntervali,nan(1,nj-ni)];
+        tauValidi = [tauValidi,nan(1,nj-ni)];
+    end
+    k.tauI{k.cs_idx} = [tauIntervali; tauIntervalj]; % time intervals
+    k.tauV{k.cs_idx} = [tauValidi; tauValidj]; % time interval validity
 
 end
