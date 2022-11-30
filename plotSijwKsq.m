@@ -3,22 +3,6 @@
 % rigid quadrupedal robot.
 function plotSijwKsq(k,cs1,cs2)
 
-% % Get the functions needed from the structure------------------------------
-% k = returnSijfxn(k,cs1,cs2);
-
-% % Create the initial gait--------------------------------------------------
-%     % Run ODE45 to obtain the constrained gait-----------------------------
-%     a1_0 = 0.1*ank; % x-coord = 10% of x-range
-%     a2_0 = 0; % y-coord = 0
-%     options = odeset('Events',@PhaseSijTrigger); % triggers complete cycle
-%     [t,y,~,~,~] = ode45( @(t,y) dphi_ij_func(t, k.aa, k.ll, y(1), y(2)),...
-%                     [0 5], [a1_0; a2_0], options ); % call the ode solver
-%     t = t/t(end); % rescale time vector to one period (trigger event)
-%     % Obtain the sinusoidal fit that's actually the exact solution to the
-%     % ode solver generated one---------------------------------------------
-%     si = sinefit(t,y(:,1)); % get each shape element from the solution
-%     sj = sinefit(t,y(:,2));
-
 % Obtain the gait constraints----------------------------------------------
 [k,si,sj,t] = gcSij(k,cs1,cs2);
 sfit = @(b,x)  b(1).*(sin(2*pi*x + 2*pi/b(2))) + b(3); % fit function
@@ -28,7 +12,7 @@ yi = sfit(si,t); yj = sfit(sj,t); % obtain the fit for plotting
 % Here, we just take the 10% of the shape element range gait as minimum 
 % and 90% of the range as maximum--------------------------------------
 % Min and Max multipliers:
-mulm = 1; mulM = 9; % make sure you don't leave the shape-space bounds
+mulm = k.mul{k.cs_idx}(1); mulM = k.mul{k.cs_idx}(2); % make sure you don't leave the shape-space bounds
 % Get the scaled gaits:
 yim = mulm*yi; yjm = mulm*yj;
 yiM = mulM*yi; yjM = mulM*yj;
@@ -69,7 +53,7 @@ ksq_phi_m = ksq_ij_func(0, k.aa, k.ll, yim(idxm), yjm(idxm));
 ksq_phi_M = ksq_ij_func(0, k.aa, k.ll, yiM(idxM), yjM(idxM));
 
 figure('units','pixels','position',[0 0 1920 1080],'Color','w') % plot
-p1 = surf(ai,aj,ksq_sweep,'EdgeColor','none','FaceAlpha',0.25);
+p1 = surf(ai,aj,ksq_sweep,'EdgeColor','none','FaceAlpha',0.35);
 set(get(get(p1,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 axis equal tight; hold on; view(2);
 colormap(jet);

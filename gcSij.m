@@ -1,6 +1,6 @@
 % This script computes the gait constraints on the rigid body system with
 % non-slipping legs. It outputs the updated kinematic structure
-function [k,si,sj,t,bF] = gcSij(k,cs1,cs2)
+function [k,si,sj,t] = gcSij(k,cs1,cs2)
 
 % Get the functions needed from the structure------------------------------
 k = returnSijfxn(k,cs1,cs2);
@@ -25,22 +25,34 @@ ank = k.ank;
 % Shape-space bounds violation---------------------------------------------
     % Run the bounds violation check and obtain the time interval where the
     % points are violated.
-    [boundFi,tauIntervali,tauValidi] = shapebounds(si);
-    [boundFj,tauIntervalj,tauValidj] = shapebounds(sj);
+    [boundFi,tauIntervali] = shapebounds(si,ank);
+    [boundFj,tauIntervalj] = shapebounds(sj,ank);
 
-    % Pack the results into the kinematic structure.
+    % Pack the results into the kinematic structure-- first we need group
+    % the results for both shape elements since we are trying to constrain
+    % gaits for this specific shape-space slice of shape elements i and j
+    %----------------------------------------------------------------------
 
-    k.bF{k.cs_idx} = [boundFi; boundFj]; % bound flag
+    k.bF{k.cs_idx} = min([boundFi, boundFj]); % bound flag-- taking the min
 
-    ni = tauIntervali; nj = tauIntervalj;
-    if ni > nj
-        tauIntervalj = [tauIntervalj,nan(1,ni-nj)];
-        tauValidj = [tauValidj,nan(1,ni-nj)];
-    elseif ni < nj
-        tauIntervali = [tauIntervali,nan(1,nj-ni)];
-        tauValidi = [tauValidi,nan(1,nj-ni)];
-    end
-    k.tauI{k.cs_idx} = [tauIntervali; tauIntervalj]; % time intervals
-    k.tauV{k.cs_idx} = [tauValidi; tauValidj]; % time interval validity
+    tI = unique([tauIntervali,tauIntervalj]); % get the joint intervals
+    k.tauI{k.cs_idx} = tI;
+
+    % Compute if the gait is valid in each interval-- take the
+    % middle value in each interval and then check if it is within
+    % bounds.
+    t_test = tI(1:end-1) + 0.5*diff(tI); % bisect each interval to test validity
+    tV = ( si(1)*sin(2*pi*(t_test + 1/si(2))) + si(3) <= ank ) &...
+         ( si(1)*sin(2*pi*(t_test + 1/si(2))) + si(3) >= -ank ) &...
+         ( sj(1)*sin(2*pi*(t_test + 1/sj(2))) + sj(3) <= ank ) &...
+         ( sj(1)*sin(2*pi*(t_test + 1/sj(2))) + sj(3) >= -ank ); % check bounds
+    k.tauV{k.cs_idx} = tV(:)'; % ensure that it is a row vector
+
+% Smallest/Largest allowable gait------------------------------------------
+    % The non-connecting level-sets mandate a more sophisticated way of
+    % obtaining the gains for the minimum and maximum allowable gait
+    % constraint trajectory.
+    sing_pt_dirn = [si(3); sj(3)]/abs([si(3); sj(3)]);
+    % The smallest gait needs to intersect this point,
 
 end
