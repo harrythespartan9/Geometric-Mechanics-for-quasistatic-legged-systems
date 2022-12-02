@@ -47,13 +47,13 @@ colorbar('TickLabelInterpreter','latex','FontSize',12);
 % https://www.mathworks.com/matlabcentral/answers/271912-rotate-ylabel-and-keep-centered
 set(get(gca,'YLabel'),'rotation',0,'VerticalAlignment','middle');
 % title(ctitle_txt,FontSize=20);
+ax = gca;
+ax.XAxis.FontSize = 15;
+ax.YAxis.FontSize = 15;
 xticks(-pi:pi/2:pi);
 xticklabels({'$-\pi$','$-\frac{\pi}{2}$','$0$','$\frac{\pi}{2}$','$\pi$'});
 yticks(-pi:pi/2:pi);
 yticklabels({'$-\pi$','$-\frac{\pi}{2}$','$0$','$\frac{\pi}{2}$','$\pi$'});
-ax = gca;
-ax.XAxis.FontSize = 15;
-ax.YAxis.FontSize = 15;
 xlabel(xtxt,FontSize=20);
 ylabel(ytxt,FontSize=20);
 
@@ -63,13 +63,13 @@ quiver(ai(idxQ,idxQ),aj(idxQ,idxQ),u_sweep(idxQ,idxQ),v_sweep(idxQ,idxQ),...
 axis equal tight; hold on; view(2);
 set(get(gca,'YLabel'),'rotation',0,'VerticalAlignment','middle');
 % title(ftitle_txt,FontSize=20);
+ax = gca;
+ax.XAxis.FontSize = 15;
+ax.YAxis.FontSize = 15;
 xticks(-pi:pi/2:pi);
 xticklabels({'$-\pi$','$-\frac{\pi}{2}$','$0$','$\frac{\pi}{2}$','$\pi$'});
 yticks(-pi:pi/2:pi);
 yticklabels({'$-\pi$','$-\frac{\pi}{2}$','$0$','$\frac{\pi}{2}$','$\pi$'});
-ax = gca;
-ax.XAxis.FontSize = 15;
-ax.YAxis.FontSize = 15;
 xlabel(xtxt,FontSize=20);
 ylabel(ytxt,FontSize=20);
 
