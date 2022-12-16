@@ -1,29 +1,33 @@
 % This function plots the kinematic connection vector fields of the case 1 
 % system.
-function plotcase1vectorfield(ax,plt_kin,plt_info,idx)
+function plotcase1vectorfield(ax,p_kin,p_info,idx,lvlF)
 
 % Unpack the plotting tools
-tickFS = plt_info.tickFS; titleFS = plt_info.titleFS;
-xtickval = plt_info.xtickval; ytickval = plt_info.xtickval;
-xticklab = plt_info.xticklab; yticklab = plt_info.yticklab;
-config = plt_info.config{idx(1),idx(2)};
-title_txt = plt_info.title_txt{idx(1),idx(2)};
-idxQ = plt_info.idxQ; 
-col_backg = plt_info.col_backg; gc_col = plt_info.gc_col;
-lW_Vector = plt_info.lW_Vector;
+tickFS = p_info.tickFS; titleFS = p_info.titleFS;
+xtickval = p_info.xtickval; ytickval = p_info.xtickval;
+xticklab = p_info.xticklab; yticklab = p_info.yticklab;
+config = p_info.config{idx(1),idx(2)};
+title_txt = p_info.title_txt{idx(1),idx(2)};
+if lvlF % if level-sets are drawn
+    itQ = p_info.iQ;
+else % if connections are drawn
+    itQ = p_info.idxQ;
+end
+col_backg = p_info.col_backg; gc_col = p_info.gc_col;
+lW_Vector = p_info.lW_Vector; i = p_info.i; j = p_info.j;
 
 % Unpack the kinematics data
-i = plt_kin.i; j = plt_kin.j; ai = plt_kin.ai; aj = plt_kin.aj; 
-u_sweep = plt_kin.vecF.u{idx(1),idx(2)}; v_sweep = plt_kin.vecF.v{idx(1),idx(2)};
+ai = p_kin.ai; aj = p_kin.aj; 
+u_sweep = p_kin.vecF.u{idx(1),idx(2)}; v_sweep = p_kin.vecF.v{idx(1),idx(2)};
 
 % Make the plot on the axes provided 
-quiver(ai(idxQ,idxQ),aj(idxQ,idxQ),u_sweep(idxQ,idxQ),v_sweep(idxQ,idxQ),...
+quiver(ai(itQ,itQ),aj(itQ,itQ),u_sweep(itQ,itQ),v_sweep(itQ,itQ),...
     'LineWidth',lW_Vector,'Color','k');
 axis equal tight; hold on;
 if config % check if we need to plot the location of the configuration
     % Unpack relevant plot info
-    lW_m = plt_info.lW_m;
-    circS_q = plt_info.circS_q; col_q = plt_info.col_q;
+    lW_m = p_info.lW_m;
+    circS_q = p_info.circS_q; col_q = p_info.col_q;
     % Plot the location of the configuration
     scatter(ax,ai(i,j),aj(i,j),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
 end
