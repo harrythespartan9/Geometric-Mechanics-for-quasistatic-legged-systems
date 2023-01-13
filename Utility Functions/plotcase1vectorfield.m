@@ -1,31 +1,31 @@
 % This function plots the kinematic connection vector fields of the case 1 
 % system.
-function plotcase1vectorfield(ax,p_kin,p_info,~,idx) % child struct 'C' not
-                                                     % being used rn
+function plotcase1vectorfield(ax,plot_kin,plot_info,C,k)
 
 % Unpack the plotting tools
-tickFS = p_info.tickFS; titleFS = p_info.titleFS;
-xtickval = p_info.xtickval; ytickval = p_info.xtickval;
-xticklab = p_info.xticklab; yticklab = p_info.yticklab;
-config = p_info.config{idx(1),idx(2)};
-title_txt = p_info.title_txt{idx(1),idx(2)};
-itQ = p_info.idxQ;
-col_backg = p_info.col_backg; gc_col = p_info.gc_col;
-lW_Vector = p_info.lW_Vector; i = p_info.i; j = p_info.j;
+tickFS = plot_info.tickFS; titleFS = plot_info.titleFS;
+xtickval = plot_info.xtickval; ytickval = plot_info.xtickval;
+xticklab = plot_info.xticklab; yticklab = plot_info.yticklab;
+idx = [C.idx{2}(C.idx{1} == k), C.idx{3}(C.idx{1} == k)]; % loc in p grid
+configs = plot_info.configs{idx(1),idx(2)};
+title_txt = plot_info.title_txt{idx(1),idx(2)};
+itQ = plot_info.idxQ;
+col_backg = plot_info.col_backg; gc_col = plot_info.gc_col;
+lW_Vector = plot_info.lW_Vector; i = plot_info.i; j = plot_info.j;
 
 % Unpack the kinematics data
-ai = p_kin.ai; aj = p_kin.aj;
-u_sweep = eval(p_info.vecF_txt{idx(1),idx(2),1}); 
-v_sweep = eval(p_info.vecF_txt{idx(1),idx(2),2});
+ai = plot_kin.ai; aj = plot_kin.aj;
+u_sweep = eval(plot_info.vecF_txt{idx(1),idx(2),1}); 
+v_sweep = eval(plot_info.vecF_txt{idx(1),idx(2),2});
 
 % Make the plot on the axes provided 
 quiver(ai(itQ,itQ),aj(itQ,itQ),u_sweep(itQ,itQ),v_sweep(itQ,itQ),...
     'LineWidth',lW_Vector,'Color','k');
 axis equal tight; hold on;
-if config % check if we need to plot the location of the configuration
+if configs % check if we need to plot the location of the configuration
     % Unpack relevant plot info
-    lW_m = p_info.lW_m;
-    circS_q = p_info.circS_q; col_q = p_info.col_q;
+    lW_m = plot_info.lW_m;
+    circS_q = plot_info.circS_q; col_q = plot_info.col_q;
     % Plot the location of the configuration
     scatter(ax,ai(i,j),aj(i,j),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
 end

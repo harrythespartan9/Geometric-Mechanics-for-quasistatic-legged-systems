@@ -16,7 +16,7 @@ switch flag %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             txt = 'lb_A';
         elseif strcmp('D(-A)',field)
             txt = 'D_mA';
-        elseif stcmp('dz',field)
+        elseif strcmp('dz',field)
             txt = 'dz';
         end
         
@@ -33,15 +33,15 @@ switch flag %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         F = false; DF = false;
         if strcmp('-A',field)
-            txt = '-\mathbf{A}';
+            txt = '$-\mathbf{A}';
         elseif strcmp('-dA',field)
-            txt = '-d\mathbf{A}';
+            txt = '$-d\mathbf{A}';
         elseif strcmp('[A_1,A_2]',field)
             txt = '$[\mathbf{A}_{1},\mathbf{A}_{2}]';
         elseif strcmp('D(-A)',field)
             DF = true;
             txt = '$D(-\mathbf{A}';
-        elseif stcmp('dz',field)
+        elseif strcmp('dz',field)
             F = true;
             txt = '$dz_{\phi}';
         end
