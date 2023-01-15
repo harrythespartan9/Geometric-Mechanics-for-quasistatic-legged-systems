@@ -9,7 +9,7 @@ xticklab = plot_info.xticklab; yticklab = plot_info.yticklab;
 gc_col = plot_info.gc_col;
 CUB = plot_info.CUB;
 idx = [C.idx{2}(C.idx{1} == k), C.idx{3}(C.idx{1} == k)]; % parent grid loc
-heat_lim = C.limits;
+heat_lim = C.limits; lW_c = plot_info.lW_contour;
 configs = plot_info.configs{idx(1),idx(2)};
 title_txt = plot_info.title_txt{idx(1),idx(2)};
 

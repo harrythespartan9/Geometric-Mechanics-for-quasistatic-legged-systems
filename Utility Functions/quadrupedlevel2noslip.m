@@ -35,13 +35,13 @@ plot_info.labelFS = 18*fontscale; % compute various font sizes
 plot_info.titleFS = 20*fontscale; 
 plot_info.sgtitleFS = 25*fontscale;
 plot_info.cbarFS = 15*fontscale;
-plot_info.lW_contour = (1.2*10)/cLvl; % contour linewidth
+plot_info.lW_contour = (1.0*10)/cLvl; % contour linewidth % 1.2
 plot_info.lW_Vector = (1.0/100)*skipV; % vector linewidth
 plot_info.lW_V = (1.0/100)*sV;
 plot_info.idxQ = 1:skipV:dnum; % indices to plot the connection vector field
 plot_info.iQ = 1:sV:dnum; % gait constraint vector fields
-plot_info.xtickval = -pi/2:pi/2:pi/2;
-plot_info.xticklab = {'$-\frac{\pi}{2}$','$0$','$\frac{\pi}{2}$'};
+plot_info.xtickval = -pi/3:pi/3:pi/3;
+plot_info.xticklab = {'$-\frac{\pi}{3}$','$0$','$\frac{\pi}{3}$'};
 plot_info.ytickval = plot_info.xtickval;
 plot_info.yticklab = plot_info.xticklab;
 
@@ -53,7 +53,7 @@ plot_info.R_comps = 1:numel(comps);
 
 % custom colormaps --------------------------------------------------------
 % for squared inter-leg distance 'ksq'
-% jetDark = flipud([215,48,39;
+% jetDark = flipud([215,48,39; % diverging
 %                 244,109,67;
 %                 253,174,97;
 %                 254,224,144;
@@ -61,12 +61,38 @@ plot_info.R_comps = 1:numel(comps);
 %                 224,243,248;
 %                 171,217,233;
 %                 116,173,209;
-%                 69,117,180])/255; % manually defined
-jetDark = turbo(256); % initialize the colormap based on jet % 256
+%                 69,117,180])/255;
+% jetDark = [128,125,186; 
+%             106,81,163;
+%             84,39,143;
+%             63,0,125]/255; % sequential violet
+% jetDark = [127,205,187;
+%             65,182,196;
+%             29,145,192;
+%             34,94,168;
+%             37,52,148]/255; % sequential blue
+jetDark = flipud([174,1,126;
+           221,52,151;
+           247,104,161;
+           250,159,181;
+           116,169,207;
+           54,144,192])/255; % diverging pink to blue
+% jetDark = flipud([152,0,67;
+%            206,18,86;
+%            231,41,138;
+%            223,101,176;
+%            116,169,207;
+%            54,144,192])/255; % diverging reddish-pink to blue
+% jetDark = turbo(256); % initialize the colormap based on jet % 256
 jetDark = interp1(linspace(0,100,size(jetDark,1)), jetDark, linspace(0,100,size(jet,1))); % initialize the map based on colorbrewer
-jP = sqrt(jetDark(:,1).^2 + jetDark(:,2).^2 + jetDark(:,3).^2); % power in each slice
-jS = 0.9; % a proportional gain helping us shift the color levels % 0.8 % 1.0
-plot_info.jetDark = jS/max(jP)*repmat(jP,1,3).*jetDark; %%% proportional reduction with normalized power
+% USE SCALING ONLY WHEN USING TURBO MAP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+% % % jP = sqrt(jetDark(:,1).^2 + jetDark(:,2).^2 + jetDark(:,3).^2); % power in each slice
+% % % jS = 0.9; % a proportional gain helping us shift the color levels % 0.8
+% % % % 0.88 % 0.9 % 1.0 % max(jP)-- no changes to color intensity
+% % % plot_info.jetDark = jS/max(jP)*repmat(jP,1,3).*jetDark; %%% proportional reduction with normalized power
+% ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+plot_info.jetDark = jetDark; % don't scale for manually defined maps
+
 % for stratified panels
 CUB = flipud([159.3750,99.6030,63.4312;
           239.0625,149.4045,95.1469;
@@ -119,7 +145,7 @@ frame_scale = 0.25; % length of the frame arrows compared to body length
 circS = 75/scaleDraw;
 circS_q = 200; % config highlight
 boxW = 1.2; % config plot box linewidth
-lW_m = 1.2; % fixed marker edge width and type for robot configuration
+lW_m = 0.8; % fixed marker edge width and type for robot configuration
 plot_info.lW = lW; plot_info.lW_r = lW_r; plot_info.lW_b = lW_b;
 plot_info.lW_kq = lW_kq; plot_info.lW_qf = lW_qf; plot_info.lW_m = lW_m;
 plot_info.circS = circS; plot_info.circS_q = circS_q;
@@ -473,7 +499,7 @@ xx = plot_info.xx; yy = plot_info.yy; th = plot_info.th; % unpack some plot para
 col = plot_info.col; col_q = plot_info.col_q; col_backg = plot_info.col_backg;
 titleFS = plot_info.titleFS; tickFS = plot_info.tickFS; labelFS = plot_info.labelFS; 
 lW_contour = plot_info.lW_contour; cbarFS = plot_info.cbarFS; iQ = plot_info.iQ;
-lW_V = plot_info.lW_V; gc_col = plot_info.gc_col;
+lW_V = plot_info.lW_V; gc_col = plot_info.gc_col; cs_idx = kin_info.cs_idx;
 
 axP = cell(1,prod(P.grid)); % create the parent layout axes
 
@@ -483,23 +509,35 @@ for k = 1:numel(P.tileIdx) % iterate
     switch k
         
         case 1 % robot configuration 'q'
-            plot(axP{k}, pltkin.legbase1_leg1_x(1, 1, a1, xx, yy, th), pltkin.legbase1_leg1_y(1, 1, a1, xx, yy, th), 'Color', col(1,:), 'LineWidth', lW);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% find a better way to do this later. %%%%%%%%%%%%%%
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), 'Color', col(cs_idx,:), 'LineWidth', lW);
             axis equal square; hold on; 
             set(axP{k}, 'xTick',[]); set(axP{k}, 'yTick',[]);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), 'Color', col(cs_idx,:), 'LineWidth', lW);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, 0, xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', col(cs_idx,:), 'LineWidth', lW_r);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, 0, xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', col(cs_idx,:), 'LineWidth', lW_r);
+            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
+                eval(['pltkin.leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), circS, col(cs_idx,:), 'filled');
+            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
+                eval(['pltkin.leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), circS, col(cs_idx,:), 'filled');
+            quiver(axP{k}, sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_x(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
+                sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_y(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
+                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_u(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
+                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_v(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
+                'Color', col_q, 'LineWidth', lW_kq, 'LineStyle', ':', 'AutoScale', 'off', 'ShowArrowHead', 'off'); % ksq line
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            plot(axP{k}, pltkin.legbase1_leg1_x(1, 1, a1, xx, yy, th), pltkin.legbase1_leg1_y(1, 1, a1, xx, yy, th), 'Color', col(1,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.legbase2_leg2_x(1, 1, a2, xx, yy, th), pltkin.legbase2_leg2_y(1, 1, a2, xx, yy, th), 'Color', col(1,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.legbase3_leg3_x(1, 1, a3, xx, yy, th), pltkin.legbase3_leg3_y(1, 1, a3, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.legbase4_leg4_x(1, 1, a4, xx, yy, th), pltkin.legbase4_leg4_y(1, 1, a4, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
-            plot(axP{k}, pltkin.legbase1_leg1_x(1, 1, 0, xx, yy, th), pltkin.legbase1_leg1_y(1, 1, 0, xx, yy, th), 'LineStyle', '--', 'Color', col(1,:), 'LineWidth', lW_r);
-            plot(axP{k}, pltkin.legbase2_leg2_x(1, 1, 0, xx, yy, th), pltkin.legbase2_leg2_y(1, 1, 0, xx, yy, th), 'LineStyle', '--', 'Color', col(1,:), 'LineWidth', lW_r);
             plot(axP{k}, pltkin.topright2topleft_x(1, xx, yy, th), pltkin.topright2topleft_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.topleft2botleft_x(1, xx, yy, th), pltkin.topleft2botleft_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.botleft2botright_x(1, xx, yy, th), pltkin.botleft2botright_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.botright2topright_x(1, xx, yy, th), pltkin.botright2topright_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
-            quiver(axP{k}, sum([1,0].*pltkin.k_leg1_leg2_x(1,1,a1,a2,xx,yy,th)), sum([1,0].*pltkin.k_leg1_leg2_y(1,1,a1,a2,xx,yy,th)),...
-                pltkin.k_leg1_leg2_u(1,1,a1,a2,xx,yy,th), pltkin.k_leg1_leg2_v(1,1,a1,a2,xx,yy,th),...
-                'Color', col_q, 'LineWidth', lW_kq, 'LineStyle', ':', 'AutoScale', 'off', 'ShowArrowHead', 'off');
-            scatter(axP{k}, pltkin.leg1_x(1, 1, a1, xx, yy, th), pltkin.leg1_y(1, 1, a1, xx, yy, th), circS, col(1,:), 'filled');
-            scatter(axP{k}, pltkin.leg2_x(1, 1, a2, xx, yy, th), pltkin.leg2_y(1, 1, a2, xx, yy, th), circS, col(1,:), 'filled');
             quiver(axP{k}, pltkin.body_x(xx, yy, th), pltkin.body_y(xx, yy, th), frame_scale*sum([1,0]*pltkin.bodyf_x(xx, yy, th)),...
                 frame_scale*sum([0,1]*pltkin.bodyf_x(xx, yy, th)),...
                 'LineWidth', lW_qf, 'Color', col(1,:), 'AutoScale', 'off', 'ShowArrowHead', 'off');
@@ -513,8 +551,8 @@ for k = 1:numel(P.tileIdx) % iterate
         case 2 % k^2 level sets
             contour(axP{k}, ai,aj,ksq_sweep,cLvl,'LineWidth',lW_contour);
             axis equal tight; hold on; view(2);
-            scatter(axP{k},a1,a2,circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
-            colormap(axP{k}, jetDark); colorbar(axP{k}, 'TickLabelInterpreter','latex','FontSize',cbarFS); %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
+            colormap(axP{k}, plot_info.jetDark); colorbar(axP{k}, 'TickLabelInterpreter','latex','FontSize',cbarFS); %%%%%%%%%%%%%%%%%%%%%%%%%%%
             set(get(axP{k}, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
             title(axP{k}, plot_info.ksq_title_text,FontSize=titleFS);
             xticks(axP{k}, plot_info.xtickval); yticks(axP{k}, plot_info.ytickval);
@@ -527,7 +565,7 @@ for k = 1:numel(P.tileIdx) % iterate
             quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dphi_x_sweep(iQ,iQ),dphi_y_sweep(iQ,iQ),0.5,...
                 'LineWidth',lW_V,'Color',gc_col);
             axis equal tight; hold on; view(2);
-            scatter(axP{k},a1,a2,circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
+            scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             set(get(axP{k},'YLabel'),'rotation',0,'VerticalAlignment','middle');
             title(axP{k}, plot_info.dphi_title_text,'Color',gc_col,FontSize=titleFS);
             xticks(axP{k}, plot_info.xtickval); yticks(axP{k}, plot_info.ytickval);
@@ -538,9 +576,10 @@ for k = 1:numel(P.tileIdx) % iterate
     end
 
 end
+plot_info.axP = axP; % store the parent axes
 
 % Call the children layout plot function
-ax = plotchildlayout({CA,C1,C2,C3,C4},plot_kin,plot_info); % arrange the child layout structures in a cell array
+plot_info.axC = plotchildlayout({CA,C1,C2,C3,C4},plot_kin,plot_info); % arrange the child layout structures in a cell array
 
 % Sumanifold kinematics title
 title(P.LayoutObj,plot_info.sgtitle_txt,'Color',plot_info.col(1,:),'Interpreter','latex','FontSize',plot_info.sgtitleFS);
