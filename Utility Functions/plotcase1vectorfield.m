@@ -12,6 +12,7 @@ title_txt = plot_info.title_txt{idx(1),idx(2)};
 itQ = plot_info.idxQ;
 col_backg = plot_info.col_backg; gc_col = plot_info.gc_col;
 lW_Vector = plot_info.lW_Vector; i = plot_info.i; j = plot_info.j;
+xlimits = plot_info.xlimits; ylimits = plot_info.ylimits;
 
 % Unpack the kinematics data
 ai = plot_kin.ai; aj = plot_kin.aj;
@@ -35,5 +36,6 @@ xticks(ax,xtickval); yticks(ax,ytickval);
 xticklabels(ax,xticklab); yticklabels(ax,yticklab);
 ax.XAxis.FontSize = tickFS; ax.YAxis.FontSize = tickFS; 
 set(ax,'Color',col_backg);
+xlim(xlimits); ylim(ylimits);
 
 end

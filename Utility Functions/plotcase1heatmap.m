@@ -12,6 +12,7 @@ idx = [C.idx{2}(C.idx{1} == k), C.idx{3}(C.idx{1} == k)]; % parent grid loc
 heat_lim = C.limits; lW_c = plot_info.lW_contour;
 configs = plot_info.configs{idx(1),idx(2)};
 title_txt = plot_info.title_txt{idx(1),idx(2)};
+xlimits = plot_info.xlimits; ylimits = plot_info.ylimits;
 
 % Unpack the kinematics data
 ai = plot_kin.ai; aj = plot_kin.aj;
@@ -35,5 +36,6 @@ title(ax,title_txt,'Color',gc_col,FontSize=titleFS);
 xticks(ax,xtickval); yticks(ax,ytickval);
 xticklabels(ax,xticklab); yticklabels(ax,yticklab);
 ax.XAxis.FontSize = tickFS; ax.YAxis.FontSize = tickFS;
+xlim(xlimits); ylim(ylimits);
 
 end

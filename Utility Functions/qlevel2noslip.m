@@ -127,6 +127,7 @@ tempX = [temp_left(1:end-1), temp_right]; tempY = tempX;
 [ai,aj] = meshgrid(tempX,tempY); % origin needs to be a part of the grid
 plot_kin.ai = ai;
 plot_kin.aj = aj;
+plot_info.xlimits = [ai(1) ai(end)]; plot_info.ylimits = [aj(1) aj(end)];
 
 % robot config selection and heuristics -----------------------------------
 ijm = find(tempX>-pi/2 & tempX<pi/2, 1); 
@@ -520,6 +521,7 @@ col = plot_info.col; col_q = plot_info.col_q; col_backg = plot_info.col_backg;
 titleFS = plot_info.titleFS; tickFS = plot_info.tickFS; labelFS = plot_info.labelFS; 
 lW_contour = plot_info.lW_contour; cbarFS = plot_info.cbarFS; iQ = plot_info.iQ;
 lW_V = plot_info.lW_V; gc_col = plot_info.gc_col; cs_idx = kin_info.cs_idx;
+xlimits = plot_info.xlimits; ylimits = plot_info.ylimits;
 
 axP = cell(1,prod(P.grid)); % create the parent layout axes
 
@@ -566,7 +568,7 @@ for k = 1:numel(P.tileIdx) % iterate
             quiver(axP{k}, 0, 0, frame_scale*1, 0, 'LineWidth', lW_qf, 'Color', 'k', 'AutoScale', 'off', 'ShowArrowHead', 'off');
             quiver(axP{k}, 0, 0, 0, frame_scale*1, 'LineWidth', lW_qf, 'Color', 'k', 'AutoScale', 'off', 'ShowArrowHead', 'off');
             axis(axP{k}, [limX, limY]); axP{k}.XColor = col_q; axP{k}.YColor = col_q; axP{k}.LineWidth = boxW;
-            set(axP{k},'Color',col_backg); title(plot_info.q_title_txt,FontSize=titleFS); 
+            set(axP{k},'Color',col_backg); title(plot_info.q_title_txt,FontSize=titleFS);
 
         case 2 % k^2 level sets
             contour(axP{k}, ai,aj,ksq_sweep,cLvl,'LineWidth',lW_contour);
@@ -580,6 +582,7 @@ for k = 1:numel(P.tileIdx) % iterate
             yticklabels(axP{k}, plot_info.xticklab);
             xlabel(axP{k}, plot_info.x_label_txt,FontSize=labelFS); ylabel(axP{k}, plot_info.y_label_txt,FontSize=labelFS);
             axP{k}.XAxis.FontSize = tickFS; axP{k}.YAxis.FontSize = tickFS; set(axP{k}, 'Color',col_backg);
+            xlim(xlimits); ylim(ylimits);
 
         case 3 % iso-k^2 gait constraint vector field (+ve) 
             quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dphi_x_sweep(iQ,iQ),dphi_y_sweep(iQ,iQ),0.5,...
@@ -592,6 +595,7 @@ for k = 1:numel(P.tileIdx) % iterate
             xticklabels(axP{k}, plot_info.xticklab);
             yticklabels(axP{k}, plot_info.xticklab);
             axP{k}.XAxis.FontSize = tickFS; axP{k}.YAxis.FontSize = tickFS; set(axP{k}, 'Color',col_backg);
+            xlim(xlimits); ylim(ylimits);
 
     end
 
