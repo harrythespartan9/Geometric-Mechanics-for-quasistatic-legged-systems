@@ -1,6 +1,6 @@
 % This script computes the kinematics of the level-2 contact states of a
 % quadrupedal robot undergoing no-slip condition
-function [plot_info, plot_kin, f] = quadrupedlevel2noslip(kin_info, plot_info)
+function [plot_info, plot_kin, kin_info, f] = qlevel2noslip(kin_info, plot_info)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Computed Plot Information %%%%%%%%%%%%%%%%%%
@@ -240,6 +240,8 @@ dphi_x = matlabFunction(dphi(1),'Vars',symvarsij);
 dphi_y = matlabFunction(dphi(2),'Vars',symvarsij); % normalized version
 dphi_x_sweep = dphi_x(aa, ll, ai, aj); plot_kin.dphi_x_sweep = conditiondatasweep(dphi_x_sweep,[dnum,dnum]);
 dphi_y_sweep = dphi_y(aa, ll, ai, aj); plot_kin.dphi_y_sweep = conditiondatasweep(dphi_y_sweep,[dnum,dnum]);
+kin_info.dphi_x = dphi_x;
+kin_info.dphi_y = dphi_y;
 % connection
 if aF
     A__x_1 = matlabFunction(kin.Ax_ij{i}{1,1},'Vars',symvarsij);
@@ -254,6 +256,12 @@ if aF
     A__y_2_sweep = A__y_2(aa, ll, ai, aj); plot_kin.A__y_2_sweep = conditiondatasweep(A__y_2_sweep,[dnum,dnum]);
     A__theta_1_sweep = A__theta_1(aa, ll, ai, aj); plot_kin.A__theta_1_sweep = conditiondatasweep(A__theta_1_sweep,[dnum,dnum]);
     A__theta_2_sweep = A__theta_2(aa, ll, ai, aj); plot_kin.A__theta_2_sweep = conditiondatasweep(A__theta_2_sweep,[dnum,dnum]);
+    kin_info.A__x_1 = A__x_1;
+    kin_info.A__x_2 = A__x_2;
+    kin_info.A__x_1 = A__y_1;
+    kin_info.A__x_2 = A__y_2;
+    kin_info.A__x_1 = A__theta_1;
+    kin_info.A__x_2 = A__theta_2; % save functions
 end
 % continuous kinematics-- ross and howie flavor
 da_xy_lim = nan(1,2); lba_xy_lim = nan(1,2); gcurla_xy_lim = nan(1,2); 
@@ -266,6 +274,9 @@ if daF
     mdA__y_sweep = mdA__y(aa, ll, ai, aj); plot_kin.mdA__y_sweep = conditiondatasweep(mdA__y_sweep,[dnum,dnum]);
     mdA__theta_sweep = mdA__theta(aa, ll, ai, aj); plot_kin.mdA__theta_sweep = conditiondatasweep(mdA__theta_sweep,[dnum,dnum]); % sweeps
     [da_xy_lim,da_theta_lim] = se2limits(mdA__x_sweep,mdA__y_sweep,mdA__theta_sweep); % limits
+    kin_info.mdA__x = mdA__x;
+    kin_info.mdA__y = mdA__y;
+    kin_info.mdA__theta = mdA__theta;
 end
 if lbaF
     lb_A__x = matlabFunction(kin.lb_A_x{i},'Vars',symvarsij);
@@ -275,6 +286,9 @@ if lbaF
     lb_A__y_sweep = lb_A__y(aa, ll, ai, aj); plot_kin.lb_A__y_sweep = conditiondatasweep(lb_A__y_sweep,[dnum,dnum]);
     lb_A__theta_sweep = lb_A__theta(aa, ll, ai, aj); plot_kin.lb_A__theta_sweep = conditiondatasweep(lb_A__theta_sweep,[dnum,dnum]);
     [lba_xy_lim,lba_theta_lim] = se2limits(lb_A__x_sweep,lb_A__y_sweep,lb_A__theta_sweep);
+    kin_info.lb_A__x = lb_A__x;
+    kin_info.lb_A__y = lb_A__y;
+    kin_info.lb_A__theta = lb_A__theta;
 end
 if gcurlaF
     D_mA__x = matlabFunction(kin.D_mA_x{i},'Vars',symvarsij);
@@ -284,6 +298,9 @@ if gcurlaF
     D_mA__y_sweep = D_mA__y(aa, ll, ai, aj); plot_kin.D_mA__y_sweep = conditiondatasweep(D_mA__y_sweep,[dnum,dnum]);
     D_mA__theta_sweep = D_mA__theta(aa, ll, ai, aj); plot_kin.D_mA__theta_sweep = conditiondatasweep(D_mA__theta_sweep,[dnum,dnum]);
     [gcurla_xy_lim,gcurla_theta_lim] = se2limits(D_mA__x_sweep,D_mA__y_sweep,D_mA__theta_sweep);
+    kin_info.D_mA__x = D_mA__x;
+    kin_info.D_mA__y = D_mA__y;
+    kin_info.D_mA__theta = D_mA__theta;
 end
 C1_lim = [min([da_xy_lim lba_xy_lim gcurla_xy_lim]) max([da_xy_lim lba_xy_lim gcurla_xy_lim])]; % limits for each child layout
 C3_lim = [min([da_theta_lim lba_theta_lim gcurla_theta_lim]) max([da_theta_lim lba_theta_lim gcurla_theta_lim])];
@@ -297,6 +314,9 @@ if dzF
     dz__y_sweep = dz_phi_y(aa, ll, ai, aj); plot_kin.dz__y_sweep = conditiondatasweep(dz__y_sweep,[dnum,dnum]);
     dz__theta_sweep = dz_phi_theta(aa, ll, ai, aj); plot_kin.dz__theta_sweep = conditiondatasweep(dz__theta_sweep,[dnum,dnum]);
     [C2_lim,C4_lim] = se2limits(dz__x_sweep,dz__y_sweep,dz__theta_sweep);
+    kin_info.dz_phi_x = dz_phi_x;
+    kin_info.dz_phi_y = dz_phi_y;
+    kin_info.dz_phi_theta = dz_phi_theta;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
