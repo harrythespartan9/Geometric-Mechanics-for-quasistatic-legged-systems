@@ -28,12 +28,11 @@ function [datai,dataj,twobeatg] = qlevel2noslip_mp(datai,dataj)
         case 1 % just stratified panels
 
             % Unpack
-            lW_V = datai{1}.lW_V; % plot parameters
-            iQ = datai{1}.iQ;
-            CUB = datai{1}.CUB; fA = datai{1}.fA;
-            cfLvl = datai{1}.cfLvl;
+
+            lW_V = datai{1}.lW_V; iQ = datai{1}.iQ; % plot parameters
+            fA = datai{1}.fA; cfLvl = datai{1}.cfLvl;
             gc_col = datai{1}.gc_col; col_backg = datai{1}.col_backg;
-            col = datai{1}.col;
+            col = datai{1}.col; CUB = datai{1}.CUB;
             titleFS = datai{1}.titleFS; tickFS = datai{1}.tickFS;
             labelFS = datai{1}.labelFS; sgtitleFS = datai{1}.sgtitleFS;
             sgtitle_txt = datai{1}.sgtitle_txt;
@@ -43,6 +42,7 @@ function [datai,dataj,twobeatg] = qlevel2noslip_mp(datai,dataj)
             xticklab = datai{1}.xticklab; yticklab = datai{1}.yticklab;
             xlimits = datai{1}.xlimits; ylimits = datai{1}.ylimits;
             ai = datai{2}.ai; aj = datai{2}.aj;
+            
             dphi_x_sweep = datai{2}.dphi_x_sweep; % sweep data
             dphi_y_sweep = datai{2}.dphi_y_sweep;
             dz__x_sweep = datai{2}.dz__x_sweep;

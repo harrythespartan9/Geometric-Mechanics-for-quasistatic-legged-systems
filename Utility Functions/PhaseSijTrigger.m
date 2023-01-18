@@ -1,3 +1,5 @@
+% This function triggers the ode integration to stop for level-2 no slip
+% quadrupedal locomotion problems.
 function [value,isterminal,direction] = PhaseSijTrigger(~,y)
 
 % Phase of the 2-shape slice

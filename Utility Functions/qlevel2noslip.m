@@ -86,12 +86,14 @@ jetDark = flipud([174,1,126;
 % jetDark = turbo(256); % initialize the colormap based on jet % 256
 jetDark = interp1(linspace(0,100,size(jetDark,1)), jetDark, linspace(0,100,size(jet,1))); % initialize the map based on colorbrewer
 % USE SCALING ONLY WHEN USING TURBO MAP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-% % % jP = sqrt(jetDark(:,1).^2 + jetDark(:,2).^2 + jetDark(:,3).^2); % power in each slice
-% % % jS = 0.9; % a proportional gain helping us shift the color levels % 0.8
-% % % % 0.88 % 0.9 % 1.0 % max(jP)-- no changes to color intensity
-% % % plot_info.jetDark = jS/max(jP)*repmat(jP,1,3).*jetDark; %%% proportional reduction with normalized power
+jP = sqrt(jetDark(:,1).^2 + jetDark(:,2).^2 + jetDark(:,3).^2); % power in each slice
+jS = 1.1; % a proportional gain helping us shift the color levels % 0.8
+% 0.88 % 0.9 % 1.0 % max(jP)-- no changes to color intensity
+jetDark = jS/max(jP)*repmat(jP,1,3).*jetDark; %%% proportional reduction with normalized power
+jetDark(jetDark > 1) = 1; jetDark(jetDark < 0) = 0; % val between 0 and 1
+plot_info.jetDark = jetDark;
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-plot_info.jetDark = jetDark; % don't scale for manually defined maps
+% plot_info.jetDark = jetDark; % not scale for manually defined maps
 
 % for stratified panels
 CUB = flipud([159.3750,99.6030,63.4312;
@@ -121,13 +123,15 @@ plot_info.col_backg = [255,255,255]/255; % plot background color
 % shape-space grid and plotting stuff -------------------------------------
 % grid
 plot_kin = [];
-dnum_right = ceil(dnum/2); dnum_left = dnum - dnum_right;
-temp_left = linspace(-ank,0,dnum_left+1);  temp_right = linspace(0,ank,dnum_right);
-tempX = [temp_left(1:end-1), temp_right]; tempY = tempX;
+[tempX,tempY] = linspaceworiginforshapespace(dnum,ank);
+% dnum_right = ceil(dnum/2); dnum_left = dnum - dnum_right;
+% temp_left = linspace(-ank,0,dnum_left+1);  temp_right = linspace(0,ank,dnum_right);
+% tempX = [temp_left(1:end-1), temp_right]; tempY = tempX;
 [ai,aj] = meshgrid(tempX,tempY); % origin needs to be a part of the grid
 plot_kin.ai = ai;
 plot_kin.aj = aj;
 plot_info.xlimits = [ai(1) ai(end)]; plot_info.ylimits = [aj(1) aj(end)];
+% [aiF,ajF] = linspaceworiginforshapespace(2*dnum+1,pi);
 
 % robot config selection and heuristics -----------------------------------
 ijm = find(tempX>-pi/2 & tempX<pi/2, 1); 
@@ -232,8 +236,11 @@ symvarsij = eval(['[a, l, ' cs1_shape_txt ', ' cs2_shape_txt ']']); % fxn vars
 % ksq (always computed)
 ksq = kin.ksq_ij{i};
 ksq_sweep = ksq(aa, ll, ai, aj); plot_kin.ksq_sweep = conditiondatasweep(ksq_sweep,[dnum,dnum]);
+kin_info.ksq = ksq;
 plot_info.col_q = interp1(linspace(min(ksq_sweep,[],'all'), max(ksq_sweep,[],'all')...
     , size(jetDark,1)), jetDark, ksq_sweep(ii, jj)); % get the inter-leg color for the chosen ksq val
+% ksqF_sweep = ksq(aa, ll, aiF, ajF); ksqF_sweep = conditiondatasweep(ksq_sweep,[dnum,dnum]);
+% ksqF_lim = [min(ksqF_sweep,[],'all') max(ksqF_sweep,[],'all')];
 % dphi (always computed)
 % dphi_x = kin.dphi_ij_s{i,1}; dphi_y = kin.dphi_ij_s{i,2}; % scaled version
 dphi = simplify(kin.dphi_ij{i}/norm(kin.dphi_ij{i}),'Steps',10); 
@@ -243,6 +250,7 @@ dphi_x_sweep = dphi_x(aa, ll, ai, aj); plot_kin.dphi_x_sweep = conditiondataswee
 dphi_y_sweep = dphi_y(aa, ll, ai, aj); plot_kin.dphi_y_sweep = conditiondatasweep(dphi_y_sweep,[dnum,dnum]);
 kin_info.dphi_x = dphi_x;
 kin_info.dphi_y = dphi_y;
+kin_info.dphi = dphi;
 % connection
 if aF
     A__x_1 = matlabFunction(kin.Ax_ij{i}{1,1},'Vars',symvarsij);
@@ -575,6 +583,7 @@ for k = 1:numel(P.tileIdx) % iterate
             axis equal tight; hold on; view(2);
             scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             colormap(axP{k}, plot_info.jetDark); colorbar(axP{k}, 'TickLabelInterpreter','latex','FontSize',cbarFS); %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%             clim(axP{k},ksqF_lim);
             set(get(axP{k}, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
             title(axP{k}, plot_info.ksq_title_text,FontSize=titleFS);
             xticks(axP{k}, plot_info.xtickval); yticks(axP{k}, plot_info.ytickval);
