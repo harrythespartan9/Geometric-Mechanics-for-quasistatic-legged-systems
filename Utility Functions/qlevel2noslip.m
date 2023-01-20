@@ -326,6 +326,7 @@ if dzF
     kin_info.dz_phi_x = dz_phi_x;
     kin_info.dz_phi_y = dz_phi_y;
     kin_info.dz_phi_theta = dz_phi_theta;
+    kin_info.dz_phi = kin.dz_phi{i};
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
