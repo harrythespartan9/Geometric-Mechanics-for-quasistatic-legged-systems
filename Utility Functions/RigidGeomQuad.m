@@ -9,7 +9,7 @@ classdef (Abstract) RigidGeomQuad <  handle
             = 1;
 
         ankle_limit (1,1) double {mustBeGreaterThan(ankle_limit,0.1)}...
-            = pi/2;
+            = pi; % to explore the full range of leg swing kinematics
 
     end
 
@@ -21,9 +21,9 @@ classdef (Abstract) RigidGeomQuad <  handle
             
             if ~isempty(quadArgs)
 
-                if nargin == 1
+                if numel(quadArgs) == 1
                     thisRigidGeomQuad.ankle_limit = quadArgs;
-                elseif nargin  == 3
+                elseif numel(quadArgs) == 3
                     thisRigidGeomQuad.leg_link_ratio = quadArgs(2);
                     thisRigidGeomQuad.link_length = quadArgs(3);
                     thisRigidGeomQuad.ankle_limit = quadArgs(1);
@@ -37,9 +37,25 @@ classdef (Abstract) RigidGeomQuad <  handle
 
         end
 
+        function out = get_a(obj)
+            
+            out = obj.leg_link_ratio;
+
+        end
+
+        function out = get_l(obj)
+            
+            out = obj.link_length;
+
+        end
+        
+        function out = get_ank(obj)
+            
+            out = obj.ankle_limit;
+
+        end
 
     end
-
 
 
 end
