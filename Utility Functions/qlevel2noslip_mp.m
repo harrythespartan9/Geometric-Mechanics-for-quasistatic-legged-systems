@@ -52,8 +52,11 @@ function [datai,dataj,twobeatg] = qlevel2noslip_mp(datai,dataj)
             % Compute the limits on the data
             [C1_lim,C2_lim] = se2limits(dz__x_sweep,dz__y_sweep,dz__theta_sweep);
 
-            % Create two child layouts-- one for translational panesl and
+            % Create two child layouts-- one for translational panels and
             % one for rotation panel
+            set(groot,'defaultAxesTickLabelInterpreter','latex'); 
+            set(groot,'defaulttextinterpreter','latex');
+            set(groot,'defaultLegendInterpreter','latex');
             
             % Create the figure
             figure('units','pixels','position',[0 0 400 1440],'Color','w');

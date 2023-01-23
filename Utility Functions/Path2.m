@@ -83,7 +83,7 @@ classdef Path2 < RigidGeomQuad
             Path2.SetGet_static(1);
 
         end
-
+        
 
     end
 
@@ -110,15 +110,15 @@ classdef Path2 < RigidGeomQuad
 
         end
 
-        % Compute the open_trajectory
-        function thePath2 = compute_open_trajectory(thePath2, funcstr)
+         % Compute the open_trajectory
+        function compute_open_trajectory(thePath2, funcstr)
 
             % discretization
             dnum = 101;
 
             % RigidGeometricQuadruped 's inherited props
-            a = thePath2.get_a; 
-            l = thePath2.get_l;
+            aa = thePath2.get_a; 
+            ll = thePath2.get_l;
             
             % integrate the gait constraint ode to obtain the open-trajectory for the system.
             ai0 = thePath2.path_start(1);  % initial conditions
@@ -126,27 +126,24 @@ classdef Path2 < RigidGeomQuad
 
             % get the functions needed to integrate-- symbolic to functions
             eval(funcstr{1})
-            dq = matlabFunction(thePath2.dq, 'Vars', eval(funcstr{2}));
+            DQ = matlabFunction(thePath2.dq, 'Vars', eval(funcstr{2}));
+            DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
 
             % integrate
-            t = linspace(0, thePath2.int_time(1), dnum); % backward
-            [tb,qb,~,~,~] = ode45( @(t,y) -dq(t, a, l, y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
-            t = linspace(0, thePath2.int_time(2), dnum); % forward
-            [tf,qf,~,~,~] = ode45( @(t,y) dq(t, a, l, y(4), y(5)), t, [qb(end,1:3)'; ai0; aj0] );
-            
-            % solutions are concatenated such that [ai0; aj0] is the mid point of the shape-space path
-            tf = tf(:); tb = tb(:); tf = tb(end) + tf;
-            tb = flipud(tb(end) - tb(2:end));
-            q = [qb; qf];
+            t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+            [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
+
+            t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
+            [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
 
             % return the open configuration trajectory slice q(s)_ij
-            thePath2.open_trajectory = {[tb; tf]', q(:,1)', q(:,2)', q(:,3)', q(:,4)', q(:,5)'}';
+            thePath2.open_trajectory = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
             % {x, y, \theta, \alpha_i, \alpha_j}
 
         end
 
         % compute the closed_trajectory
-        function thePath2 = compute_closed_trajectory(thePath2)
+        function compute_closed_trajectory(thePath2)
             
             % unpack your open_trajectory
             t = thePath2.open_trajectory{1};
@@ -176,6 +173,7 @@ classdef Path2 < RigidGeomQuad
             thePath2.closed_trajectory = {[t, t_d], [x, x_d], [y, y_d], [theta, theta_d], [ai, ai_d], [aj, aj_d]}';
             
         end
+        
 
     end
 
