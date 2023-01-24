@@ -17,12 +17,11 @@ function [dq, dphi, symvarsijwt] =  returnVectorFields(kinfunc, i)
     
     % define the variables to generate a numeric function
     symvarsijwt = cell(1,2);
-    symvarsijwt{1} = ['syms t a l ' 'alpha_' num2str(cs(1)) ' alpha_' num2str(cs(2)) ' real;'];
+    symvarsijwt{1} = ['syms t a l x y theta ' 'alpha_' num2str(cs(1)) ' alpha_' num2str(cs(2)) ' real;'];
     symvarsijwt{2} = ['[t, a, l, ' 'alpha_' num2str(cs(1)) ', ' 'alpha_' num2str(cs(2)) ']'];
+    symvarsijwt{3} = ['[t, a, l, x, y, theta, ' 'alpha_' num2str(cs(1)) ', ' 'alpha_' num2str(cs(2)) ']'];
 
     % convert the symbolic functions to numeric functions
     dq = [dz; dphi];
-%     dq = matlabFunction(dq, 'Vars', symvarsijwt{2});
-%     dphi = matlabFunction(dphi, 'Vars', symvarsijwt{2});
 
 end

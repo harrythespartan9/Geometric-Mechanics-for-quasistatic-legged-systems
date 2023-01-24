@@ -126,15 +126,17 @@ classdef Path2 < RigidGeomQuad
 
             % get the functions needed to integrate-- symbolic to functions
             eval(funcstr{1})
-            DQ = matlabFunction(thePath2.dq, 'Vars', eval(funcstr{2}));
             DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
+            DQ = matlabFunction(simplify([[cos(theta), -sin(theta);
+                                          sin(theta), cos(theta)], zeros(2,3); ...
+                                          zeros(3,2), ones(3,3)]*thePath2.dq), 'Vars', eval(funcstr{3}));
 
             % integrate
             t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
             [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
 
             t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
-            [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+            [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
 
             % return the open configuration trajectory slice q(s)_ij
             thePath2.open_trajectory = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
