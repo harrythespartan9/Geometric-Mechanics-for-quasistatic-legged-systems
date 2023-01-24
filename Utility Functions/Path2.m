@@ -10,9 +10,9 @@ classdef Path2 < RigidGeomQuad
 
     properties (SetAccess = private)
 
-        dq                   % Gait constraint-based configuration vector-field dqij-- [A; E]*\Vec{d\phi}_{ij}
+        dz                   % Gait constraint based stratified panel dzij-- [A]*\Vec{d\phi}_{ij}
 
-        dphi                 % Gaitconstraint vector field dphi_ij-- \Vec{dphi}_{ij}
+        dphi                 % Gait constraint vector field dphi_ij-- \Vec{dphi}_{ij}
 
         path_start           % starting point to compute the path
 
@@ -35,7 +35,7 @@ classdef Path2 < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2(ank, a, l, dzdphi, dphi, strpt, t, dc)
+        function [thisPath2] = Path2(ank, a, l, dzij, dphiij, strpt, t, dc)
 
             % Setup the requirements for the arguments
             arguments
@@ -46,9 +46,9 @@ classdef Path2 < RigidGeomQuad
 
                 l       (1, 1) double {mustBeGreaterThan(l,0.1)}
 
-                dzdphi  (5, 1) sym    {mustBeA(dzdphi, 'sym')}
+                dzij    (3, 1) sym    {mustBeA(dzij, 'sym')}
 
-                dphi    (2, 1) sym    {mustBeA(dphi, 'sym')}
+                dphiij  (2, 1) sym    {mustBeA(dphiij, 'sym')}
 
                 strpt   (1, 2) double {mustBeNumeric}
 
@@ -73,8 +73,8 @@ classdef Path2 < RigidGeomQuad
             thisPath2 = thisPath2@RigidGeomQuad(quadArgs);
 
             % assign the props
-            thisPath2.dq = dzdphi;
-            thisPath2.dphi = dphi;
+            thisPath2.dz = dzij;
+            thisPath2.dphi = dphiij;
             thisPath2.path_start = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
@@ -127,9 +127,10 @@ classdef Path2 < RigidGeomQuad
             % get the functions needed to integrate-- symbolic to functions
             eval(funcstr{1})
             DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
-            DQ = matlabFunction(simplify([[cos(theta), -sin(theta);
-                                          sin(theta), cos(theta)], zeros(2,3); ...
-                                          zeros(3,2), ones(3,3)]*thePath2.dq), 'Vars', eval(funcstr{3}));
+            DZg = simplify([cos(theta), -sin(theta),  0;
+                            sin(theta), cos(theta),   0; ...
+                            0,          0,            1]*thePath2.dz); % stratified panel in global coordinates
+            DQ = matlabFunction([DZg; DPHI], 'Vars', eval(funcstr{3})); % concatenate to obtain the configuration vector field
 
             % integrate
             t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
