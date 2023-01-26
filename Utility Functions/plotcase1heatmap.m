@@ -13,15 +13,17 @@ heat_lim = C.limits; lW_c = plot_info.lW_contour;
 configs = plot_info.configs{idx(1),idx(2)};
 title_txt = plot_info.title_txt{idx(1),idx(2)};
 xlimits = plot_info.xlimits; ylimits = plot_info.ylimits;
+ksq_lb = plot_info.ksq_lb; 
 
 % Unpack the kinematics data
-ai = plot_kin.ai; aj = plot_kin.aj;
+ai = plot_kin.ai; aj = plot_kin.aj; ksq_sweep = plot_kin.ksq_sweep;
 heat_sweep = eval(plot_info.heat_sweep_txt{idx(1),idx(2)}); % evaluate the 
                                                          % saved text
 
 % Make the plot on the axes provided 
 contourf(ax,ai,aj,heat_sweep,cfLvl,'LineStyle','none','FaceAlpha',fA);
 axis equal tight; hold on;
+contour(ax, ai, aj, ksq_sweep, [ksq_lb ksq_lb], 'k--', 'LineWidth', lW_c+1);
 if configs
     % Unpack relevant plot info
     i = plot_info.i; j = plot_info.j; % shape-space configuration

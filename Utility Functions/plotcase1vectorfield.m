@@ -13,16 +13,18 @@ itQ = plot_info.idxQ;
 col_backg = plot_info.col_backg; gc_col = plot_info.gc_col;
 lW_Vector = plot_info.lW_Vector; i = plot_info.i; j = plot_info.j;
 xlimits = plot_info.xlimits; ylimits = plot_info.ylimits;
+ksq_lb = plot_info.ksq_lb; lW_c = plot_info.lW_contour;
 
 % Unpack the kinematics data
-ai = plot_kin.ai; aj = plot_kin.aj;
+ai = plot_kin.ai; aj = plot_kin.aj; ksq_sweep = plot_kin.ksq_sweep;
 u_sweep = eval(plot_info.vecF_txt{idx(1),idx(2),1}); 
 v_sweep = eval(plot_info.vecF_txt{idx(1),idx(2),2});
 
-% Make the plot on the axes provided 
+% Make the plot on the axes provided
 quiver(ai(itQ,itQ),aj(itQ,itQ),u_sweep(itQ,itQ),v_sweep(itQ,itQ),...
     'LineWidth',lW_Vector,'Color','k');
 axis equal tight; hold on;
+contour(ax, ai, aj, ksq_sweep, [ksq_lb ksq_lb], 'k--', 'LineWidth', lW_c+1);
 if configs % check if we need to plot the location of the configuration
     % Unpack relevant plot info
     lW_m = plot_info.lW_m;

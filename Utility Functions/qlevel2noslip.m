@@ -235,19 +235,26 @@ symvarsij = eval(['[a, l, ' cs1_shape_txt ', ' cs2_shape_txt ']']); % fxn vars
 % compute functions, sweeps, and limits
 % ksq (always computed)
 ksq = kin.ksq_ij{i};
-ksq_sweep = ksq(aa, ll, ai, aj); plot_kin.ksq_sweep = conditiondatasweep(ksq_sweep,[dnum,dnum]);
-kin_info.ksq = ksq;
+ksq_sweep = ksq(aa, ll, ai, aj);
+%%%%%%%%%%%%%%% compute the contracting singularity location for the current Sij and get the indices within the premittable shape space limits
+lb = 1; % set a heuristic ksq lower bound around the contracting singularity
+[plot_info.iV, plot_info.ksq_lb] = avoidcontractsingularity(kin_info, ksq, ksq_sweep, aa, ll, lb);
+ksq_lb = plot_info.ksq_lb; iV = plot_info.iV;
+%%%%%%%%%%%%%%%
 plot_info.col_q = interp1(linspace(min(ksq_sweep,[],'all'), max(ksq_sweep,[],'all')...
     , size(jetDark,1)), jetDark, ksq_sweep(ii, jj)); % get the inter-leg color for the chosen ksq val
-% ksqF_sweep = ksq(aa, ll, aiF, ajF); ksqF_sweep = conditiondatasweep(ksq_sweep,[dnum,dnum]);
-% ksqF_lim = [min(ksqF_sweep,[],'all') max(ksqF_sweep,[],'all')];
+plot_kin.ksq_sweep = ksq_sweep;
+% ksqF_lim = [min(ksq_sweep,[],'all') max(ksq_sweep,[],'all')];
+kin_info.ksq = ksq;
 % dphi (always computed)
 % dphi_x = kin.dphi_ij_s{i,1}; dphi_y = kin.dphi_ij_s{i,2}; % scaled version
 dphi = simplify(kin.dphi_ij{i}/norm(kin.dphi_ij{i}),'Steps',10); 
 dphi_x = matlabFunction(dphi(1),'Vars',symvarsij); 
 dphi_y = matlabFunction(dphi(2),'Vars',symvarsij); % normalized version
-dphi_x_sweep = dphi_x(aa, ll, ai, aj); plot_kin.dphi_x_sweep = conditiondatasweep(dphi_x_sweep,[dnum,dnum]);
-dphi_y_sweep = dphi_y(aa, ll, ai, aj); plot_kin.dphi_y_sweep = conditiondatasweep(dphi_y_sweep,[dnum,dnum]);
+dphi_x_sweep = dphi_x(aa, ll, ai, aj); dphi_x_sweep = conditiondatasweep(dphi_x_sweep,[dnum,dnum]); dphi_x_sweep(iV) = nan(size(dphi_x_sweep(iV))); 
+plot_kin.dphi_x_sweep = dphi_x_sweep;
+dphi_y_sweep = dphi_y(aa, ll, ai, aj); dphi_y_sweep = conditiondatasweep(dphi_y_sweep,[dnum,dnum]); dphi_y_sweep(iV) = nan(size(dphi_y_sweep(iV))); 
+plot_kin.dphi_y_sweep = dphi_y_sweep;
 kin_info.dphi_x = dphi_x;
 kin_info.dphi_y = dphi_y;
 kin_info.dphi = dphi;
@@ -259,12 +266,18 @@ if aF
     A__y_2 = matlabFunction(kin.Ay_ij{i}{1,2},'Vars',symvarsij);
     A__theta_1 = matlabFunction(kin.Atheta_ij{i}{1,1},'Vars',symvarsij); 
     A__theta_2 = matlabFunction(kin.Atheta_ij{i}{1,2},'Vars',symvarsij);
-    A__x_1_sweep = A__x_1(aa, ll, ai, aj); plot_kin.A__x_1_sweep = conditiondatasweep(A__x_1_sweep,[dnum,dnum]);
-    A__x_2_sweep = A__x_2(aa, ll, ai, aj); plot_kin.A__x_2_sweep = conditiondatasweep(A__x_2_sweep,[dnum,dnum]);
-    A__y_1_sweep = A__y_1(aa, ll, ai, aj); plot_kin.A__y_1_sweep = conditiondatasweep(A__y_1_sweep,[dnum,dnum]);
-    A__y_2_sweep = A__y_2(aa, ll, ai, aj); plot_kin.A__y_2_sweep = conditiondatasweep(A__y_2_sweep,[dnum,dnum]);
-    A__theta_1_sweep = A__theta_1(aa, ll, ai, aj); plot_kin.A__theta_1_sweep = conditiondatasweep(A__theta_1_sweep,[dnum,dnum]);
-    A__theta_2_sweep = A__theta_2(aa, ll, ai, aj); plot_kin.A__theta_2_sweep = conditiondatasweep(A__theta_2_sweep,[dnum,dnum]);
+    A__x_1_sweep = A__x_1(aa, ll, ai, aj); A__x_1_sweep = conditiondatasweep(A__x_1_sweep,[dnum,dnum]); A__x_1_sweep(iV) = nan(size(A__x_1_sweep(iV)));
+    plot_kin.A__x_1_sweep = A__x_1_sweep;
+    A__x_2_sweep = A__x_2(aa, ll, ai, aj); A__x_2_sweep = conditiondatasweep(A__x_2_sweep,[dnum,dnum]); A__x_2_sweep(iV) = nan(size(A__x_2_sweep(iV)));
+    plot_kin.A__x_2_sweep = A__x_2_sweep;
+    A__y_1_sweep = A__y_1(aa, ll, ai, aj); A__y_1_sweep = conditiondatasweep(A__y_1_sweep,[dnum,dnum]); A__y_1_sweep(iV) = nan(size(A__y_1_sweep(iV)));
+    plot_kin.A__y_1_sweep = A__y_1_sweep;
+    A__y_2_sweep = A__y_2(aa, ll, ai, aj); A__y_2_sweep = conditiondatasweep(A__y_2_sweep,[dnum,dnum]); A__y_2_sweep(iV) = nan(size(A__y_2_sweep(iV)));
+    plot_kin.A__y_2_sweep = A__y_2_sweep;
+    A__theta_1_sweep = A__theta_1(aa, ll, ai, aj); A__theta_1_sweep = conditiondatasweep(A__theta_1_sweep,[dnum,dnum]); A__theta_1_sweep(iV) = nan(size(A__theta_1_sweep(iV)));
+    plot_kin.A__theta_1_sweep = A__theta_1_sweep;
+    A__theta_2_sweep = A__theta_2(aa, ll, ai, aj); A__theta_2_sweep = conditiondatasweep(A__theta_2_sweep,[dnum,dnum]); A__theta_2_sweep(iV) = nan(size(A__theta_2_sweep(iV)));
+    plot_kin.A__theta_2_sweep = A__theta_2_sweep;
     kin_info.A__x_1 = A__x_1;
     kin_info.A__x_2 = A__x_2;
     kin_info.A__x_1 = A__y_1;
@@ -279,9 +292,12 @@ if daF
     mdA__x = matlabFunction(kin.mdA_x{i},'Vars',symvarsij);
     mdA__y = matlabFunction(kin.mdA_y{i},'Vars',symvarsij);
     mdA__theta = matlabFunction(kin.mdA_theta{i},'Vars',symvarsij);
-    mdA__x_sweep = mdA__x(aa, ll, ai, aj); plot_kin.mdA__x_sweep = conditiondatasweep(mdA__x_sweep,[dnum,dnum]);
-    mdA__y_sweep = mdA__y(aa, ll, ai, aj); plot_kin.mdA__y_sweep = conditiondatasweep(mdA__y_sweep,[dnum,dnum]);
-    mdA__theta_sweep = mdA__theta(aa, ll, ai, aj); plot_kin.mdA__theta_sweep = conditiondatasweep(mdA__theta_sweep,[dnum,dnum]); % sweeps
+    mdA__x_sweep = mdA__x(aa, ll, ai, aj); mdA__x_sweep = conditiondatasweep(mdA__x_sweep,[dnum,dnum]); mdA__x_sweep(iV) = nan(size(mdA__x_sweep(iV)));
+    plot_kin.mdA__x_sweep = mdA__x_sweep;
+    mdA__y_sweep = mdA__y(aa, ll, ai, aj); mdA__y_sweep = conditiondatasweep(mdA__y_sweep,[dnum,dnum]); mdA__y_sweep(iV) = nan(size(mdA__y_sweep(iV)));
+    plot_kin.mdA__x_sweep = mdA__y_sweep;
+    mdA__theta_sweep = mdA__theta(aa, ll, ai, aj); mdA__theta_sweep = conditiondatasweep(mdA__theta_sweep,[dnum,dnum]); mdA__theta_sweep(iV) = nan(size(mdA__theta_sweep(iV))); % sweeps
+    plot_kin.mdA__x_sweep = mdA__theta_sweep;
     [da_xy_lim,da_theta_lim] = se2limits(mdA__x_sweep,mdA__y_sweep,mdA__theta_sweep); % limits
     kin_info.mdA__x = mdA__x;
     kin_info.mdA__y = mdA__y;
@@ -291,9 +307,12 @@ if lbaF
     lb_A__x = matlabFunction(kin.lb_A_x{i},'Vars',symvarsij);
     lb_A__y = matlabFunction(kin.lb_A_y{i},'Vars',symvarsij);
     lb_A__theta = matlabFunction(kin.lb_A_theta{i},'Vars',symvarsij);
-    lb_A__x_sweep = lb_A__x(aa, ll, ai, aj); plot_kin.lb_A__x_sweep = conditiondatasweep(lb_A__x_sweep,[dnum,dnum]);
-    lb_A__y_sweep = lb_A__y(aa, ll, ai, aj); plot_kin.lb_A__y_sweep = conditiondatasweep(lb_A__y_sweep,[dnum,dnum]);
-    lb_A__theta_sweep = lb_A__theta(aa, ll, ai, aj); plot_kin.lb_A__theta_sweep = conditiondatasweep(lb_A__theta_sweep,[dnum,dnum]);
+    lb_A__x_sweep = lb_A__x(aa, ll, ai, aj); lb_A__x_sweep = conditiondatasweep(lb_A__x_sweep,[dnum,dnum]); lb_A__x_sweep(iV) = nan(size(lb_A__x_sweep(iV)));
+    plot_kin.lb_A__x = lb_A__x;
+    lb_A__y_sweep = lb_A__y(aa, ll, ai, aj); lb_A__y_sweep = conditiondatasweep(lb_A__y_sweep,[dnum,dnum]); lb_A__y_sweep(iV) = nan(size(lb_A__y_sweep(iV)));
+    plot_kin.lb_A__y = lb_A__y;
+    lb_A__theta_sweep = lb_A__theta(aa, ll, ai, aj); lb_A__theta_sweep = conditiondatasweep(lb_A__theta_sweep,[dnum,dnum]); lb_A__theta_sweep(iV) = nan(size(lb_A__theta_sweep(iV)));
+    plot_kin.lb_A__theta = lb_A__theta;
     [lba_xy_lim,lba_theta_lim] = se2limits(lb_A__x_sweep,lb_A__y_sweep,lb_A__theta_sweep);
     kin_info.lb_A__x = lb_A__x;
     kin_info.lb_A__y = lb_A__y;
@@ -303,9 +322,12 @@ if gcurlaF
     D_mA__x = matlabFunction(kin.D_mA_x{i},'Vars',symvarsij);
     D_mA__y = matlabFunction(kin.D_mA_y{i},'Vars',symvarsij);
     D_mA__theta = matlabFunction(kin.D_mA_theta{i},'Vars',symvarsij);
-    D_mA__x_sweep = D_mA__x(aa, ll, ai, aj); plot_kin.D_mA__x_sweep = conditiondatasweep(D_mA__x_sweep,[dnum,dnum]);
-    D_mA__y_sweep = D_mA__y(aa, ll, ai, aj); plot_kin.D_mA__y_sweep = conditiondatasweep(D_mA__y_sweep,[dnum,dnum]);
-    D_mA__theta_sweep = D_mA__theta(aa, ll, ai, aj); plot_kin.D_mA__theta_sweep = conditiondatasweep(D_mA__theta_sweep,[dnum,dnum]);
+    D_mA__x_sweep = D_mA__x(aa, ll, ai, aj); D_mA__x_sweep = conditiondatasweep(D_mA__x_sweep,[dnum,dnum]); D_mA__x_sweep(iV) = nan(size(D_mA__x_sweep(iV)));
+    plot_kin.D_mA__x_sweep = D_mA__x_sweep;
+    D_mA__y_sweep = D_mA__y(aa, ll, ai, aj); D_mA__y_sweep = conditiondatasweep(D_mA__y_sweep,[dnum,dnum]); D_mA__y_sweep(iV) = nan(size(D_mA__y_sweep(iV)));
+    plot_kin.D_mA__y_sweep = D_mA__y_sweep;
+    D_mA__theta_sweep = D_mA__theta(aa, ll, ai, aj); D_mA__theta_sweep = conditiondatasweep(D_mA__theta_sweep,[dnum,dnum]); D_mA__theta_sweep(iV) = nan(size(D_mA__theta_sweep(iV)));
+    plot_kin.D_mA__theta_sweep = D_mA__theta_sweep;
     [gcurla_xy_lim,gcurla_theta_lim] = se2limits(D_mA__x_sweep,D_mA__y_sweep,D_mA__theta_sweep);
     kin_info.D_mA__x = D_mA__x;
     kin_info.D_mA__y = D_mA__y;
@@ -319,9 +341,12 @@ if dzF
     dz_phi_x = kin.dz_phi_x{i};
     dz_phi_y = kin.dz_phi_y{i};
     dz_phi_theta = kin.dz_phi_theta{i};
-    dz__x_sweep = dz_phi_x(aa, ll, ai, aj); plot_kin.dz__x_sweep = conditiondatasweep(dz__x_sweep,[dnum,dnum]);
-    dz__y_sweep = dz_phi_y(aa, ll, ai, aj); plot_kin.dz__y_sweep = conditiondatasweep(dz__y_sweep,[dnum,dnum]);
-    dz__theta_sweep = dz_phi_theta(aa, ll, ai, aj); plot_kin.dz__theta_sweep = conditiondatasweep(dz__theta_sweep,[dnum,dnum]);
+    dz__x_sweep = dz_phi_x(aa, ll, ai, aj); dz__x_sweep = conditiondatasweep(dz__x_sweep,[dnum,dnum]); dz__x_sweep(iV) = nan(size(dz__x_sweep(iV)));
+    plot_kin.dz__x_sweep = dz__x_sweep;
+    dz__y_sweep = dz_phi_y(aa, ll, ai, aj); dz__y_sweep = conditiondatasweep(dz__y_sweep,[dnum,dnum]); dz__y_sweep(iV) = nan(size(dz__y_sweep(iV)));
+    plot_kin.dz__y_sweep = dz__y_sweep;
+    dz__theta_sweep = dz_phi_theta(aa, ll, ai, aj); dz__theta_sweep = conditiondatasweep(dz__theta_sweep,[dnum,dnum]); dz__theta_sweep(iV) = nan(size(dz__theta_sweep(iV)));
+    plot_kin.dz__theta_sweep = dz__theta_sweep;
     [C2_lim,C4_lim] = se2limits(dz__x_sweep,dz__y_sweep,dz__theta_sweep);
     kin_info.dz_phi_x = dz_phi_x;
     kin_info.dz_phi_y = dz_phi_y;
@@ -580,8 +605,9 @@ for k = 1:numel(P.tileIdx) % iterate
             set(axP{k},'Color',col_backg); title(plot_info.q_title_txt,FontSize=titleFS);
 
         case 2 % k^2 level sets
-            contour(axP{k}, ai,aj,ksq_sweep,cLvl,'LineWidth',lW_contour);
+            contour(axP{k}, ai, aj, ksq_sweep,cLvl,'LineWidth',lW_contour);
             axis equal tight; hold on; view(2);
+            contour(axP{k}, ai,aj,ksq_sweep,[ksq_lb ksq_lb],'k--','LineWidth',lW_contour+1);
             scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             colormap(axP{k}, plot_info.jetDark); colorbar(axP{k}, 'TickLabelInterpreter','latex','FontSize',cbarFS); %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %             clim(axP{k},ksqF_lim);
@@ -598,6 +624,7 @@ for k = 1:numel(P.tileIdx) % iterate
             quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dphi_x_sweep(iQ,iQ),dphi_y_sweep(iQ,iQ),0.5,...
                 'LineWidth',lW_V,'Color',gc_col);
             axis equal tight; hold on; view(2);
+            contour(axP{k}, ai, aj, ksq_sweep, [ksq_lb ksq_lb], 'k--', 'LineWidth', lW_contour+1);
             scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             set(get(axP{k},'YLabel'),'rotation',0,'VerticalAlignment','middle');
             title(axP{k}, plot_info.dphi_title_text,'Color',gc_col,FontSize=titleFS);

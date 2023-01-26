@@ -8,7 +8,11 @@ x_lim = [min(xS,[],'all') max(xS,[],'all')];
 y_lim = [min(yS,[],'all') max(yS,[],'all')];
 theta_lim = [min(thetaS,[],'all') max(thetaS,[],'all')];
 % Get the overall limits
-tL = [min([x_lim y_lim],[],'all') max([x_lim y_lim],[],'all')];
-rL = theta_lim;
+tL_temp = [min([x_lim y_lim],[],'all') max([x_lim y_lim],[],'all')];
+tL = max(abs(tL_temp))*[-1, 1];
+rL_temp = theta_lim;
+rL = max(abs(rL_temp))*[-1, 1]; 
+% the limits need to be even on either side of the number line-- 
+% this shows if a direction is by the kinematics.
 
 end
