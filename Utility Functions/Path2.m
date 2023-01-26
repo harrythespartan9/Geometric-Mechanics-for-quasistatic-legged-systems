@@ -113,8 +113,9 @@ classdef Path2 < RigidGeomQuad
          % Compute the open_trajectory
         function compute_open_trajectory(thePath2, funcstr)
 
-            % discretization
-            dnum = 101;
+            % initialize the return container-- we shall return percentages (from 10% to 100%) of the generated full open_trajectory
+            thePath2.open_trajectory = cell(1,10);
+            thePath2.path_length = cell(1,10);
 
             % RigidGeometricQuadruped 's inherited props
             aa = thePath2.get_a; 
@@ -133,34 +134,90 @@ classdef Path2 < RigidGeomQuad
             DQ = matlabFunction([DZg; DPHI], 'Vars', eval(funcstr{3})); % concatenate to obtain the configuration vector field
 
             % integrate
-            t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+            t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
             [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
 
-            t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
+            t = linspace(0, sum(thePath2.int_time), 201); % forward-- integrate the configuration
             [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
 
             % return the open configuration trajectory slice q(s)_ij
-            thePath2.open_trajectory = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
+            thePath2.open_trajectory{10} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
             % {x, y, \theta, \alpha_i, \alpha_j}
+            % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
+            thePath2.path_length{10} = tf(end);
+
+            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
+            for i = (1:numel(thePath2.open_trajectory)-1)*0.1
+                thePath2.open_trajectory{i*10} = interpolated_open_trajectory(thePath2.open_trajectory{10}, i);
+                thePath2.path_length{i*10} = thePath2.open_trajectory{i*10}{1}(end);
+            end
 
         end
 
         % compute the closed_trajectory
         function compute_closed_trajectory(thePath2)
             
-            % unpack your open_trajectory
-            t = thePath2.open_trajectory{1};
-            x = thePath2.open_trajectory{2};
-            y = thePath2.open_trajectory{3};
-            theta = thePath2.open_trajectory{4};
-            ai = thePath2.open_trajectory{5};
-            aj = thePath2.open_trajectory{6};
+            for i = 1:numel(thePath2.open_trajectory)
+                
+                % Compute the closed trajectory for each case.
+                thePath2.closed_trajectory{i} = close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle);
+
+            end
             
+        end
+        
+        % This function computes different percentages of the open-trajectory by keeping "path_start" prop constant, and using interp1 with the spline method.
+        function q_interp = interpolated_open_trajectory(fullPath2, p)
+            
+            % unpack your open_trajectory
+            t = fullPath2{1};
+            x = fullPath2{2};
+            y = fullPath2{3};
+            theta = fullPath2{4};
+            ai = fullPath2{5};
+            aj = fullPath2{6};
+
+            % get the limitng points
+            midpt = ceil(numel(t)/2);
+            leftpt = midpt - p*(midpt-1); rightpt = midpt + p*(midpt-1);
+
+            % get the modified trajectory
+            t_temp = t(leftpt:rightpt); t_temp = t_temp - t_temp(1);
+            x_temp = x(leftpt:rightpt); x_temp = x_temp - x_temp(1);
+            y_temp = y(leftpt:rightpt); y_temp = y_temp - y_temp(1);
+            theta_temp = theta(leftpt:rightpt); theta_temp = theta_temp - theta_temp(1);
+            ai_temp = ai(leftpt:rightpt);
+            aj_temp = aj(leftpt:rightpt);
+
+            % interpolate to a desired discretization
+            T = linspace(t_temp(1), t_temp(end), 201);
+            X = interp1(t_temp, x_temp, T, 'spline');
+            Y = interp1(t_temp, y_temp, T, 'spline');
+            THETA = interp1(t_temp, theta_temp, T, 'spline');
+            AI = interp1(t_temp, ai_temp, T, 'spline');
+            AJ = interp1(t_temp, aj_temp, T, 'spline');
+
+            % return the solution
+            q_interp = {T(:)', X(:)', Y(:)', THETA(:)', AI(:)', AJ(:)'}';
+
+        end
+
+        % given a trajectory close it in the null-space of the shape-space slice
+        function closedTraj = close_trajectory(openTraj, dc)
+            
+            % unpack your open_trajectory
+            t = openTraj{1};
+            x = openTraj{2};
+            y = openTraj{3};
+            theta = openTraj{4};
+            ai = openTraj{5};
+            aj = openTraj{6};
+
             % get the length of the computed open trajectory
-            dnum_active = numel(thePath2.open_trajectory{1});
+            dnum_active = numel(t);
             
             % get the number of points needed in the deadband
-            dnum_dead = round(thePath2.deadband_dutycycle*dnum_active);
+            dnum_dead = round(dc*dnum_active);
 
             % get the deadband configuration trajectories q_d
             t_d = [t, t(end) + t(end)/(dnum_active - 1)*(1:dnum_dead)];
@@ -173,8 +230,8 @@ classdef Path2 < RigidGeomQuad
             aj_d = [aj, temp_j];
 
             % create the closed configuration trajectory slice q(phi)_ij
-            thePath2.closed_trajectory = {[t, t_d], [x, x_d], [y, y_d], [theta, theta_d], [ai, ai_d], [aj, aj_d]}';
-            
+            closedTraj = {[t, t_d]; [x, x_d]; [y, y_d]; [theta, theta_d]; [ai, ai_d]; [aj, aj_d]};
+
         end
         
 
