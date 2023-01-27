@@ -5,7 +5,7 @@ function [datai,videoi] = qlevel2noslip_mp(datai)
     % Call the appropriate case based on the number of arguments
     switch nargin
         case 1
-            if numel(datai) ~= 4
+            if isfield(datai,gait)
                 cond = 1; 
             elseif numel(datai) == 4
                 cond = 2; 
@@ -39,14 +39,19 @@ function [datai,videoi] = qlevel2noslip_mp(datai)
     [C1_lim,C2_lim] = se2limits(dz__x_sweep,dz__y_sweep,dz__theta_sweep);
 
     % Compute everything you need to generate the child tiledlayout
+    % parent layout
+    P = [];
+    P.grid = [3 1];
     % child 1-- dz_translation
     C1 = []; C1.limits = C1_lim; % previously defined color limits
     C1.start = [1, 1];
     C1.grid = [2, 1];
+    C1.tile_start = (C1.start(1)-1)*P.grid(2) + C1.start(2);
     % child 2-- dz_theta
     C2 = []; C2.limits = C2_lim;
     C2.start = [3, 1];
     C2.grid = [1, 1];
+    C2.tile_start = (C2.start(1)-1)*1 + C2.start(2);
     
     % Work through each case
     switch cond
@@ -62,7 +67,10 @@ function [datai,videoi] = qlevel2noslip_mp(datai)
             % Create the figure
             figure('units','pixels','position',[0 0 400 1440],'Color','w');
             set(gcf,'Visible','on'); % pop-out figure
-            P = tiledlayout(3,1,'TileSpacing','tight','Padding','tight');
+            P = tiledlayout(P.grid(1),P.grid(2),'TileSpacing','tight','Padding','tight');
+
+            C1.Layout_Obj = tiledlayout(P,C1.grid(1),C1.grid(2)); % tile layout child connection
+            C1.Layout_Obj.Layout.Tile = C1.tile_start; C1.Layout_Obj.Layout.TileSpan = C1.grid;
         
             ax = nexttile(P,1); % dz__x
             contourf(ax,ai,aj,dz__x_sweep,cfLvl,'LineStyle','none','FaceAlpha',fA);
