@@ -28,8 +28,8 @@ kin_info = returnSijfxn(kin_info,cs(1),cs(2));
 % -------------------------------------------------------------------------
 plot_info.configs = num2cell([nan(3,1),configs]); % modify the config format
 plot_info.fields = fields; % the columns requested
-plot_info.m = 2160*(numel(fields)+1)/5; % scaled figure y-resolution
-plot_info.n = 1440; % fixed figure x-resolution
+plot_info.m = 2160*(numel(fields)+1)/5; % scaled figure x-resolution
+plot_info.n = 1440; % fixed figure y-resolution
 plot_info.tickFS = 18*fontscale; 
 plot_info.labelFS = 18*fontscale; % compute various font sizes
 plot_info.titleFS = 20*fontscale; 

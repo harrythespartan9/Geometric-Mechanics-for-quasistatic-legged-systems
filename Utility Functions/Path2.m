@@ -14,21 +14,21 @@ classdef Path2 < RigidGeomQuad
 
         dphi                 % Gait constraint vector field dphi_ij-- \Vec{dphi}_{ij}
 
-        path_start           % starting point to compute the path
+        point_of_interest    % starting point to compute the path
 
         int_time             % Integration time in the backward and forward direction from the middle_path
 
+        int_cond             % checks if the pof is on the path, beginning, or at the end of the path
+
         deadband_dutycycle   % period of time spent swining (0 <= val <= 1)
 
-    end
+        scale_path_method    % method to scale the path about the "point_of_interest"--
 
-    properties (SetAccess = private)
-        
-        open_trajectory                                            % configuration trajectory for the active path
+        open_trajectory      % configuration trajectory for the active path
 
-        closed_trajectory                                          % configuration trajectory for the whole path
+        closed_trajectory    % configuration trajectory for the whole path
 
-        path_length                                                % length of the gait
+        path_length          % length of the gait
 
     end
 
@@ -75,7 +75,7 @@ classdef Path2 < RigidGeomQuad
             % assign the props
             thisPath2.dz = dzij;
             thisPath2.dphi = dphiij;
-            thisPath2.path_start = strpt;
+            thisPath2.point_of_interest = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
 
@@ -120,12 +120,26 @@ classdef Path2 < RigidGeomQuad
             % RigidGeometricQuadruped 's inherited props
             aa = thePath2.get_a; 
             ll = thePath2.get_l;
+
+            % check if we want the integration condition
+            if numel(thePath2.int_time(thePath2.int_time == 0)) ~= 2                 % make sure some path is needed
+                if isempty(thePath2.int_time(thePath2.int_time == 0))                % if both paths are needed
+                    cond = 0;                                           
+                elseif find(thePath2.int_time == 0) == 1                             % if only the forward path is needed           
+                    cond = 1;
+                elseif find(thePath2.int_time == 0) == 2                             % if only the backward path is needed
+                    cond = -1;
+                end
+            else                                                                     % error if the integration time for both fwd and backward paths are zero.
+                error('ERROR: The intergration time in both directions can''t be zero.');
+            end
+            thePath2.int_cond = cond; % updated the integration property
             
             % integrate the gait constraint ode to obtain the open-trajectory for the system.
-            ai0 = thePath2.path_start(1);  % initial conditions
-            aj0 = thePath2.path_start(2);
+            ai0 = thePath2.point_of_interest(1);  % initial conditions
+            aj0 = thePath2.point_of_interest(2);
 
-            % get the functions needed to integrate-- symbolic to functions
+            % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
             eval(funcstr{1})
             DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
             DZg = simplify([cos(theta), -sin(theta),  0;
@@ -134,11 +148,27 @@ classdef Path2 < RigidGeomQuad
             DQ = matlabFunction([DZg; DPHI], 'Vars', eval(funcstr{3})); % concatenate to obtain the configuration vector field
 
             % integrate
-            t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
-            [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
+            switch cond
 
-            t = linspace(0, sum(thePath2.int_time), 201); % forward-- integrate the configuration
-            [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+                case -1 % just backward path
+
+                    t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] ); % forward to POF
+                
+                case 0 % both paths
+
+                    t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
+                    t = linspace(0, sum(thePath2.int_time), 201); % forward-- integrate the configuration
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+
+                case 1 % just forward path
+                    
+                    t = linspace(0, thePath2.int_time(2), 201); % just go forward from POF
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
+
+            end
 
             % return the open configuration trajectory slice q(s)_ij
             thePath2.open_trajectory{10} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
@@ -146,10 +176,10 @@ classdef Path2 < RigidGeomQuad
             % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
             thePath2.path_length{10} = tf(end);
 
-            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
+            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props ()()()()()( CHANGE )()()()()() ----------------------------
             for i = (1:numel(thePath2.open_trajectory)-1)*0.1
                 thePath2.open_trajectory{i*10} = interpolated_open_trajectory(thePath2.open_trajectory{10}, i);
-                thePath2.path_length{i*10} = thePath2.open_trajectory{i*10}{1}(end);
+                thePath2.path_length{i*10} = thePath2.open_trajectory{i*10}{1}(end);               %%()()()()()( CHANGE )()()()()() ----------------------------
             end
 
         end
