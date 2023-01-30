@@ -30,12 +30,16 @@ classdef Path2 < RigidGeomQuad
 
         path_length          % length of the gait
 
+        path_active_color    % color of the trajectory based on the gait constraint color map
+
+        path_inactive_color  % color of the trajectory during the deadband
+
     end
 
     methods
         
         % Constructor
-        function [thisPath2] = Path2(ank, a, l, dzij, dphiij, strpt, t, dc)
+        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c )
 
             % Setup the requirements for the arguments
             arguments
@@ -56,17 +60,19 @@ classdef Path2 < RigidGeomQuad
 
                 dc      (1, 1) double {mustBeNonnegative, mustBeLessThanOrEqual(dc, 1)}
 
+                c       (2, 3) double {mustBeLessThanOrEqual(c, 1)}
+
             end
 
             % Get the arguments for a superclass constuctor
-            if nargin == 8
+            if nargin == 9
                 quadArgs = [ank, a, l];
-            elseif nargin == 6
+            elseif nargin == 7
                 quadArgs = ank;
-            elseif nargin == 5
+            elseif nargin == 6
                 quadArgs = [];
             else
-                error('Error: Need 8, 6, or 5 arguments to create an object.');
+                error('Error: Need 9, 7, or 6 arguments to create an object.');
             end
 
             % call the RigidGeometricQuadruped class' constructor
@@ -78,6 +84,8 @@ classdef Path2 < RigidGeomQuad
             thisPath2.point_of_interest = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
+            thisPath2.path_active_color = c(1,:);
+            thisPath2.path_inactive_color = c(2,:);
 
             % increment the number of objects
             Path2.SetGet_static(1);
@@ -110,22 +118,22 @@ classdef Path2 < RigidGeomQuad
 
         end
 
-         % Compute the open_trajectory
-        function compute_open_trajectory(thePath2, funcstr)
-
+        % Compute the open_trajectory
+        function compute_trajectory( thePath2, funcstr, dnum )
+        
             % initialize the return container-- we shall return percentages (from 10% to 100%) of the generated full open_trajectory
             thePath2.open_trajectory = cell(1,10);
             thePath2.path_length = cell(1,10);
-
+            
             % RigidGeometricQuadruped 's inherited props
             aa = thePath2.get_a; 
             ll = thePath2.get_l;
-
+            
             % check if we want the integration condition
             if numel(thePath2.int_time(thePath2.int_time == 0)) ~= 2                 % make sure some path is needed
                 if isempty(thePath2.int_time(thePath2.int_time == 0))                % if both paths are needed
                     cond = 0;                                           
-                elseif find(thePath2.int_time == 0) == 1                             % if only the forward path is needed           
+                elseif find(thePath2.int_time == 0) == 1                             % if only the forward path is needed
                     cond = 1;
                 elseif find(thePath2.int_time == 0) == 2                             % if only the backward path is needed
                     cond = -1;
@@ -138,7 +146,7 @@ classdef Path2 < RigidGeomQuad
             % integrate the gait constraint ode to obtain the open-trajectory for the system.
             ai0 = thePath2.point_of_interest(1);  % initial conditions
             aj0 = thePath2.point_of_interest(2);
-
+            
             % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
             eval(funcstr{1})
             DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
@@ -146,58 +154,49 @@ classdef Path2 < RigidGeomQuad
                             sin(theta), cos(theta),   0; ...
                             0,          0,            1]*thePath2.dz); % stratified panel in global coordinates
             DQ = matlabFunction([DZg; DPHI], 'Vars', eval(funcstr{3})); % concatenate to obtain the configuration vector field
-
+            
             % integrate
             switch cond
-
+            
                 case -1 % just backward path
-
-                    t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
+            
+                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
                     [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] ); % forward to POF
                 
                 case 0 % both paths
-
-                    t = linspace(0, thePath2.int_time(1), 201); % backward-- get the start point of path
+            
+                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
                     [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
                     t = linspace(0, sum(thePath2.int_time), 201); % forward-- integrate the configuration
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
-
+            
                 case 1 % just forward path
                     
-                    t = linspace(0, thePath2.int_time(2), 201); % just go forward from POF
+                    t = linspace(0, thePath2.int_time(2), dnum); % just go forward from POF
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
-
+            
             end
-
-            % return the open configuration trajectory slice q(s)_ij
+            
+            % store the open configuration trajectory slice q(s)_ij for the full path
             thePath2.open_trajectory{10} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
             % {x, y, \theta, \alpha_i, \alpha_j}
+            % store the closed trajectory
+            thePath2.closed_trajectory{10} = thePath2.close_trajectory(thePath2.open_trajectory{10}, thePath2.deadband_dutycycle);
             % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
-            thePath2.path_length{10} = tf(end);
-
-            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props ()()()()()( CHANGE )()()()()() ----------------------------
-            for i = (1:numel(thePath2.open_trajectory)-1)*0.1
-                thePath2.open_trajectory{i*10} = interpolated_open_trajectory(thePath2.open_trajectory{10}, i);
-                thePath2.path_length{i*10} = thePath2.open_trajectory{i*10}{1}(end);               %%()()()()()( CHANGE )()()()()() ----------------------------
-            end
-
-        end
-
-        % compute the closed_trajectory
-        function compute_closed_trajectory(thePath2)
+            thePath2.path_length{10} = thePath2.closed_trajectory{10}{1}(end);
             
-            for i = 1:numel(thePath2.open_trajectory)
-                
-                % Compute the closed trajectory for each case.
-                thePath2.closed_trajectory{i} = close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle);
-
+            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
+            for i = 1:numel(thePath2.open_trajectory)-1
+                thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond); % compute the scaling
+                thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it
+                thePath2.path_length{i} = thePath2.closed_trajectory{i}{1}(end); % get the path length
             end
-            
+        
         end
         
         % This function computes different percentages of the open-trajectory by keeping "path_start" prop constant, and using interp1 with the spline method.
-        function q_interp = interpolated_open_trajectory(fullPath2, p)
+        function q_interp = interpolated_open_trajectory(fullPath2, p, cond)
             
             % unpack your open_trajectory
             t = fullPath2{1};
@@ -208,8 +207,22 @@ classdef Path2 < RigidGeomQuad
             aj = fullPath2{6};
 
             % get the limitng points
-            midpt = ceil(numel(t)/2);
-            leftpt = midpt - p*(midpt-1); rightpt = midpt + p*(midpt-1);
+            switch cond
+
+                case -1
+                    
+                    leftpt = numel(t) - floor(p*numel(t)); rightpt = numel(t);
+
+                case  0
+
+                    midpt = ceil(numel(t)/2);
+                    leftpt = midpt - p*(midpt-1); rightpt = midpt + p*(midpt-1);
+
+                case  1
+
+                    leftpt = 1; rightpt = ceil(p*numel(t));
+                    
+            end
 
             % get the modified trajectory
             t_temp = t(leftpt:rightpt); t_temp = t_temp - t_temp(1);

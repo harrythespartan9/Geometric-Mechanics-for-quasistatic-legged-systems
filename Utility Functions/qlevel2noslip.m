@@ -244,7 +244,7 @@ ksq_lb = plot_info.ksq_lb; iV = plot_info.iV;
 plot_info.col_q = interp1(linspace(min(ksq_sweep,[],'all'), max(ksq_sweep,[],'all')...
     , size(jetDark,1)), jetDark, ksq_sweep(ii, jj)); % get the inter-leg color for the chosen ksq val
 plot_kin.ksq_sweep = ksq_sweep;
-% ksqF_lim = [min(ksq_sweep,[],'all') max(ksq_sweep,[],'all')];
+plot_info.ksq_lim = [min(ksq_sweep,[],'all') max(ksq_sweep,[],'all')];
 kin_info.ksq = ksq;
 % dphi (always computed)
 % dphi_x = kin.dphi_ij_s{i,1}; dphi_y = kin.dphi_ij_s{i,2}; % scaled version

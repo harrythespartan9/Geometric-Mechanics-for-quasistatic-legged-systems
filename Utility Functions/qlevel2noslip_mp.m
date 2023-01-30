@@ -123,7 +123,7 @@ function datai = qlevel2noslip_mp(datai)
     ax = cell(1, C2.num);
     for i = 1:C2.num
         ax{i} = nexttile(C2.Layout_Obj,i); % just dz__\theta
-        contourf(ax{i},ai,aj,datai{2}.(C1.sweeptxt{i}),cfLvl,'FaceAlpha',fA,'LineWidth',lW_c); % ,'LineStyle','none'
+        contourf(ax{i},ai,aj,datai{2}.(C2.sweeptxt{i}),cfLvl,'FaceAlpha',fA,'LineWidth',lW_c); % ,'LineStyle','none'
         axis equal tight; hold on; view(2);
         if cond == 1
             contour(ax{i}, ai,aj,ksq_sweep,cLvl,lS,'LineWidth',lW_c+0.5,'EdgeColor',colP); % gait constraint contours for path planning
