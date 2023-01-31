@@ -281,10 +281,10 @@ if aF
     plot_kin.A__theta_2_sweep = A__theta_2_sweep;
     kin_info.A__x_1 = A__x_1;
     kin_info.A__x_2 = A__x_2;
-    kin_info.A__x_1 = A__y_1;
-    kin_info.A__x_2 = A__y_2;
-    kin_info.A__x_1 = A__theta_1;
-    kin_info.A__x_2 = A__theta_2; % save functions
+    kin_info.A__y_1 = A__y_1;
+    kin_info.A__y_2 = A__y_2;
+    kin_info.A__theta_1 = A__theta_1;
+    kin_info.A__theta_2 = A__theta_2; % save functions
 end
 % continuous kinematics-- ross and howie flavor
 da_xy_lim = nan(1,2); lba_xy_lim = nan(1,2); gcurla_xy_lim = nan(1,2); 
