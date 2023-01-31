@@ -146,6 +146,7 @@ scaleDraw = max([diff(limX),diff(limY)])/23.5;
 lW = 1.2/scaleDraw; lW_r = 0.5/scaleDraw; lW_b = 0.8/scaleDraw;
 lW_kq = 0.6/scaleDraw; lW_qf = 0.8/scaleDraw;
 frame_scale = 0.25; % length of the frame arrows compared to body length
+plot_info.frame_scale = frame_scale;
 % lW_O = 0.8; alp_O = 0.2; lW_traj = 2.4/scaleDraw; 
 circS = 75/scaleDraw;
 circS_q = 200; % config highlight
