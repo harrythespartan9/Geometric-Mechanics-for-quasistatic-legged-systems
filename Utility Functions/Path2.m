@@ -150,11 +150,13 @@ classdef Path2 < RigidGeomQuad
             % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
             eval(funcstr{1})
             DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
-            DZg = simplify([cos(theta), -sin(theta),  0;
-                            sin(theta), cos(theta),   0; ...
-                            0,          0,            1]*thePath2.dz); % stratified panel in global coordinates
-            DQ = matlabFunction([DZg; DPHI], 'Vars', eval(funcstr{3})); % concatenate to obtain the configuration vector field
-            
+            DQ = [cos(theta), -sin(theta),  0, 0, 0;
+                  sin(theta), cos(theta),   0, 0, 0;
+                  0,          0,            1, 0, 0;
+                  0,          0,            0, 1, 0;
+                  0,          0,            0, 0, 1]*[thePath2.dz; thePath2.dphi];
+            DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                     % configuration vector field
+
             % integrate
             switch cond
             
@@ -168,7 +170,7 @@ classdef Path2 < RigidGeomQuad
             
                     t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
                     [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    t = linspace(0, sum(thePath2.int_time), 201); % forward-- integrate the configuration
+                    t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
             
                 case 1 % just forward path
