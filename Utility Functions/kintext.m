@@ -43,7 +43,7 @@ switch flag %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             txt = '$D(-\mathbf{A}';
         elseif strcmp('dz',field)
             F = true;
-            txt = '$dz_{\phi}';
+            txt = '$dz_{\psi}';
         end
         
         if DF % if generalized curl is needed
@@ -57,7 +57,7 @@ switch flag %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         else % if it is everything else
             if strcmp('x',comp)
                 if F
-                    txt = [txt, '^{x} = \mathbf{A}^{x} d\phi$'];
+                    txt = [txt, '^{x} = \mathbf{A}^{x} d\psi$'];
                 else
                     txt = [txt, '^{x}$'];
                 end

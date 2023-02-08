@@ -1,5 +1,5 @@
 % This script helps with the motion planning of the level-2 kinematics of
-% the 
+% the no-slip, quadrupedal robot.
 function datai = qlevel2noslip_mp(datai)
 
     % If we have a gait, then it is a 
@@ -27,8 +27,6 @@ function datai = qlevel2noslip_mp(datai)
     
     % sweep data
     ai = datai{2}.ai; aj = datai{2}.aj;
-%     dphi_x_sweep = datai{2}.dphi_x_sweep; 
-%     dphi_y_sweep = datai{2}.dphi_y_sweep;
     ksq_sweep = datai{2}.ksq_sweep;
     dz__x_sweep = datai{2}.dz__x_sweep;
     dz__y_sweep = datai{2}.dz__y_sweep;
@@ -46,7 +44,7 @@ function datai = qlevel2noslip_mp(datai)
     % Compute everything you need to generate the child tiledlayout
     switch cond
         
-        case 1 % just stratified panels
+        case 1 % just infinitesimal disps
             
             % parent layout
             P = [];
@@ -56,13 +54,25 @@ function datai = qlevel2noslip_mp(datai)
             colP = datai{1}.colP;
             lS = datai{1}.lS;
 
-        case 2 % stratified panels with trajectory+animation
+        case 2 % infinitesimal disps with trajectory + animation
 
             P = [];
             P.grid = [3 5];
 
+            % child 3-- SE(2) trajectory and net displacements
+            C3 = [];
+            C3.start = [1, 5];
+            C3.grid = [3, 1]; C3.span_grid = [2, 1]; % two tiles spanning 3 grids
+            C3.tile_start = (C3.start(1)-1)*P.grid(2) + C3.start(2);
+            C3.titletxt = {'$b(\psi)$', '$z_{\psi}$'};
+            % child 4-- animation window
+            C4 = [];
+            C4.start = [1, 2];
+            C4.grid = [3, 3]; C4.span_grid = C4.grid;
+            C4.tile_start = (C4.start(1)-1)*P.grid(2) + C4.start(2);
+
     end
-    
+
     % get the figure dimensions
     m = 2160*(P.grid(2))/5; % scaled figure x-resolution
     n = 1620; % fixed figure y-resolution
@@ -70,17 +80,17 @@ function datai = qlevel2noslip_mp(datai)
     % child 1-- dz_translation
     C1 = []; C1.limits = C1_lim; % previously defined color limits
     C1.start = [1, 1];
-    C1.grid = [2, 1]; C1.num = prod(C1.grid);
+    C1.grid = [2, 1]; C1.num = prod(C1.grid); C1.span_grid = C1.grid; % the tiles in the child layout matches the parent
     C1.tile_start = (C1.start(1)-1)*P.grid(2) + C1.start(2);
     C1.sweeptxt = {'dz__x_sweep', 'dz__y_sweep'};
-    C1.titletxt = {'$dz^{x}$', '$dz^{y}$'};
+    C1.titletxt = {'$dz^{x}_{\psi}$', '$dz^{y}_{\psi}$'};
     % child 2-- dz_theta
     C2 = []; C2.limits = C2_lim;
     C2.start = [3, 1];
-    C2.grid = [1, 1]; C2.num = prod(C2.grid);
+    C2.grid = [1, 1]; C2.num = prod(C2.grid); C2.span_grid = C2.grid;
     C2.tile_start = (C2.start(1)-1)*P.grid(2) + C2.start(2);
     C2.sweeptxt = {'dz__theta_sweep'};
-    C2.titletxt = {'$dz^{\theta}$'};
+    C2.titletxt = {'$dz^{\theta}_{\psi}$'};
 
     % Create the figure
     figure('units','pixels','position',[0 0 m n],'Color','w');
@@ -89,9 +99,9 @@ function datai = qlevel2noslip_mp(datai)
     
     % Initialize the child layouts
     C1.Layout_Obj = tiledlayout(P,C1.grid(1),C1.grid(2)); 
-    C1.Layout_Obj.Layout.Tile = C1.tile_start; C1.Layout_Obj.Layout.TileSpan = C1.grid;
+    C1.Layout_Obj.Layout.Tile = C1.tile_start; C1.Layout_Obj.Layout.TileSpan = C1.span_grid;
     C2.Layout_Obj = tiledlayout(P,C2.grid(1),C2.grid(2)); 
-    C2.Layout_Obj.Layout.Tile = C2.tile_start; C2.Layout_Obj.Layout.TileSpan = C2.grid;
+    C2.Layout_Obj.Layout.Tile = C2.tile_start; C2.Layout_Obj.Layout.TileSpan = C2.span_grid;
     
     % Child 1
     ax = cell(1, C1.num);
@@ -149,6 +159,18 @@ function datai = qlevel2noslip_mp(datai)
             title(P,sgtitle_txt,'Color',col(1,:),'Interpreter','latex','FontSize',sgtitleFS);
 
         case 2
+
+            % initialize the tiled layouts
+            C3.Layout_Obj = tiledlayout(P,C3.grid(1),C3.grid(2)); 
+            C3.Layout_Obj.Layout.Tile = C3.tile_start; C3.Layout_Obj.Layout.TileSpan = C3.span_grid;
+            C4.Layout_Obj = tiledlayout(P,C4.grid(1),C4.grid(2)); 
+            C4.Layout_Obj.Layout.Tile = C4.tile_start; C4.Layout_Obj.Layout.TileSpan = C4.span_grid;
+
+            % Child 3-- SE(2) trajectories and net displacements
+            ax{1} = nexttile(C3.Layout_Obj, 1);
+            yyaxis(ax{1}, 'left')
+            yyaxis(ax{1}, 'right')
+
 
     end
 

@@ -1,4 +1,4 @@
-function [dz, dphi, ksq, symvarsijwt] =  returnVectorFields(kinfunc, i)
+function [dz, dpsi, ksq, symvarsijwt] =  returnVectorFields(kinfunc, i)
     
     % define the level-2 contact states
     cslvl2 = [1, 2;
@@ -12,8 +12,8 @@ function [dz, dphi, ksq, symvarsijwt] =  returnVectorFields(kinfunc, i)
     cs = cslvl2(i,:);
 
     % obtain the symbolic functions and vars
-    dphi = kinfunc.dphi;
-    dz = kinfunc.dz_phi;
+    dpsi = kinfunc.dpsi;
+    dz = kinfunc.dz_psi;
     ksq = kinfunc.ksq;
     
     % define the variables to generate a numeric function
@@ -23,6 +23,6 @@ function [dz, dphi, ksq, symvarsijwt] =  returnVectorFields(kinfunc, i)
     symvarsijwt{3} = ['[t, a, l, x, y, theta, ' 'alpha_' num2str(cs(1)) ', ' 'alpha_' num2str(cs(2)) ']'];
 
 %     % convert the symbolic functions to numeric functions
-%     dq = [dz; dphi];
+%     dq = [dz; dpsi];
 
 end

@@ -174,7 +174,7 @@ s_txt = [num2str(cs(1)) num2str(cs(2))];
 sgtitle_txt = ['$S_{' s_txt '}$'];
 q_title_txt = '$q$'; 
 ksq_title_text = ['$k_{' s_txt '}^{2}$'];
-dphi_title_text = ['$d\phi_{' s_txt '}$'];
+dpsi_title_text = ['$d\psi_{' s_txt '}$'];
 plot_info.cs1_shape_txt = cs1_shape_txt;
 plot_info.cs2_shape_txt = cs2_shape_txt;
 plot_info.x_label_txt = x_label_txt;
@@ -183,7 +183,7 @@ plot_info.s_txt = s_txt;
 plot_info.sgtitle_txt = sgtitle_txt;
 plot_info.q_title_txt = q_title_txt;
 plot_info.ksq_title_text = ksq_title_text;
-plot_info.dphi_title_text = dphi_title_text;
+plot_info.dpsi_title_text = dpsi_title_text;
 
 % get the symbolic variables needed to setup the kinematics ---------------
 load('case_1_kinematics');
@@ -247,18 +247,18 @@ plot_info.col_q = interp1(linspace(min(ksq_sweep,[],'all'), max(ksq_sweep,[],'al
 plot_kin.ksq_sweep = ksq_sweep;
 plot_info.ksq_lim = [min(ksq_sweep,[],'all') max(ksq_sweep,[],'all')];
 kin_info.ksq = ksq;
-% dphi (always computed)
-% dphi_x = kin.dphi_ij_s{i,1}; dphi_y = kin.dphi_ij_s{i,2}; % scaled version
-dphi = simplify(kin.dphi_ij{i}/norm(kin.dphi_ij{i}),'Steps',10); 
-dphi_x = matlabFunction(dphi(1),'Vars',symvarsij); 
-dphi_y = matlabFunction(dphi(2),'Vars',symvarsij); % normalized version
-dphi_x_sweep = dphi_x(aa, ll, ai, aj); dphi_x_sweep = conditiondatasweep(dphi_x_sweep,[dnum,dnum]); dphi_x_sweep(iV) = nan(size(dphi_x_sweep(iV))); 
-plot_kin.dphi_x_sweep = dphi_x_sweep;
-dphi_y_sweep = dphi_y(aa, ll, ai, aj); dphi_y_sweep = conditiondatasweep(dphi_y_sweep,[dnum,dnum]); dphi_y_sweep(iV) = nan(size(dphi_y_sweep(iV))); 
-plot_kin.dphi_y_sweep = dphi_y_sweep;
-kin_info.dphi_x = dphi_x;
-kin_info.dphi_y = dphi_y;
-kin_info.dphi = dphi;
+% dpsi (always computed)
+% dpsi_x = kin.dpsi_ij_s{i,1}; dpsi_y = kin.dpsi_ij_s{i,2}; % scaled version
+dpsi = simplify(kin.dpsi_ij{i}/norm(kin.dpsi_ij{i}),'Steps',10); 
+dpsi_x = matlabFunction(dpsi(1),'Vars',symvarsij); 
+dpsi_y = matlabFunction(dpsi(2),'Vars',symvarsij); % normalized version
+dpsi_x_sweep = dpsi_x(aa, ll, ai, aj); dpsi_x_sweep = conditiondatasweep(dpsi_x_sweep,[dnum,dnum]); dpsi_x_sweep(iV) = nan(size(dpsi_x_sweep(iV))); 
+plot_kin.dpsi_x_sweep = dpsi_x_sweep;
+dpsi_y_sweep = dpsi_y(aa, ll, ai, aj); dpsi_y_sweep = conditiondatasweep(dpsi_y_sweep,[dnum,dnum]); dpsi_y_sweep(iV) = nan(size(dpsi_y_sweep(iV))); 
+plot_kin.dpsi_y_sweep = dpsi_y_sweep;
+kin_info.dpsi_x = dpsi_x;
+kin_info.dpsi_y = dpsi_y;
+kin_info.dpsi = dpsi;
 % connection
 if aF
     A__x_1 = matlabFunction(kin.Ax_ij{i}{1,1},'Vars',symvarsij);
@@ -339,20 +339,20 @@ C3_lim = [min([da_theta_lim lba_theta_lim gcurla_theta_lim]) max([da_theta_lim l
 % discrete kinematics-- stratified panel
 C2_lim = nan(1,2); C4_lim = nan(1,2);
 if dzF
-    dz_phi_x = kin.dz_phi_x{i};
-    dz_phi_y = kin.dz_phi_y{i};
-    dz_phi_theta = kin.dz_phi_theta{i};
-    dz__x_sweep = dz_phi_x(aa, ll, ai, aj); dz__x_sweep = conditiondatasweep(dz__x_sweep,[dnum,dnum]); dz__x_sweep(iV) = nan(size(dz__x_sweep(iV)));
+    dz_psi_x = kin.dz_psi_x{i};
+    dz_psi_y = kin.dz_psi_y{i};
+    dz_psi_theta = kin.dz_psi_theta{i};
+    dz__x_sweep = dz_psi_x(aa, ll, ai, aj); dz__x_sweep = conditiondatasweep(dz__x_sweep,[dnum,dnum]); dz__x_sweep(iV) = nan(size(dz__x_sweep(iV)));
     plot_kin.dz__x_sweep = dz__x_sweep;
-    dz__y_sweep = dz_phi_y(aa, ll, ai, aj); dz__y_sweep = conditiondatasweep(dz__y_sweep,[dnum,dnum]); dz__y_sweep(iV) = nan(size(dz__y_sweep(iV)));
+    dz__y_sweep = dz_psi_y(aa, ll, ai, aj); dz__y_sweep = conditiondatasweep(dz__y_sweep,[dnum,dnum]); dz__y_sweep(iV) = nan(size(dz__y_sweep(iV)));
     plot_kin.dz__y_sweep = dz__y_sweep;
-    dz__theta_sweep = dz_phi_theta(aa, ll, ai, aj); dz__theta_sweep = conditiondatasweep(dz__theta_sweep,[dnum,dnum]); dz__theta_sweep(iV) = nan(size(dz__theta_sweep(iV)));
+    dz__theta_sweep = dz_psi_theta(aa, ll, ai, aj); dz__theta_sweep = conditiondatasweep(dz__theta_sweep,[dnum,dnum]); dz__theta_sweep(iV) = nan(size(dz__theta_sweep(iV)));
     plot_kin.dz__theta_sweep = dz__theta_sweep;
     [C2_lim,C4_lim] = se2limits(dz__x_sweep,dz__y_sweep,dz__theta_sweep);
-    kin_info.dz_phi_x = dz_phi_x;
-    kin_info.dz_phi_y = dz_phi_y;
-    kin_info.dz_phi_theta = dz_phi_theta;
-    kin_info.dz_phi = kin.dz_phi{i};
+    kin_info.dz_psi_x = dz_psi_x;
+    kin_info.dz_psi_y = dz_psi_y;
+    kin_info.dz_psi_theta = dz_psi_theta;
+    kin_info.dz_psi = kin.dz_psi{i};
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -622,13 +622,13 @@ for k = 1:numel(P.tileIdx) % iterate
             xlim(xlimits); ylim(ylimits);
 
         case 3 % iso-k^2 gait constraint vector field (+ve) 
-            quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dphi_x_sweep(iQ,iQ),dphi_y_sweep(iQ,iQ),0.5,...
+            quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dpsi_x_sweep(iQ,iQ),dpsi_y_sweep(iQ,iQ),0.5,...
                 'LineWidth',lW_V,'Color',gc_col);
             axis equal tight; hold on; view(2);
             contour(axP{k}, ai, aj, ksq_sweep, [ksq_lb ksq_lb], 'k--', 'LineWidth', lW_contour+1);
             scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             set(get(axP{k},'YLabel'),'rotation',0,'VerticalAlignment','middle');
-            title(axP{k}, plot_info.dphi_title_text,'Color',gc_col,FontSize=titleFS);
+            title(axP{k}, plot_info.dpsi_title_text,'Color',gc_col,FontSize=titleFS);
             xticks(axP{k}, plot_info.xtickval); yticks(axP{k}, plot_info.ytickval);
             xticklabels(axP{k}, plot_info.xticklab);
             yticklabels(axP{k}, plot_info.xticklab);
