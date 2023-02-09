@@ -188,7 +188,7 @@ classdef Path2 < RigidGeomQuad
             thePath2.open_trajectory{10} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}';
             % {x, y, \theta, \alpha_i, \alpha_j}
             % compute the net displacement
-            thePath2.net_displacement{10} = {qf(end,1), qf(end,2), qf(end,3)}';
+            thePath2.net_displacement(:,10) = [qf(end,1), qf(end,2), qf(end,3)]';
             % store the closed trajectory
             thePath2.closed_trajectory{10} = thePath2.close_trajectory(thePath2.open_trajectory{10}, thePath2.deadband_dutycycle);
             % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
@@ -197,7 +197,7 @@ classdef Path2 < RigidGeomQuad
             % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
             for i = 1:numel(thePath2.open_trajectory)-1
                 thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond); % compute the scaled path
-                thePath2.net_displacement{i} = {thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)}';
+                thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
                 thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it
                 thePath2.path_length{i} = thePath2.closed_trajectory{i}{1}(end); % get the path length
             end
