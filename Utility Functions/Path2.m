@@ -196,7 +196,7 @@ classdef Path2 < RigidGeomQuad
             
             % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
             for i = 1:numel(thePath2.open_trajectory)-1
-                thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond); % compute the scaled path
+                thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond, dnum); % compute the scaled path
                 thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
                 thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it
                 thePath2.path_length{i} = thePath2.closed_trajectory{i}{1}(end); % get the path length
@@ -205,7 +205,7 @@ classdef Path2 < RigidGeomQuad
         end
         
         % This function computes different percentages of the open-trajectory by keeping "path_start" prop constant, and using interp1 with the spline method.
-        function q_interp = interpolated_open_trajectory(fullPath2, p, cond)
+        function q_interp = interpolated_open_trajectory(fullPath2, p, cond, dnum)
             
             % unpack your open_trajectory
             t = fullPath2{1};
@@ -242,7 +242,7 @@ classdef Path2 < RigidGeomQuad
             aj_temp = aj(leftpt:rightpt);
 
             % interpolate to a desired discretization
-            T = linspace(t_temp(1), t_temp(end), 201);
+            T = linspace(t_temp(1), t_temp(end), dnum);
             X = interp1(t_temp, x_temp, T, 'spline');
             Y = interp1(t_temp, y_temp, T, 'spline');
             THETA = interp1(t_temp, theta_temp, T, 'spline');
