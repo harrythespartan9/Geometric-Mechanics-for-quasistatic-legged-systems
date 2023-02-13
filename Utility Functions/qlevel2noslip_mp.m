@@ -115,7 +115,7 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
     C2.titletxt = {'$dz^{\theta}_{\psi}$'};
 
     % Create the figure
-    figure('units','pixels','position',[0 0 m n],'Color','w');
+    f = figure('units','pixels','position',[0 0 m n],'Color','w');
     set(gcf,'Visible','on'); % pop-out figure
     P = tiledlayout(P.grid(1),P.grid(2),'TileSpacing','tight','Padding','tight');
     
@@ -226,11 +226,27 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
             % compute the span of the animation in world coordinates-- for the largest path
             xM = path.open_trajectory{10}{2}; yM = path.open_trajectory{10}{3};
             bl = 4*l; % body length of the robot-- need to add this to the rigid robot properties
-            lim_temp = max( [min(xM, [], 'all')-2*bl, max(xM, [], 'all')+2*bl, min(yM, [], 'all')-2*bl, max(yM, [], 'all')+2*bl]...
+            thresh = 1; % one body length
+            lim_temp = max( [min(xM, [], 'all')-thresh*bl, max(xM, [], 'all')+thresh*bl, min(yM, [], 'all')-thresh*bl, max(yM, [], 'all')+thresh*bl]...
                 , [], 'all' )* [-1, 1, -1, 1]; % 2* body length margin
 
+            % Video stuff
+            video = VideoWriter(strcat('data_animation','.mp4'),'MPEG-4');
+            video.FrameRate = 60;
+            video.Quality = 100;
+            open(video);
+            
+            % Set the main title
+            title(P,sgtitle_txt,'Color',col(1,:),'Interpreter','latex','FontSize',sgtitleFS);
+
+            % Create a structure to hold the final frame information for each path scaling
+            skp = 3; 
+            skp_path = 1:skp:numel(path.open_trajectory);
+            datai{1}.skp_path = skp_path;
+            F = cell(1, numel(skp_path));
+
             % Iterate over each open trajectory case
-            for i = 1:numel(path.open_trajectory)
+            for i = skp_path % plotting 10%, 40%, 70%, and 100%
 
                 % Unpack the path data for the current trajectory
                 t      = path.open_trajectory{i}{1};
@@ -239,31 +255,45 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                 theta  = path.open_trajectory{i}{4};
                 ai     = path.open_trajectory{i}{5};
                 aj     = path.open_trajectory{i}{6};
-
-                % Child 1-- add the shape space trajectory on top
-                for j = 1:C1.num
-                    if i == 1
-                        h1 = plot(C1.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c); % add the shape-space path \psi
+%                 numD    = numel(t);
+                
+                % angle of each limb
+                alp = cell(1,4); % store the angle trajectory
+                for j = 1:4
+                    if sum(j == cs) == 0
+                        alp{j} = zeros(size(ai));
                     else
-                        for k = 1:numel(h1_s)
-                            delete(h1_s{k});
+                        switch find(j == cs)
+                            case 1
+                                alp{j} = ai;
+                            case 2
+                                alp{j} = aj;
                         end
-                        delete(h1);
-                        h1 = plot(C1.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
                     end
                 end
 
-                % Child 2-- same as above
-                for j = 1:C2.num
-                    if i == 1
-                        h2 = plot(C2.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
-                    else
-                        for k = 1:numel(h2_s)
-                            delete(h2_s{k});
-                        end
-                        delete(h2);
-                        h2 = plot(C2.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
+                % Child 1-- add the shape space trajectory on top
+                h1 = cell(1,C1.num); 
+%                 h1_A = cell(1,C1.num);
+                for j = 1:C1.num
+                    if i ~= 1
+                        delete(h1_s{j}); delete(h1{j}); % delete from previous path
                     end
+                    h1{j} = plot(C1.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
+%                     h1_A{j} = quiver( C1.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
+%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), 'LineWidth', lW_s, 'Color', c, 'MaxHeadSize', 1 );
+                end
+
+                % Child 2-- same as above
+                h2 = cell(1,C2.num); 
+%                 h2_A = cell(1,C2.num);
+                for j = 1:C2.num
+                    if i ~= 1
+                        delete(h2_s{j}); delete(h2{j});
+                    end
+                    h2{j} = plot(C2.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
+%                     h2_A{j} = quiver( C2.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
+%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), 'LineWidth', lW_s, 'Color', c, 'MaxHeadSize', 1 );
                 end
                 
                 % if this is the first frame, create the child 3 plots
@@ -287,18 +317,18 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                         switch j
                             case 1
                                 bx = plot(ax{j}, t, x, '-', 'LineWidth', lW_s, 'Color', c);
-                                ylabel(ax{j}, '$b^x$', FontSize=labelFS); ylim(lim_bxy);
+                                ylabel(ax{j}, '$b^x$', FontSize=labelFS); ylim(ax{j}, lim_bxy);
                             case 2
                                 by = plot(ax{j}, t, y, '-', 'LineWidth', lW_s, 'Color', c);
-                                ylabel(ax{j}, '$b^y$', FontSize=labelFS); ylim(lim_bxy);
+                                ylabel(ax{j}, '$b^y$', FontSize=labelFS); ylim(ax{j}, lim_bxy);
                             case 3
                                 btheta = plot(ax{j}, t, theta, '-', 'LineWidth', lW_s, 'Color', c);
                                 ylabel(ax{j}, '$b^{\theta}$', FontSize=labelFS);
-                                xlabel(ax{j}, '$t$', FontSize=labelFS); ylim(lim_btheta);
+                                xlabel(ax{j}, '$t$', FontSize=labelFS); ylim(ax{j}, lim_btheta);
                         end
                         set(get(ax{j},'YLabel'),'rotation',0,'VerticalAlignment','middle');
                         ax{j}.XAxis.FontSize = tickFS-5; ax{j}.YAxis.FontSize = tickFS-5;
-                        grid on; hold on; axis square;
+                        grid on; hold on; axis square; xlim(ax{j}, [min(t) max(t)]);
                     end
                     title(C3.Layout_Obj, C3.titletxt, 'Color', gc_col, 'Interpreter', 'latex', FontSize=titleFS);
                     C3.axes = ax;
@@ -334,6 +364,7 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                         end
                         set(get(ax{j},'YLabel'),'rotation',0,'VerticalAlignment','middle'); axis square;
                         ax{j}.XAxis.FontSize = tickFS-5; ax{j}.YAxis.FontSize = tickFS-5;
+                        xlim([min(pscale) max(pscale)]);
                     end
                     title(C4.Layout_Obj, C4.titletxt, 'Color', gc_col, 'Interpreter', 'latex', FontSize=titleFS);
                     C4.axes = ax;
@@ -355,26 +386,34 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                     delete(zthetai);
 
                     % Child 3-- plot the current SE(2)
+                    [lim_bxy, lim_btheta] = se2limits(x, y, theta);
+                    if lim_bxy(2) < lowxy
+                        lim_bxy = 0.1*[-1, 1];
+                    end
+                    if lim_btheta(2) < lowtheta
+                        lim_btheta = lowtheta*[-1, 1];
+                    end
                     for j = 1:C3.num
                         switch j
                             case 1
-                                bx = plot(ax{j}, t, x, '-', 'LineWidth', lW_s, 'Color', c);
+                                bx = plot(C3.axes{j}, t, x, '-', 'LineWidth', lW_s, 'Color', c); ylim(C3.axes{j}, lim_bxy);
                             case 2
-                                by = plot(ax{j}, t, y, '-', 'LineWidth', lW_s, 'Color', c);
+                                by = plot(C3.axes{j}, t, y, '-', 'LineWidth', lW_s, 'Color', c); ylim(C3.axes{j}, lim_bxy);
                             case 3
-                                btheta = plot(ax{j}, t, theta, '-', 'LineWidth', lW_s, 'Color', c);
+                                btheta = plot(C3.axes{j}, t, theta, '-', 'LineWidth', lW_s, 'Color', c); ylim(C3.axes{j}, lim_btheta);
                         end
+                        xlim(C3.axes{j}, [min(t) max(t)]);
                     end
 
                     % Child 4-- scatter the current net SE(2) displacement
                     for j = 1:C4.num
                         switch j
                             case 1
-                                zxi = scatter(ax{j}, pscale(i), zx(i), circS, c, 'filled');
+                                zxi = scatter(C4.axes{j}, pscale(i), zx(i), circS, c, 'filled');
                             case 2
-                                zyi = scatter(ax{j}, pscale(i), zy(i), circS, c, 'filled');
+                                zyi = scatter(C4.axes{j}, pscale(i), zy(i), circS, c, 'filled');
                             case 3
-                                zthetai = scatter(ax{j}, pscale(i), ztheta(i), circS, c, 'filled');
+                                zthetai = scatter(C4.axes{j}, pscale(i), ztheta(i), circS, c, 'filled');
                         end
                     end
 
@@ -400,14 +439,14 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                 ksqij__x = pltkin.(['k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_x'])(a, l, ai, aj, x, y, theta); ksqij__x = [ksqij__x(1:dnum); ksqij__x(dnum+1:end)];
                 ksqij__y = pltkin.(['k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_y'])(a, l, ai, aj, x, y, theta); ksqij__y = [ksqij__y(1:dnum); ksqij__y(dnum+1:end)];
                             % standard stuff
-                leg_i__x = pltkin.legbase1_leg1_x(a, l, ai, x, y, theta); leg_i__x = [leg_i__x(1:dnum); leg_i__x(dnum+1:end)];
-                leg_i__y = pltkin.legbase1_leg1_y(a, l, ai, x, y, theta); leg_i__y = [leg_i__y(1:dnum); leg_i__y(dnum+1:end)];
-                leg_j__x = pltkin.legbase2_leg2_x(a, l, aj, x, y, theta); leg_j__x = [leg_j__x(1:dnum); leg_j__x(dnum+1:end)];
-                leg_j__y = pltkin.legbase2_leg2_y(a, l, aj, x, y, theta); leg_j__y = [leg_j__y(1:dnum); leg_j__y(dnum+1:end)];
-                leg_3__x = pltkin.legbase3_leg3_x(a, l, zeros(1,numel(x)), x, y, theta); leg_3__x = [leg_3__x(1:dnum); leg_3__x(dnum+1:end)];
-                leg_3__y = pltkin.legbase3_leg3_y(a, l, zeros(1,numel(x)), x, y, theta); leg_3__y = [leg_3__y(1:dnum); leg_3__y(dnum+1:end)];
-                leg_4__x = pltkin.legbase4_leg4_x(a, l, zeros(1,numel(x)), x, y, theta); leg_4__x = [leg_4__x(1:dnum); leg_4__x(dnum+1:end)];
-                leg_4__y = pltkin.legbase4_leg4_y(a, l, zeros(1,numel(x)), x, y, theta); leg_4__y = [leg_4__y(1:dnum); leg_4__y(dnum+1:end)];
+                leg_1__x = pltkin.legbase1_leg1_x(a, l, alp{1}, x, y, theta); leg_1__x = [leg_1__x(1:dnum); leg_1__x(dnum+1:end)];
+                leg_1__y = pltkin.legbase1_leg1_y(a, l, alp{1}, x, y, theta); leg_1__y = [leg_1__y(1:dnum); leg_1__y(dnum+1:end)];
+                leg_2__x = pltkin.legbase2_leg2_x(a, l, alp{2}, x, y, theta); leg_2__x = [leg_2__x(1:dnum); leg_2__x(dnum+1:end)];
+                leg_2__y = pltkin.legbase2_leg2_y(a, l, alp{2}, x, y, theta); leg_2__y = [leg_2__y(1:dnum); leg_2__y(dnum+1:end)];
+                leg_3__x = pltkin.legbase3_leg3_x(a, l, alp{3}, x, y, theta); leg_3__x = [leg_3__x(1:dnum); leg_3__x(dnum+1:end)];
+                leg_3__y = pltkin.legbase3_leg3_y(a, l, alp{3}, x, y, theta); leg_3__y = [leg_3__y(1:dnum); leg_3__y(dnum+1:end)];
+                leg_4__x = pltkin.legbase4_leg4_x(a, l, alp{4}, x, y, theta); leg_4__x = [leg_4__x(1:dnum); leg_4__x(dnum+1:end)];
+                leg_4__y = pltkin.legbase4_leg4_y(a, l, alp{4}, x, y, theta); leg_4__y = [leg_4__y(1:dnum); leg_4__y(dnum+1:end)];
                 top__x = pltkin.topright2topleft_x(l, x, y, theta); top__x = [top__x(1:dnum); top__x(dnum+1:end)];
                 top__y = pltkin.topright2topleft_y(l, x, y, theta); top__y = [top__y(1:dnum); top__y(dnum+1:end)];
                 left__x = pltkin.topleft2botleft_x(l, x, y, theta); left__x = [left__x(1:dnum); left__x(dnum+1:end)];
@@ -430,11 +469,12 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                     end
                 end
                 xline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k'); 
-                axis equal square; hold on; set(axA, 'xticklabel', []);
+                axis equal square; hold on; 
+                set(axA, 'xticklabel', []); set(axA, 'yticklabel', []);
                 yline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k'); % x and y axes at the origin
 
                 for j = 1:numel(t) % iterate
-
+                    
                     if j ~= 1
                         for k = 1:numel(hA)
                             delete(hA{k});
@@ -445,15 +485,13 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                         for k = 1:numel(h2_s)
                             delete(h2_s{k});
                         end
-                        delete(bxt);
-                        delete(byt);
-                        delete(bthetat);
+                        delete(bxt); delete(byt); delete(bthetat);
                     end
                     
                     % Child 5 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     % plot the standard stuff
-                    hA{1} = plot(axA, leg_i__x(:,j), leg_i__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
-                    hA{2} = plot(axA, leg_j__x(:,j), leg_j__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
+                    hA{1} = plot(axA, leg_1__x(:,j), leg_1__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
+                    hA{2} = plot(axA, leg_2__x(:,j), leg_2__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
                     hA{3} = plot(axA, leg_3__x(:,j), leg_3__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
                     hA{4} = plot(axA, leg_4__x(:,j), leg_4__y(:,j), 'Color', col(7,:), 'LineWidth', lW);
                     hA{5} = plot(axA, top__x(:,j), top__y(:,j), 'Color', col(7,:), 'LineWidth', lW_b);
@@ -478,11 +516,13 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                     hA{18} = plot(axA, ksqij__x(:,j), ksqij__y(:,j), 'Color', c, 'LineWidth', lW_kq, 'LineStyle', '--'); % ksq line
                     title(axA, ['$' num2str(i*10) '\%$ path'], 'Color', col(1,:), 'Interpreter', 'latex', FontSize=titleFS);
                     % Child 1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    h1_s = cell(1,C1.num);
                     for k = 1:C1.num
                         h1_s{k} = scatter(C1.axes{k}, ai(j), aj(j), circS, c, 'filled');
                     end
 
                     % Child 2 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    h2_s = cell(1,C2.num);
                     for k = 1:C2.num
                         h2_s{k} = scatter(C2.axes{k}, ai(j), aj(j), circS, c, 'filled');
                     end
@@ -501,11 +541,26 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
                     
                     % updated the figure
                     drawnow();
+                    
+                    % store the frame
+                    writeVideo(video,getframe(f));
 
                 end
+
+                % Save the final frame to the 'F' struct
+                F{i} = f;
                 
                 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             end
+
+            % close the video
+            close(video);
+
+            % store the video data
+            datai{end+1} = video;
+
+            % store the frame data
+            datai{end+1} = F;
 
             % Return an empty dataj container
             dataj = [];
