@@ -1,6 +1,6 @@
 % This script helps with the motion planning of the level-2 kinematics of
 % the no-slip, quadrupedal robot.
-function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
+function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
 
     % Check which case we are in
     switch nargin
@@ -190,8 +190,8 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
             % label the figure
             title(P,sgtitle_txt,'Color',col(1,:),'Interpreter','latex','FontSize',sgtitleFS);
 
-            % return an empty dataj struct
-            dataj = [];
+            % return empty out strcuts
+            dataj = []; dataij = [];
 
         case 2
 
@@ -562,8 +562,8 @@ function [datai, dataj] = qlevel2noslip_mp(datai, dataj)
             % store the frame data
             datai{end+1} = F;
 
-            % Return an empty dataj container
-            dataj = [];
+            % Return empty out structs
+            dataj = []; dataij = [];
             
     end
 

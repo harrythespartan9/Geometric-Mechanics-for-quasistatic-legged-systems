@@ -10,6 +10,9 @@ classdef Path2 < RigidGeomQuad
 
     properties (SetAccess = private)
 
+        active_state         % the contact state that this path belongs to; an integer in the range (1, 6)
+                             % the contact state ordering is as follows {12, 23, 34, 41, 13, 24}
+
         dz                   % Gait constraint based stratified panel dzij-- [A]*\Vec{d\phi}_{ij}
 
         dphi                 % Gait constraint vector field dphi_ij-- \Vec{dphi}_{ij}
@@ -43,7 +46,7 @@ classdef Path2 < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c )
+        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c, si )
 
             % Setup the requirements for the arguments
             arguments
@@ -66,17 +69,19 @@ classdef Path2 < RigidGeomQuad
 
                 c       (2, 3) double {mustBeLessThanOrEqual(c, 1)}
 
+                si      (1, 1) uint8  {mustBePositive, mustBeLessThanOrEqual(si, 6)}
+
             end
 
             % Get the arguments for a superclass constuctor
-            if nargin == 9
+            if nargin == 10
                 quadArgs = [ank, a, l];
-            elseif nargin == 7
+            elseif nargin == 8
                 quadArgs = ank;
-            elseif nargin == 6
+            elseif nargin == 7
                 quadArgs = [];
             else
-                error('Error: Need 9, 7, or 6 arguments to create an object.');
+                error('Error: Need 10, 8, or 7 arguments to create an object.');
             end
 
             % call the RigidGeometricQuadruped class' constructor
@@ -90,13 +95,14 @@ classdef Path2 < RigidGeomQuad
             thisPath2.deadband_dutycycle = dc;
             thisPath2.path_active_color = c(1,:);
             thisPath2.path_inactive_color = c(2,:);
+            thisPath2.active_state = si;
 
             % increment the number of objects
             Path2.SetGet_static(1);
 
         end
         
-
+        
     end
 
     methods (Static)
