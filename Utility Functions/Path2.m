@@ -19,6 +19,8 @@ classdef Path2 < RigidGeomQuad
 
         point_of_interest    % starting point to compute the path
 
+        int_dirn             % direction to integrate the path along: +phi or -phi with scaling
+
         int_time             % Integration time in the backward and forward direction from the middle_path
 
         int_cond             % checks if the pof is on the path, beginning, or at the end of the path
@@ -46,7 +48,7 @@ classdef Path2 < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c, si )
+        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c, si, dirn )
 
             % Setup the requirements for the arguments
             arguments
@@ -71,14 +73,16 @@ classdef Path2 < RigidGeomQuad
 
                 si      (1, 1) uint8  {mustBePositive, mustBeLessThanOrEqual(si, 6)}
 
+                dirn    (1, 1) int8   {mustBeLessThanOrEqual(dirn, 1), mustBeGreaterThanOrEqual(dirn, -1)}
+
             end
 
             % Get the arguments for a superclass constuctor
-            if nargin == 10
+            if nargin == 11
                 quadArgs = [ank, a, l];
-            elseif nargin == 8
+            elseif nargin == 9
                 quadArgs = ank;
-            elseif nargin == 7
+            elseif nargin == 8
                 quadArgs = [];
             else
                 error('Error: Need 10, 8, or 7 arguments to create an object.');
@@ -96,6 +100,7 @@ classdef Path2 < RigidGeomQuad
             thisPath2.path_active_color = c(1,:);
             thisPath2.path_inactive_color = c(2,:);
             thisPath2.active_state = si;
+            thisPath2.int_dirn = dirn;
 
             % increment the number of objects
             Path2.SetGet_static(1);
@@ -156,15 +161,18 @@ classdef Path2 < RigidGeomQuad
             % integrate the gait constraint ode to obtain the open-trajectory for the system.
             ai0 = thePath2.point_of_interest(1);  % initial conditions
             aj0 = thePath2.point_of_interest(2);
+
+            % unpack the integration direction
+            dirn = thePath2.int_dirn;
             
             % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
             eval(funcstr{1})
-            DPHI = matlabFunction(thePath2.dphi, 'Vars', eval(funcstr{2}));
+            DPHI = matlabFunction(dirn*thePath2.dphi, 'Vars', eval(funcstr{2})); % dirn chooses whether it will be positive or negative
             DQ = [cos(theta), -sin(theta),  0, 0, 0;
                   sin(theta), cos(theta),   0, 0, 0;
                   0,          0,            1, 0, 0;
                   0,          0,            0, 1, 0;
-                  0,          0,            0, 0, 1]*[thePath2.dz; thePath2.dphi];
+                  0,          0,            0, 0, 1]*[thePath2.dz; dirn*thePath2.dphi];
             DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                     % configuration vector field
 
             % integrate

@@ -1,20 +1,20 @@
 % This script helps with the motion planning of the level-2 kinematics of
 % the no-slip, quadrupedal robot.
-function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
+function dataij = qlevel2noslip_mp(datai, dataj)
 
     % Check which case we are in
     switch nargin
         case 1
             if numel(datai) == 3
                 cond = 1;
-            elseif numel(datai) == 5
+            elseif numel(datai) == 6
                 cond = 2;
             else
-                error('ERROR: Data structure should have 3 or 5 fields only!');
+                error('ERROR: Data structure should have 3 or 6 fields only!');
             end
         case 2
-            if numel(datai) ~= 5 || numel(dataj) ~= 5
-                error('ERROR: Both data structures should have 5 fields only!');
+            if numel(datai) ~= 6 || numel(dataj) ~= 6
+                error('ERROR: Both data structures should have 6 fields only!');
             else
                 cond = 3;
             end
@@ -71,6 +71,7 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
 
         case 2 % infinitesimal disps with trajectory + animation
 
+            % parent grid
             P = [];
             P.grid = [3 6];
 
@@ -191,11 +192,12 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
             title(P,sgtitle_txt,'Color',col(1,:),'Interpreter','latex','FontSize',sgtitleFS);
 
             % return empty out strcuts
-            dataj = []; dataij = [];
+            dataij = [];
 
         case 2
 
             % Obtain the path information
+            vidF = datai{6};
             path = datai{5};
             pltkin = datai{4};
             a = datai{3}.aa; l = datai{3}.ll;
@@ -231,19 +233,29 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                 , [], 'all' )* [-1, 1, -1, 1]; % 2* body length margin
 
             % Video stuff
-            video = VideoWriter(strcat('data_animation','.mp4'),'MPEG-4');
-            video.FrameRate = 60;
-            video.Quality = 100;
-            open(video);
+            if vidF
+                video = VideoWriter(['data_animation','.mp4'],'MPEG-4');
+                video.FrameRate = 60;
+                video.Quality = 100;
+                open(video);
+            end
             
             % Set the main title
             title(P,sgtitle_txt,'Color',col(1,:),'Interpreter','latex','FontSize',sgtitleFS);
-
+            
             % Create a structure to hold the final frame information for each path scaling
-            skp = 3; 
-            skp_path = 1:skp:numel(path.open_trajectory);
-            datai{1}.skp_path = skp_path;
-            F = cell(1, numel(skp_path));
+            if vidF
+                skp = 3;
+                skp_path = 1:skp:numel(path.open_trajectory);
+                datai{1}.skp_path = skp_path;
+            else
+                if isfield(datai{1}, 'skp_path')
+                    skp_path = datai{1}.skp_path;
+                else
+                    skp_path = 10; % if no path is requested, the plot the full path length
+                end
+            end
+            
 
             % Iterate over each open trajectory case
             for i = skp_path % plotting 10%, 40%, 70%, and 100%
@@ -272,28 +284,32 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                     end
                 end
 
+%                 % set the arrow scale for the path in the shape space
+%                 arrScale = 10;
+
                 % Child 1-- add the shape space trajectory on top
                 h1 = cell(1,C1.num); 
 %                 h1_A = cell(1,C1.num);
                 for j = 1:C1.num
-                    if i ~= 1
-                        delete(h1_s{j}); delete(h1{j}); % delete from previous path
+                    if i ~= 1 && exist('h1_s', 'var')
+                        delete(h1_s{j}); % delete(h1{j}); % delete from previous path
                     end
+                    
                     h1{j} = plot(C1.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
 %                     h1_A{j} = quiver( C1.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
-%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), 'LineWidth', lW_s, 'Color', c, 'MaxHeadSize', 1 );
+%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
                 end
 
                 % Child 2-- same as above
                 h2 = cell(1,C2.num); 
 %                 h2_A = cell(1,C2.num);
                 for j = 1:C2.num
-                    if i ~= 1
-                        delete(h2_s{j}); delete(h2{j});
+                    if i ~= 1 && exist('h2_s', 'var')
+                        delete(h2_s{j}); % delete(h2{j});
                     end
                     h2{j} = plot(C2.axes{j}, ai, aj, 'LineWidth', lW_s, 'Color', c);
 %                     h2_A{j} = quiver( C2.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
-%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), 'LineWidth', lW_s, 'Color', c, 'MaxHeadSize', 1 );
+%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
                 end
                 
                 % if this is the first frame, create the child 3 plots
@@ -375,15 +391,39 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
 %                     delete(bx, by, btheta,... % clear the last path's SE(2) trajectory
 %                         bxt, byt, bthetat,... % clear the last path's SE(2) scatter at the final time step
 %                         zxi, zyi, zthetai); % clear the SE(2) net displacement scatter for previous path
-                    delete(bx);
-                    delete(by);
-                    delete(btheta);
-                    delete(bxt);
-                    delete(byt);
-                    delete(bthetat);
-                    delete(zxi);
-                    delete(zyi);
-                    delete(zthetai);
+                    if exist('bx', 'var')
+                        delete(bx);
+                    end
+                    if exist('by', 'var')
+                        delete(by);
+                    end
+                    if exist('btheta', 'var')
+                        delete(btheta);
+                    end
+                    if exist('bxt', 'var')
+                        delete(bxt);
+                    end
+                    if exist('byt', 'var')
+                        delete(byt);
+                    end
+                    if exist('bthetat', 'var')
+                        delete(bthetat);
+                    end
+                    if exist('zxi', 'var')
+                        delete(zxi);
+                    end
+                    if exist('zyi', 'var')
+                        delete(zyi);
+                    end
+                    if exist('zthetai', 'var')
+                        delete(zthetai);
+                    end
+
+                    % reinitialize some parameters if not initialized
+                    if ~exist('lowxy', 'var')
+                        lowxy = 0.05;
+                        lowtheta = deg2rad(3);
+                    end
 
                     % Child 3-- plot the current SE(2)
                     [lim_bxy, lim_btheta] = se2limits(x, y, theta);
@@ -463,7 +503,7 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                 % Child 5-- Animation of the SE(2) trajectory
                 if i == 1
                     axA = nexttile(P, [3, 3]); 
-                else
+                elseif exist('hA', 'var')
                     for k = 1:numel(hA)
                         delete(hA{k});
                     end
@@ -473,9 +513,19 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                 set(axA, 'xticklabel', []); set(axA, 'yticklabel', []);
                 yline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k'); % x and y axes at the origin
 
-                for j = 1:numel(t) % iterate
+                % Check if we want a video-- if yes, create a time stamp vector as long as t. Else just plot the final frame and save the figure as a frame.
+                if vidF
+                    jiter = 1:numel(t);
+                elseif ~vidF
+                    jiter = numel(t);
+                else
+                    error('ERROR: vidF needs to be a boolean flag. You can''t be here!!');
+                end
+
+                for j = jiter % iterate over time
                     
-                    if j ~= 1
+                    if j ~= 1 && numel(jiter) ~= 1
+
                         for k = 1:numel(hA)
                             delete(hA{k});
                         end
@@ -486,6 +536,7 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                             delete(h2_s{k});
                         end
                         delete(bxt); delete(byt); delete(bthetat);
+
                     end
                     
                     % Child 5 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -542,28 +593,27 @@ function [datai, dataj, dataij] = qlevel2noslip_mp(datai, dataj)
                     % updated the figure
                     drawnow();
                     
-                    % store the frame
-                    writeVideo(video,getframe(f));
+                    if vidF
+                        
+                        % store the frame
+                        writeVideo(video,getframe(f));      
+
+                    end
 
                 end
-
-                % Save the final frame to the 'F' struct
-                F{i} = f;
                 
                 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             end
 
-            % close the video
-            close(video);
+            if vidF
+                
+                % close the video
+                close(video);
 
-            % store the video data
-            datai{end+1} = video;
-
-            % store the frame data
-            datai{end+1} = F;
+            end
 
             % Return empty out structs
-            dataj = []; dataij = [];
+            dataij = [];
             
     end
 
