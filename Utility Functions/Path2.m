@@ -37,11 +37,13 @@ classdef Path2 < RigidGeomQuad
 
         closed_trajectory    % configuration trajectory for the whole path
 
-        path_length          % length of the gait
+        path_length          % length of the path
 
         path_active_color    % color of the trajectory based on the gait constraint color map
 
         path_inactive_color  % color of the trajectory during the deadband
+
+        path_discretization  % number of points in the active contact state
 
     end
 
@@ -172,7 +174,7 @@ classdef Path2 < RigidGeomQuad
                   sin(theta), cos(theta),   0, 0, 0;
                   0,          0,            1, 0, 0;
                   0,          0,            0, 1, 0;
-                  0,          0,            0, 0, 1]*[thePath2.dz; dirn*thePath2.dphi];
+                  0,          0,            0, 0, 1]*[thePath2.dz; thePath2.dphi]*dirn;
             DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                     % configuration vector field
 
             % integrate
@@ -206,15 +208,18 @@ classdef Path2 < RigidGeomQuad
             % store the closed trajectory
             thePath2.closed_trajectory{10} = thePath2.close_trajectory(thePath2.open_trajectory{10}, thePath2.deadband_dutycycle);
             % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
-            thePath2.path_length{10} = thePath2.closed_trajectory{10}{1}(end);
+            thePath2.path_length{10} = thePath2.open_trajectory{10}{1}(end);
             
             % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
             for i = 1:numel(thePath2.open_trajectory)-1
                 thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond, dnum); % compute the scaled path
                 thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
-                thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it
-                thePath2.path_length{i} = thePath2.closed_trajectory{i}{1}(end); % get the path length
+                thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it-- might not use this much
+                thePath2.path_length{i} = thePath2.open_trajectory{10}{1}(end); % get the path length
             end
+
+            % store the path discretization
+            thePath2.path_discretization = dnum;
         
         end
         
