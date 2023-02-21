@@ -262,7 +262,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             dnum_i = datai{3}.dnum; 
             cs_idx_i = datai{3}.cs_idx;
 
-            % path scaling vector (the main path is sclaed)
+            % path scaling vector (the main path is scaled)
             pscale = 10*(1:10);
 
             % initialize the tiled layouts

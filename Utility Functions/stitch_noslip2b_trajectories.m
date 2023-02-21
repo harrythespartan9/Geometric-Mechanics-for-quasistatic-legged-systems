@@ -24,11 +24,11 @@ function [ptrajectory, mtrajectory] = stitch_noslip2b_trajectories(csi_idx, csj_
 
     % compute the kinematics
     phi_i = [xi; yi; thetai];
-    phi_j = adginv(thetai(end))*[xj; yj; thetaj];
-    b_phi = repmat(phi_i(:,1), 1, sum(idxi_before)) + ... % before csi
+    phi_j = repmat( phi_i(:,end), 1, size([xj; yj; thetaj], 2) ) + adginv(thetai(end))*[xj; yj; thetaj];
+    b_phi = repmat( phi_i(:,1), 1, sum(idxi_before) ) + ... % before csi
         interp1( 1:numel(xi), phi_i, linspace(1,numel(xi),sum(idxi_during)) ) + ... % during csi
         interp1( 1:numel(xj), phi_j, linspace(1,numel(xj),sum(idxj_during)) ) + ... % during csj
-        repmat(phi_j(:,end), 1, sum(idxj_after)); % after csj
+        repmat( phi_j(:,end), 1, sum(idxj_after) ); % after csj
 
     % Store the positive scaling gait results
     ptrajectory{1} = t;
@@ -55,11 +55,11 @@ function [ptrajectory, mtrajectory] = stitch_noslip2b_trajectories(csi_idx, csj_
     A2_j = a2_j(1)*idxj_before + interp1( 1:numel(a2_j), a2_j, linspace(1,numel(a2_j),sum(idxj_during) ), 'spline' ) + a2_j(end)*idxj_after;
     
     phi_i = [xi; yi; thetai];
-    phi_j = adginv(thetai(end))*[xj; yj; thetaj];
-    b_phi = repmat(phi_i(:,1), 1, sum(idxi_before)) + ...
+    phi_j = repmat( phi_i(:,end), 1, size([xj; yj; thetaj], 2) ) + adginv(thetai(end))*[xj; yj; thetaj];
+    b_phi = repmat( phi_i(:,1), 1, sum(idxi_before) ) + ...
         interp1( 1:numel(xi), phi_i, linspace(1,numel(xi),sum(idxi_during)) ) + ...
         interp1( 1:numel(xj), phi_j, linspace(1,numel(xj),sum(idxj_during)) ) + ...
-        repmat(phi_j(:,end), 1, sum(idxj_after));
+        repmat( phi_j(:,end), 1, sum(idxj_after) );
     
     mtrajectory{1} = t;
     mtrajectory{2} = b_phi(1,:);
