@@ -7,16 +7,12 @@ function dataij = noslip2bgaits(pi, pj)
     dc_i = pi.deadband_dutycycle; dc_j = pj.deadband_dutycycle; % deadband period
     csi_idx = pi.active_state; csj_idx = pj.active_state; % contact states numbers; ordering-- [12, 23, 34, 41, 13, 24]
 
-    % define the pullback for the SE(2) trajectory to the global frame
-    adginv = @(theta) [cos(theta), -sin(theta), 0;
-                       sin(theta), cos(theta),  0;
-                       0,          0,           1];
-
-    % the percentage scaling in both directions is given by
-    pscale_i = [ fliplr(-10*(1:numel(pi.open_trajectory))), 10*(1:numel(pi.open_trajectory)) ];
-    pscale_j = [ fliplr(-10*(1:numel(pj.open_trajectory))), 10*(1:numel(pj.open_trajectory)) ];
-    ni = numel(pscale_i);
-    nj = numel(pscale_j);
+    % the percentage scaling in both directions (as a proper decimal)
+    u_i = [ fliplr(-10*(1:numel(pi.open_trajectory))), 10*(1:numel(pi.open_trajectory)) ]/100;
+    u_j = [ fliplr(-10*(1:numel(pj.open_trajectory))), 10*(1:numel(pj.open_trajectory)) ]/100;
+    ni = numel(u_i);
+    nj = numel(u_j);
+    [u_i_S, u_j_S] = meshgrid(u_i, u_j);
     
     % create an cell array to scale and hold both positive and negatively scaled paths
     gaits = cell( ni, nj );
@@ -47,45 +43,72 @@ function dataij = noslip2bgaits(pi, pj)
                 flag_j = false;
             end
             switch flag_i
+
                 case true
+
                     switch flag_j
+
                         case true
                             
                             % category 1
+                            h_i = tau_j - db_i; % inactive state at the end of ith shape-space slice
+                            h_j = tau_i - db_j; % inactive state at the beginning of jth shape-space slice
                             phi_tau   = [ tau_i, tau_j ];
-                            phi_start = tfromperiodarr(phi_tau);
-                            phi_state = [csi_idx, csj_idx];
+                            phi_tau_i = [ tau_i, db_i, h_i ];
+                            phi_tau_j = [ h_j, db_j, tau_j ];
+                            phi_state = [ csi_idx, csj_idx ];
+                            phi_state_i = [1.0, 0.5, 0.0];
+                            phi_state_j = [0.0, 0.5, 1.0];
 
                         case false
 
                             % category 3
-                            h_i = db_j - tau_i; % inactive state in the beginning
-                            phi_tau   = [ h_i, tau_i, tau_j ];
-                            phi_start = tfromperiodarr(phi_tau);
-                            phi_state = [ nan, csi_idx, csj_idx];
+                            h_i1 = db_j - tau_i; % inactive state in the beginning of gait cycle
+                            h_i2 = tau_j - db_i; % inactive state at the end of the gait cycle
+                            phi_tau   = [ h_i1, tau_i, tau_j ];
+                            phi_tau_i = [ h_i1, tau_i, db_i, h_i2 ];
+                            phi_tau_j = [ db_j, tau_j ];
+                            phi_state = [ nan, csi_idx, csj_idx ];
+                            phi_state_i = [0.0, 1.0, 0.5, 0.0];
+                            phi_state_j = [0.5, 1.0];
 
                     end
+
                 case false
+
                     switch flag_j
+
                         case true
                             
                             % category 2
-                            h_j = db_i - tau_j; % inactive state in the end
-                            phi_tau   = [ tau_i, tau_j, h_j ];
-                            phi_start = tfromperiodarr(phi_tau);
+                            h_j1 = tau_i - db_j; % inactive state at the beginning of jth shape-space slice
+                            h_j2 = db_i - tau_j; % inactive state at the end of the gait cycle
+                            phi_tau   = [ tau_i, tau_j, h_j2 ];
+                            phi_tau_i = [ tau_i, db_i ];
+                            phi_tau_j = [ h_j1, db_j, tau_j, h_j2 ];
                             phi_state = [ csi_idx, csj_idx, nan ];
+                            phi_state_i = [1.0, 0.5];
+                            phi_state_j = [0.0, 0.5, 1.0, 0.0];
 
                         case false
                             
                             % category 4
-                            h_i = db_j - tau_i; % inactive state in the beginning and end
-                            h_j = db_i - tau_j;
+                            h_i = db_j - tau_i; % inactive state in the beginning of the gait cycle
+                            h_j = db_i - tau_j; % inactive state at the end of the gait cycle
                             phi_tau   = [ h_i, tau_i, tau_j, h_j ];
-                            phi_start = tfromperiodarr(phi_tau);
+                            phi_tau_i = [ h_i, tau_i, db_i ];
+                            phi_tau_j = [ db_j, tau_j, h_j ];
                             phi_state = [ nan, csi_idx, csj_idx, nan ];
+                            phi_state_i = [0.0, 1.0, 0.5];
+                            phi_state_j = [0.5, 1.0, 0.0];
 
                     end
             end
+            
+            phi_start = tfromperiodarr(phi_tau);       % starting times for the periods
+            phi_start_i = tfromperiodarr(phi_tau_i);
+            phi_start_j = tfromperiodarr(phi_tau_j);
+
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             % gait time vector
@@ -105,19 +128,27 @@ function dataij = noslip2bgaits(pi, pj)
             a2_j   = pi.open_trajectory{j}{6};
             
             % get the positive scaling and negative scaling trajectories
-            [gaits{ip, jp}.trajectory, gaits{im, jm}.trajectory] = stitch_noslip2b_trajectories(csi_idx, csj_idx,...
-                                                                    phi_start, phi_tau, phi_state,...
-                                                                    t,...
-                                                                    xi, yi, thetai, a1_i, a2_i,...
-                                                                    xj, yj, thetaj, a1_j, a2_j);
+            [ gaits{ip, jp}.trajectory, gaits{im, jm}.trajectory, ...
+                gaits{ip, jp}.periods, gaits{im, jm}.periods ] = stitch_noslip2b_trajectories(csi_idx, csj_idx,...
+                                                                     phi_start, phi_tau, phi_state,...
+                                                                     phi_start_i, phi_start_j,...
+                                                                     phi_tau_i, phi_tau_j,...
+                                                                     phi_state_i, phi_state_j,...
+                                                                     t,...
+                                                                     xi, yi, thetai, a1_i, a2_i,...
+                                                                     xj, yj, thetaj, a1_j, a2_j);
             
         end
     end
 
     % Return the gaits structure
-    dataij.path_i = pi;
+    dataij.path_i = pi;   % noslip level-2 path objects
     dataij.path_j = pj;
-    dataij.gaits = gaits;
-
+    dataij.u_i = u_i;     % arrays
+    dataij.u_j = u_j;
+    dataij.u_i_S = u_i_S; % sweep
+    dataij.u_j_S = u_j_S;
+    dataij.gaits = gaits; % ui, uj swept gaits and associated periods
+    dataij.tau = phi_tau; % time periods
 
 end

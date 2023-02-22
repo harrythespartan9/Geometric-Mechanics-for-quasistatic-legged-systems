@@ -11,7 +11,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 cond = 2;
             end
         case 2
-            dataij = []; dataij.vidF = false; % just return the complete gait trajectory information
+            dataij = []; 
+            dataij.vidF = false; % just return the complete gait trajectory information
             cond = 3;
         case 3
             cond = 3;
@@ -88,9 +89,14 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.titletxt = '$z(\psi)$';
 
             % Unpack plotting tools
-            lW_s_i = datai{1}.lW_s;
+            lW_s_i = 2*datai{1}.lW_s;
 
         case 3
+
+            % choose the path scaling inputs to plot gaits at
+            if ~isfield(dataij, 'u')
+                dataij.u = [+100, +100]/100;    % +x, +y just plot max input gait
+            end
 
             % parent grid
             P = [];
@@ -113,7 +119,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             ksq_lb_j =  dataj{1}.ksq_lb;
             
             % sweep data for ith contact state
-            ai_j = dataj{2}.ai; aj_j = dataj{2}.aj;
+            a1_j = dataj{2}.ai; a2_j = dataj{2}.aj;
             ksq_sweep_j = dataj{2}.ksq_sweep;
             dz__x_sweep_j = dataj{2}.dz__x_sweep;
             dz__y_sweep_j = dataj{2}.dz__y_sweep;
@@ -138,7 +144,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.titletxt = {'$dz^{\theta}_{\psi}$'};
 
             % Unpack plotting tools
-            lW_s_j = dataj{1}.lW_s;   
+            lW_s_j = 2*dataj{1}.lW_s;   
 
     end
     
@@ -664,7 +670,6 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         case 3
 
             % Obtain the path information for i and j contact states
-            vidF_i = datai{6};
             path_i = datai{5};
             pltkin_i = datai{4};
             a_i = datai{3}.aa; l_i = datai{3}.ll;
@@ -682,8 +687,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             ztheta_i = path_i.net_displacement(3,:);
             dnum_i = datai{3}.dnum; 
             cs_idx_i = datai{3}.cs_idx;
-
-            vidF_j = dataj{6};
+            
             path_j = dataj{5};
             pltkin_j = dataj{4};
             a_j = dataj{3}.aa; l_j = dataj{3}.ll;
@@ -711,6 +715,181 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.Layout_Obj = tiledlayout(P,C4.grid(1),C4.grid(2),'TileSpacing','tight','Padding','tight'); 
             C4.Layout_Obj.Layout.Tile = C4.tile_start; C4.Layout_Obj.Layout.TileSpan = C4.span_grid;
             
+            % Simulation parameters ----------------------------------------------------------------------------------------------------------------------------
+            % number of gaits to animate
+            numU = size(dataij.u, 1);
+            % number of gait-cycles to plot for a chosen gait
+            gaitC_num = 3;
+
+            % plot the stratified panels for ith and jth contact states ----------------------------------------------------------------------------------------
+
+            % Child 3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            ax = cell(1, C3.num);
+            for i = 1:C3.num
+                ax{i} = nexttile(C3.Layout_Obj,i);
+                contourf(ax{i},a1_j,a2_j,dataj{2}.(C3.sweeptxt{i}),cfLvl_j,'FaceAlpha',fA_j,'LineWidth',lW_c_j,'LineStyle','none');
+                axis equal tight; hold on; view(2);
+                contour(ax{i}, a1_j,a2_j,ksq_sweep_j,[ksq_lb_j ksq_lb_j],'k--','LineWidth',lW_c_j);
+                colormap(ax{i},CUB_j); clim(ax{i},C3_lim);
+                set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
+                title(ax{i},C3.titletxt{i},'Color',gc_col_j,FontSize=titleFS_j);
+                if i == 1
+                    xlabel(ax{i},x_label_txt_j,FontSize=labelFS_j); 
+                    ylabel(ax{i},y_label_txt_j,FontSize=labelFS_j);
+                end
+                xticks(ax{i}, xtickval_j); yticks(ax{i}, ytickval_j);
+                xticklabels(ax{i}, xticklab_j); yticklabels(ax{i}, yticklab_j);
+                ax{i}.XAxis.FontSize = tickFS_j; ax{i}.YAxis.FontSize = tickFS_j; 
+                set(ax{i},'Color',col_backg_j);
+                xlim(xlimits_j); ylim(ylimits_j);
+            end
+            C3.axes = ax;
+            if cond == 1
+                C3.colorB = colorbar(C3.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_j); C3.colorB.Layout.Tile = 'South';
+            end
+            
+            % Child 4 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            ax = cell(1, C4.num);
+            for i = 1:C4.num
+                ax{i} = nexttile(C4.Layout_Obj,i);
+                contourf(ax{i},a1_j,a2_j,dataj{2}.(C4.sweeptxt{i}),cfLvl_j,'FaceAlpha',fA_j,'LineWidth',lW_c_j,'LineStyle','none');
+                axis equal tight; hold on; view(2);
+                contour(ax{i}, a1_j,a2_j,ksq_sweep_j,[ksq_lb_j ksq_lb_j],'--k','LineWidth',lW_c_j);
+                colormap(ax{i},CUB_j); clim(ax{i},C4_lim);
+                set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
+                title(ax{i},C4.titletxt{i},'Color',gc_col_j,FontSize=titleFS_j);
+                xticks(ax{i}, xtickval_j); yticks(ax{i}, ytickval_j);
+                xticklabels(ax{i}, xticklab_j); yticklabels(ax{i}, yticklab_j);
+                ax{i}.XAxis.FontSize = tickFS_j; ax{i}.YAxis.FontSize = tickFS_j; 
+                set(ax{i},'Color',col_backg_j);
+                xlim(xlimits_j); ylim(ylimits_j);
+            end
+            C4.axes = ax;
+            if cond == 1
+                C4.colorB = colorbar(C4.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_j); C4.colorB.Layout.Tile = 'South';
+            end
+
+            % define the pullback for the SE(2) trajectory to the global frame
+            adginv = @(theta) [cos(theta), -sin(theta), 0;
+                               sin(theta), cos(theta),  0;
+                               0,          0,           1];
+
+            % Unpack data from computed gait sweeps ------------------------------------------------------------------------------------------------------------
+            u_i_setpt = dataij.u(:,1);  % input gait setpoints
+            u_j_setpt = dataij.u(:,2);
+            u_i = dataij.u_i;           % arrays
+            u_j = dataij.u_j;
+            u_i_S = dataij.u_i_S;       % sweep
+            u_j_S = dataij.u_j_S;
+            gaits = dataij.gaits;       % ui, uj swept gaits
+            
+            % Setup the video and start animation layout -------------------------------------------------------------------------------------------------------
+            if dataij.vidF
+                video = VideoWriter(['data_animation','.mp4'],'MPEG-4');
+                video.FrameRate = 60;
+                video.Quality = 100;
+                open(video);
+            end
+            
+            % create axes for the animation
+            axA = nexttile(P, [3, 3]);
+
+            % ANIMATE/PLOT SYSTEM CONFIG -----------------------------------------------------------------------------------------------------------------------
+            for i = 1:numU % iterate over gaits to animate
+
+                % Find the gait we needed
+                idxi = find(u_i == u_i_setpt(i)); idxj = find(u_j == u_j_setpt(i));
+
+                % Obtain the kinematic data, plot it, and extend it for the number of gait cycles needed -------------------------------------------------------
+                a1_i    = gaits{idxi, idxj}.trajectory{5} ;
+                a2_i    = gaits{idxi, idxj}.trajectory{6} ;
+                a1_j    = gaits{idxi, idxj}.trajectory{7} ;
+                a2_j    = gaits{idxi, idxj}.trajectory{8} ;
+                pbq     = gaits{idxi, idxj}.trajectory{9} ;
+                idxiA   = gaits{idxi, idxj}.trajectory{10};
+                idxiC   = gaits{idxi, idxj}.trajectory{11};
+                idxjA   = gaits{idxi, idxj}.trajectory{12};
+                idxjC   = gaits{idxi, idxj}.trajectory{13};
+                phi_tau = gaits{idxi, idxj}.trajectory{12};
+                
+                % initialize plot object containers (if they already exist, they will be reinitialized and plots from previous gaits vanish)
+                h1_A = cell(1, C1.num); % child 1
+                h1_N = h1_A;
+                h1_s = h1_A;
+                h2_A = cell(1, C2.num); % child 2
+                h2_N = h2_A;
+                h2_s = h2_A;
+                h3_A = cell(1, C3.num); % child 3
+                h3_N = h3_A;
+                h3_s = h3_A;
+                h4_A = cell(1, C4.num); % child 4
+                h4_N = h4_A;
+                h4_s = h4_A;
+                hA = cell(1, 18);       % animation plots
+                
+                % Plot the shape-space trajectory in the respective shape-space slices
+                for j = 1:C1.num
+                    h1_A{j} = plot(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', c_i); % plot the active path for i
+                    h1_N{j} = plot(C1.axes{j}, a1_i(idxiC), a2_i(idxiC), 'LineWidth', lW_s_i, 'Color', col_i(7,:)); % plot the inactive path for i
+                end
+                for j = 1:C2.num
+                    h2_A{j} = plot(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', c_i);
+                    h2_N{j} = plot(C2.axes{j}, a1_i(idxiC), a2_i(idxiC), 'LineWidth', lW_s_i, 'Color', col_i(7,:));
+                end
+                for j = 1:C3.num
+                    h3_A{j} = plot(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
+                    h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                end
+                for j = 1:C4.num
+                    h3_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
+                    h3_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                end
+
+                a1_i    = repmat(a1_i,    1, gaitC_num);
+                a2_i    = repmat(a2_i,    1, gaitC_num);
+                a1_j    = repmat(a1_j,    1, gaitC_num);
+                a2_j    = repmat(a2_j,    1, gaitC_num);
+                pbq     = repmat(pbq,     1, gaitC_num);
+                idxiA   = repmat(idxiA,   1, gaitC_num);
+                idxiC   = repmat(idxiC,   1, gaitC_num);
+                idxjA   = repmat(idxjA,   1, gaitC_num);
+                idxjC   = repmat(idxjC,   1, gaitC_num);
+                phi_tau = repmat(phi_tau, 1, gaitC_num);
+                
+                % Extend the position trajectory to number of gait cycles needed
+                t       = gaits{idxi, idxj}.trajectory{1} ;
+                x       = gaits{idxi, idxj}.trajectory{2} ;
+                y       = gaits{idxi, idxj}.trajectory{3} ;
+                theta   = gaits{idxi, idxj}.trajectory{4} ;
+                tf      = sum(gaits{idxi, idxj}.periods.phi_tau);
+                temp_t  = t;
+                temp = [x; y; theta];
+                for j = 2:gaitC_num % iterate and extend
+                    temp = [temp adginv(temp(3,end))*temp];
+                    temp_t = [temp_t tf+temp_t];
+                end
+                t = temp_t; x = temp(1,:); y = temp(2,:); theta = temp(3,:);
+                
+                % Iterate over time and animate ----------------------------------------------------------------------------------------------------------------
+                for j = 1:numel(t)
+
+
+
+
+
+
+
+
+
+
+
+                    h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, c_i, 'filled');
+                end
+                
+
+            end
+
+
     end
 
 end
