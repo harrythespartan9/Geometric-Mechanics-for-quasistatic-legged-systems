@@ -105,9 +105,9 @@ function dataij = noslip2bgaits(pi, pj)
                     end
             end
             
-            phi_start = tfromperiodarr(phi_tau);       % starting times for the periods
-            phi_start_i = tfromperiodarr(phi_tau_i);
-            phi_start_j = tfromperiodarr(phi_tau_j);
+            phi_start = t2periodarr(phi_tau);       % starting times for the periods
+            phi_start_i = t2periodarr(phi_tau_i);
+            phi_start_j = t2periodarr(phi_tau_j);
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             

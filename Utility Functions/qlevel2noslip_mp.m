@@ -769,18 +769,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 C4.colorB = colorbar(C4.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_j); C4.colorB.Layout.Tile = 'South';
             end
 
-            % define the pullback for the SE(2) trajectory to the global frame
-            adginv = @(theta) [cos(theta), -sin(theta), 0;
-                               sin(theta), cos(theta),  0;
-                               0,          0,           1];
-
             % Unpack data from computed gait sweeps ------------------------------------------------------------------------------------------------------------
             u_i_setpt = dataij.u(:,1);  % input gait setpoints
             u_j_setpt = dataij.u(:,2);
             u_i = dataij.u_i;           % arrays
             u_j = dataij.u_j;
-            u_i_S = dataij.u_i_S;       % sweep
-            u_j_S = dataij.u_j_S;
             gaits = dataij.gaits;       % ui, uj swept gaits
             
             % Setup the video and start animation layout -------------------------------------------------------------------------------------------------------
@@ -810,22 +803,23 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 idxiC   = gaits{idxi, idxj}.trajectory{11};
                 idxjA   = gaits{idxi, idxj}.trajectory{12};
                 idxjC   = gaits{idxi, idxj}.trajectory{13};
-                phi_tau = gaits{idxi, idxj}.trajectory{12};
+                phi_tau = gaits{idxi, idxj}.trajectory{14};
                 
                 % initialize plot object containers (if they already exist, they will be reinitialized and plots from previous gaits vanish)
-                h1_A = cell(1, C1.num); % child 1
+                h1_A = cell(1, C1.num);     % child 1
                 h1_N = h1_A;
                 h1_s = h1_A;
-                h2_A = cell(1, C2.num); % child 2
+                h2_A = cell(1, C2.num);     % child 2
                 h2_N = h2_A;
                 h2_s = h2_A;
-                h3_A = cell(1, C3.num); % child 3
+                h3_A = cell(1, C3.num);     % child 3
                 h3_N = h3_A;
                 h3_s = h3_A;
-                h4_A = cell(1, C4.num); % child 4
+                h4_A = cell(1, C4.num);     % child 4
                 h4_N = h4_A;
-                h4_s = h4_A;
-                hA = cell(1, 18);       % animation plots
+                h4_s = h4_A; 
+                hA = cell(1, 0);            % animation plots
+  
                 
                 % Plot the shape-space trajectory in the respective shape-space slices
                 for j = 1:C1.num
@@ -841,8 +835,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), 'LineWidth', lW_s_j, 'Color', col_j(7,:));
                 end
                 for j = 1:C4.num
-                    h3_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
-                    h3_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                    h4_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
+                    h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), 'LineWidth', lW_s_j, 'Color', col_j(7,:));
                 end
 
                 a1_i    = repmat(a1_i,    1, gaitC_num);
@@ -869,26 +863,173 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     temp_t = [temp_t tf+temp_t];
                 end
                 t = temp_t; x = temp(1,:); y = temp(2,:); theta = temp(3,:);
+                dnum = numel(t);
+
+                % compute the leg angles
+                a_n            = nan(4, numel(t));
+                a_n(cs_i(1), :) = a1_i;
+                a_n(cs_i(2), :) = a2_i;
+                a_n(cs_j(1), :) = a1_j;
+                a_n(cs_j(2), :) = a2_j;
                 
+                % compute the animation limitsksqij
+                bl = 4*l_j;
+                thresh = 1;
+                anim_lim = max( [min(x, [], 'all')-thresh*bl, max(x, [], 'all')+thresh*bl, min(y, [], 'all')-thresh*bl, max(y, [], 'all')+thresh*bl]...
+                    , [], 'all' )* [-1, 1, -1, 1];
+
+                % Compute the animation quantities for the entire gait
+                            % contact state i
+                leg_i1__x = pltkin_i.(['legbase' num2str(cs_i(1)) '_leg' num2str(cs_i(1)) '_x'])(a_i, l_i, a1_i, x, y, theta); leg_i1__x = [leg_i1__x(1:dnum); leg_i1__x(dnum+1:end)];
+                leg_i1__y = pltkin_i.(['legbase' num2str(cs_i(1)) '_leg' num2str(cs_i(1)) '_y'])(a_i, l_i, a1_i, x, y, theta); leg_i1__y = [leg_i1__y(1:dnum); leg_i1__y(dnum+1:end)];
+                leg_i2__x = pltkin_i.(['legbase' num2str(cs_i(2)) '_leg' num2str(cs_i(2)) '_x'])(a_i, l_i, a2_i, x, y, theta); leg_i2__x = [leg_i2__x(1:dnum); leg_i2__x(dnum+1:end)];
+                leg_i2__y = pltkin_i.(['legbase' num2str(cs_i(2)) '_leg' num2str(cs_i(2)) '_y'])(a_i, l_i, a2_i, x, y, theta); leg_i2__y = [leg_i2__y(1:dnum); leg_i2__y(dnum+1:end)];
+                legtip_i1__x = pltkin_i.(['leg' num2str(cs_i(1)) '_x'])(a_i, l_i, a1_i, x, y, theta);
+                legtip_i1__y = pltkin_i.(['leg' num2str(cs_i(1)) '_y'])(a_i, l_i, a1_i, x, y, theta);
+                legtip_i2__x = pltkin_i.(['leg' num2str(cs_i(2)) '_x'])(a_i, l_i, a2_i, x, y, theta); 
+                legtip_i2__y = pltkin_i.(['leg' num2str(cs_i(2)) '_y'])(a_i, l_i, a2_i, x, y, theta);
+                mean_leg_i1__x = pltkin_i.(['legbase' num2str(cs_i(1)) '_leg' num2str(cs_i(1)) '_x'])(a_i, l_i, zeros(1,dnum), x, y, theta); mean_leg_i1__x = [mean_leg_i1__x(1:dnum); mean_leg_i1__x(dnum+1:end)];
+                mean_leg_i1__y = pltkin_i.(['legbase' num2str(cs_i(1)) '_leg' num2str(cs_i(1)) '_y'])(a_i, l_i, zeros(1,dnum), x, y, theta); mean_leg_i1__y = [mean_leg_i1__y(1:dnum); mean_leg_i1__y(dnum+1:end)];
+                mean_leg_i2__x = pltkin_i.(['legbase' num2str(cs_i(2)) '_leg' num2str(cs_i(2)) '_x'])(a_i, l_i, zeros(1,dnum), x, y, theta); mean_leg_i2__x = [mean_leg_i2__x(1:dnum); mean_leg_i2__x(dnum+1:end)];
+                mean_leg_i2__y = pltkin_i.(['legbase' num2str(cs_i(2)) '_leg' num2str(cs_i(2)) '_y'])(a_i, l_i, zeros(1,dnum), x, y, theta); mean_leg_i2__y = [mean_leg_i2__y(1:dnum); mean_leg_i2__y(dnum+1:end)];
+                ksqi__x = pltkin_i.(['k_leg' num2str(cs_i(1)) '_leg' num2str(cs_i(2)) '_x'])(a_i, l_i, a1_i, a2_i, x, y, theta); ksqi__x = [ksqi__x(1:dnum); ksqi__x(dnum+1:end)];
+                ksqi__y = pltkin_i.(['k_leg' num2str(cs_i(1)) '_leg' num2str(cs_i(2)) '_y'])(a_i, l_i, a1_i, a2_i, x, y, theta); ksqi__y = [ksqi__y(1:dnum); ksqi__y(dnum+1:end)];
+                            % contact state j
+                leg_j1__x = pltkin_j.(['legbase' num2str(cs_j(1)) '_leg' num2str(cs_j(1)) '_x'])(a_j, l_j, a1_j, x, y, theta); leg_j1__x = [leg_j1__x(1:dnum); leg_j1__x(dnum+1:end)];
+                leg_j1__y = pltkin_j.(['legbase' num2str(cs_j(1)) '_leg' num2str(cs_j(1)) '_y'])(a_j, l_j, a1_j, x, y, theta); leg_j1__y = [leg_j1__y(1:dnum); leg_j1__y(dnum+1:end)];
+                leg_j2__x = pltkin_j.(['legbase' num2str(cs_j(2)) '_leg' num2str(cs_j(2)) '_x'])(a_j, l_j, a2_j, x, y, theta); leg_j2__x = [leg_j2__x(1:dnum); leg_j2__x(dnum+1:end)];
+                leg_j2__y = pltkin_j.(['legbase' num2str(cs_j(2)) '_leg' num2str(cs_j(2)) '_y'])(a_j, l_j, a2_j, x, y, theta); leg_j2__y = [leg_j2__y(1:dnum); leg_j2__y(dnum+1:end)];
+                legtip_j1__x = pltkin_j.(['leg' num2str(cs_j(1)) '_x'])(a_j, l_j, a1_j, x, y, theta);
+                legtip_j1__y = pltkin_j.(['leg' num2str(cs_j(1)) '_y'])(a_j, l_j, a1_j, x, y, theta);
+                legtip_j2__x = pltkin_j.(['leg' num2str(cs_j(2)) '_x'])(a_j, l_j, a2_j, x, y, theta); 
+                legtip_j2__y = pltkin_j.(['leg' num2str(cs_j(2)) '_y'])(a_j, l_j, a2_j, x, y, theta);
+                mean_leg_j1__x = pltkin_j.(['legbase' num2str(cs_j(1)) '_leg' num2str(cs_j(1)) '_x'])(a_j, l_j, zeros(1,dnum), x, y, theta); mean_leg_j1__x = [mean_leg_j1__x(1:dnum); mean_leg_j1__x(dnum+1:end)];
+                mean_leg_j1__y = pltkin_j.(['legbase' num2str(cs_j(1)) '_leg' num2str(cs_j(1)) '_y'])(a_j, l_j, zeros(1,dnum), x, y, theta); mean_leg_j1__y = [mean_leg_j1__y(1:dnum); mean_leg_j1__y(dnum+1:end)];
+                mean_leg_j2__x = pltkin_j.(['legbase' num2str(cs_j(2)) '_leg' num2str(cs_j(2)) '_x'])(a_j, l_j, zeros(1,dnum), x, y, theta); mean_leg_j2__x = [mean_leg_j2__x(1:dnum); mean_leg_j2__x(dnum+1:end)];
+                mean_leg_j2__y = pltkin_j.(['legbase' num2str(cs_j(2)) '_leg' num2str(cs_j(2)) '_y'])(a_j, l_j, zeros(1,dnum), x, y, theta); mean_leg_j2__y = [mean_leg_j2__y(1:dnum); mean_leg_j2__y(dnum+1:end)];
+                ksqj__x = pltkin_j.(['k_leg' num2str(cs_j(1)) '_leg' num2str(cs_j(2)) '_x'])(a_j, l_j, a1_j, a2_j, x, y, theta); ksqj__x = [ksqj__x(1:dnum); ksqj__x(dnum+1:end)];
+                ksqj__y = pltkin_j.(['k_leg' num2str(cs_j(1)) '_leg' num2str(cs_j(2)) '_y'])(a_j, l_j, a1_j, a2_j, x, y, theta); ksqj__y = [ksqj__y(1:dnum); ksqj__y(dnum+1:end)];
+                            % standard stuff
+                leg_1__x = pltkin_i.legbase1_leg1_x(a_i, l_i, a_n(1, :), x, y, theta); leg_1__x = [leg_1__x(1:dnum_i); leg_1__x(dnum_i+1:end)];
+                leg_1__y = pltkin_i.legbase1_leg1_y(a_i, l_i, a_n(1, :), x, y, theta); leg_1__y = [leg_1__y(1:dnum_i); leg_1__y(dnum_i+1:end)];
+                leg_2__x = pltkin_i.legbase2_leg2_x(a_i, l_i, a_n(2, :), x, y, theta); leg_2__x = [leg_2__x(1:dnum_i); leg_2__x(dnum_i+1:end)];
+                leg_2__y = pltkin_i.legbase2_leg2_y(a_i, l_i, a_n(2, :), x, y, theta); leg_2__y = [leg_2__y(1:dnum_i); leg_2__y(dnum_i+1:end)];
+                leg_3__x = pltkin_i.legbase3_leg3_x(a_i, l_i, a_n(3, :), x, y, theta); leg_3__x = [leg_3__x(1:dnum_i); leg_3__x(dnum_i+1:end)];
+                leg_3__y = pltkin_i.legbase3_leg3_y(a_i, l_i, a_n(3, :), x, y, theta); leg_3__y = [leg_3__y(1:dnum_i); leg_3__y(dnum_i+1:end)];
+                leg_4__x = pltkin_i.legbase4_leg4_x(a_i, l_i, a_n(4, :), x, y, theta); leg_4__x = [leg_4__x(1:dnum_i); leg_4__x(dnum_i+1:end)];
+                leg_4__y = pltkin_i.legbase4_leg4_y(a_i, l_i, a_n(4, :), x, y, theta); leg_4__y = [leg_4__y(1:dnum_i); leg_4__y(dnum_i+1:end)];
+                top__x = pltkin_i.topright2topleft_x(l_i, x, y, theta); top__x = [top__x(1:dnum_i); top__x(dnum_i+1:end)];
+                top__y = pltkin_i.topright2topleft_y(l_i, x, y, theta); top__y = [top__y(1:dnum_i); top__y(dnum_i+1:end)];
+                left__x = pltkin_i.topleft2botleft_x(l_i, x, y, theta); left__x = [left__x(1:dnum_i); left__x(dnum_i+1:end)];
+                left__y = pltkin_i.topleft2botleft_y(l_i, x, y, theta); left__y = [left__y(1:dnum_i); left__y(dnum_i+1:end)];
+                bot__x = pltkin_i.botleft2botright_x(l_i, x, y, theta); bot__x = [bot__x(1:dnum_i); bot__x(dnum_i+1:end)];
+                bot__y = pltkin_i.botleft2botright_y(l_i, x, y, theta); bot__y = [bot__y(1:dnum_i); bot__y(dnum_i+1:end)];
+                right__x = pltkin_i.botright2topright_x(l_i, x, y, theta); right__x = [right__x(1:dnum_i); right__x(dnum_i+1:end)];
+                right__y = pltkin_i.botright2topright_y(l_i, x, y, theta); right__y = [right__y(1:dnum_i); right__y(dnum_i+1:end)];
+                body__x = pltkin_i.body_x(x, y, theta); 
+                body__y = pltkin_i.body_y(x, y, theta);
+                bodyf__x = pltkin_i.bodyf_x(x, y, theta); 
+                bodyf__y = pltkin_i.bodyf_y(x, y, theta);
+                
+                % time iteration
+                if ~dataij.vidF
+                    T = t(pbq == 1);
+                else
+                    T = 1:gaitC_num:numel(t);
+                end
+                m = 0; % plotting count
+
                 % Iterate over time and animate ----------------------------------------------------------------------------------------------------------------
-                for j = 1:numel(t)
+                for j = 1:numel(T)
+                    
+                    % plot the standard stuff and body axes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    hA{m}  = plot(axA, leg_1__x(:,j), leg_1__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
+                    if j == 1
+                        axis equal square; axis(anim_lim);
+                    end
+                    hA{m}  = plot(axA, leg_2__x(:,j), leg_2__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
+                    hA{m}  = plot(axA, leg_3__x(:,j), leg_3__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
+                    hA{m}  = plot(axA, leg_4__x(:,j), leg_4__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
+                    hA{m}  = plot(axA, top__x(:,j), top__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
+                    hA{m}  = plot(axA, left__x(:,j), left__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
+                    hA{m}  = plot(axA, bot__x(:,j), bot__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
+                    hA{m}  = plot(axA, right__x(:,j), right__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
 
+                    % plot the trajectory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    [m, hA] = ptrajectory2bnoslip( m, hA, axA, t, phi_tau, T, j, x, y, cs_idx_i, cs_idx_j, c_i, lW_s_i, c_j, lW_s_j, col_i(7,:) );
+                    
+                    % plot the contact state related stuff ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    % current contact state related plotting parameters, and active legs with inter-leg vector
+                    if phi_tau == cs_idx_i % 1st state
+                        frame_scale = frame_scale_i;
+                        lW_qf = lW_qf_i;
+                        col_now = c_i;
+                        c_1 = c_i;
+                        c_2 = col_i(7,:);
+                        hA{m} = plot(axA, leg_i1__x(:,j), leg_i1__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, leg_i2__x(:,j), leg_i2__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i1__x(:,j), mean_leg_i1__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i2__x(:,j), mean_leg_i2__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i1__x(j), legtip_i1__y(j), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i2__x(j), legtip_i2__y(j), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqi__x(:,j), ksqi__y(:,j), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); m = m + 1;
+                    elseif phi_tau == cs_idx_j % 2nd state
+                        frame_scale = frame_scale_j;
+                        lW_qf = lW_qf_j;
+                        col_now = c_j;
+                        c_1 = col_i(7,:);
+                        c_2 = c_j; 
+                        hA{m} = plot(axA, leg_j1__x(:,j), leg_j1__y(:,j), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, leg_j2__x(:,j), leg_j2__y(:,j), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j1__x(:,j), mean_leg_j1__y(:,j), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j2__x(:,j), mean_leg_j2__y(:,j), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j1__x(j), legtip_j1__y(j), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j2__x(j), legtip_j2__y(j), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqj__x(:,j), ksqj__y(:,j), 'Color', c_j, 'LineWidth', lW_kq_j, 'LineStyle', '--'); m = m + 1;
+                    else % no active state
+                        frame_scale = frame_scale_j;
+                        lW_qf = lW_qf_j;
+                        col_now = col_j(7,:);
+                        c_1 = col_i(7,:);
+                        c_2 = col_j(7,:); 
+                    end
 
+                    % SE(2) body frame 'b'
+                    hA{m} = quiver(axA, body__x(j), body__y(j), frame_scale*bodyf__x(1,j), frame_scale*bodyf__x(2,j), 'LineWidth', lW_qf, 'Color', col_now,...
+                            'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;
+                    hA{m} = quiver(axA, body__x(j), body__y(j), frame_scale*bodyf__y(1,j), frame_scale*bodyf__y(2,j), 'LineWidth', lW_qf, 'Color', col_now,...
+                        'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;
 
+                    % layout scatter points ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    for k = 1:C1.num
+                        h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, c_1, 'filled');
+                    end
+                    for k = 1:C2.num
+                        h2_s{k} = scatter(C2.axes{k}, a1_i(j), a2_i(j), circS_i, c_1, 'filled');
+                    end
+                    for k = 1:C3.num
+                        h3_s{k} = scatter(C3.axes{k}, a1_j(j), a2_j(j), circS_j, c_2, 'filled');
+                    end
+                    for k = 1:C4.num
+                        h4_s{k} = scatter(C4.axes{k}, a1_j(j), a2_j(j), circS_j, c_2, 'filled');
+                    end
 
+                    drawnow;
 
+                    % save the frame if video is requested ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    if dataij.vidF
+                        writeVideo(video,getframe(f));
+                    end
 
-
-
-
-
-
-                    h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, c_i, 'filled');
+                    
                 end
                 
 
             end
-
+            
+            if dataij.vidF
+                close(video);
+            end
 
     end
 

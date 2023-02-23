@@ -9,11 +9,6 @@ function [ ptrajectory, mtrajectory, ...
                                                                     xi, yi, thetai, a1_i, a2_i,...
                                                                     xj, yj, thetaj, a1_j, a2_j)
     
-    % define the pullback for the SE(2) trajectory to the global frame
-    adginv = @(theta) [cos(theta), -sin(theta), 0;
-                       sin(theta), cos(theta),  0;
-                       0,          0,           1];
-    
     % indices before, after, active, and switching phases of the contact state under consideration
     idxi_before =    t < phi_start(phi_state == csi_idx);
     idxi_after  =    t >= ( phi_start(phi_state == csi_idx) + phi_tau(phi_state == csi_idx) );
@@ -103,3 +98,5 @@ function [ ptrajectory, mtrajectory, ...
     mtrajectory{12} = idxj_during;
     mtrajectory{13} = idxj_switch;
     mtrajectory{14} = phi_period;
+
+end
