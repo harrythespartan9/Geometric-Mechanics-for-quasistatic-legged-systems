@@ -40,11 +40,11 @@ function [m, h] = ptrajectory2bnoslip(m, h, ax, t, tau, T, j, x, y, csi, csj, c_
     
             % plot the trajectory
             if cs(n) == csi
-                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', lW_s_i, 'Color', c_i);
+                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_i, 'Color', c_i);
             elseif cs(n) == csj
-                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', lW_s_j, 'Color', c_j);
+                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_j, 'Color', c_j);
             else
-                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', lW_s_j, 'Color', col);
+                h{m} = plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_j, 'Color', col);
             end
             
         end

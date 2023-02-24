@@ -73,7 +73,7 @@ classdef Path2 < RigidGeomQuad
 
                 c       (2, 3) double {mustBeLessThanOrEqual(c, 1)}
 
-                si      (1, 1) uint8  {mustBePositive, mustBeLessThanOrEqual(si, 6)}
+                si      (1, 1) double  {mustBePositive, mustBeLessThanOrEqual(si, 6)}
 
                 dirn    (1, 1) int8   {mustBeLessThanOrEqual(dirn, 1), mustBeGreaterThanOrEqual(dirn, -1)}
 
@@ -215,7 +215,7 @@ classdef Path2 < RigidGeomQuad
                 thePath2.open_trajectory{i} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{10}, i*0.1, cond, dnum); % compute the scaled path
                 thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
                 thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle); % close it-- might not use this much
-                thePath2.path_length{i} = thePath2.open_trajectory{10}{1}(end); % get the path length
+                thePath2.path_length{i} = thePath2.open_trajectory{i}{1}(end); % get the path length
             end
 
             % store the path discretization

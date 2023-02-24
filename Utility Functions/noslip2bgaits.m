@@ -1,6 +1,6 @@
 % This script computes the unit-square control inputs to combine two paths in complementary level-2 contact states of quadrupedal robot with a noslip
 % constraint.
-function dataij = noslip2bgaits(pi, pj)
+function dataij = noslip2bgaits(pi, pj, dataij)
 
     % Unpack everything you need
     dnum = 0.5*(pi.path_discretization + pj.path_discretization); % number of points for plotting the gait
@@ -10,8 +10,8 @@ function dataij = noslip2bgaits(pi, pj)
     % the percentage scaling in both directions (as a proper decimal)
     u_i = [ fliplr(-10*(1:numel(pi.open_trajectory))), 10*(1:numel(pi.open_trajectory)) ]/100;
     u_j = [ fliplr(-10*(1:numel(pj.open_trajectory))), 10*(1:numel(pj.open_trajectory)) ]/100;
-    ni = numel(u_i);
-    nj = numel(u_j);
+    ni = 0.5*numel(u_i);
+    nj = 0.5*numel(u_j); % the other half is positive values
     [u_i_S, u_j_S] = meshgrid(u_i, u_j);
     
     % create an cell array to scale and hold both positive and negatively scaled paths
@@ -22,11 +22,11 @@ function dataij = noslip2bgaits(pi, pj)
         for jm = 1:nj
             
             % get the control input for positive scaling values (data exists here and we need to interpolate this to the current negative values)
-            ip = ni - im + 1; jp = nj - jm + 1;
+            ip = 2*ni - im + 1; jp = 2*nj - jm + 1;
             i = ip - numel(pi.open_trajectory); j = jp - numel(pj.open_trajectory);
     
             % get the time periods
-            tau_i = pi.pathlength{i}; tau_j = pj.pathlength{i};
+            tau_i = pi.path_length{i}; tau_j = pj.path_length{i};
             db_i = dc_i*tau_i; db_j = dc_j*tau_j;
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -121,15 +121,16 @@ function dataij = noslip2bgaits(pi, pj)
             a1_i   = pi.open_trajectory{i}{5};
             a2_i   = pi.open_trajectory{i}{6};
             
-            xj     = pi.open_trajectory{j}{2};
-            yj     = pi.open_trajectory{j}{3};
-            thetaj = pi.open_trajectory{j}{4};
-            a1_j   = pi.open_trajectory{j}{5};
-            a2_j   = pi.open_trajectory{j}{6};
+            xj     = pj.open_trajectory{j}{2};
+            yj     = pj.open_trajectory{j}{3};
+            thetaj = pj.open_trajectory{j}{4};
+            a1_j   = pj.open_trajectory{j}{5};
+            a2_j   = pj.open_trajectory{j}{6};
             
             % get the positive scaling and negative scaling trajectories
-            [ gaits{ip, jp}.trajectory, gaits{im, jm}.trajectory, ...
-                gaits{ip, jp}.periods, gaits{im, jm}.periods ] = stitch_noslip2b_trajectories(csi_idx, csj_idx,...
+            [ gaits{ip, jp}.trajectory, gaits{im, jm}.trajectory, gaits{im, jp}.trajectory, gaits{ip, jm}.trajectory, ...
+                gaits{ip, jp}.periods, gaits{im, jm}.periods, gaits{im, jp}.periods, gaits{ip, jm}.periods ] ...
+                                                                    = stitch_noslip2b_trajectories(csi_idx, csj_idx,...
                                                                      phi_start, phi_tau, phi_state,...
                                                                      phi_start_i, phi_start_j,...
                                                                      phi_tau_i, phi_tau_j,...
