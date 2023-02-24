@@ -818,6 +818,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             
             % create axes for the animation
             axA = nexttile(P, [3, 3]);
+            title(P, ['$$S_{' num2str(cs_i(1)) num2str(cs_i(2))...
+                '} \leftrightarrow S_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'], 'Color', col_j(1,:), 'Interpreter', 'latex', FontSize=sgtitleFS_j);
 
             % ANIMATE/PLOT SYSTEM CONFIG -----------------------------------------------------------------------------------------------------------------------
             for i = 1:numU % iterate over gaits to animate
@@ -969,59 +971,106 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 
                 % time iteration
                 if ~dataij.vidF
-                    T = t(pbq == 1);
+%                     T = t(pbq == 1); % this gets a little too busy for figure generation purposes
+                    T = t(find(pbq == 1, 1, 'last'));
                 else
-                    T = unique([1:gaitC_num:numel(t), t(pbq == 1)]); % add the body configuration points to be plotted
+                    T = 1:gaitC_num:numel(t); % add the body configuration points to be plotted
                 end
                 m = 1; % plotting count
 
                 % Iterate over time and animate ----------------------------------------------------------------------------------------------------------------
                 for j = 1:numel(T)
                     
-                    % plot the standard stuff and body axes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                    hA{m}  = plot(axA, leg_1__x(:,j), leg_1__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
-                    if j == 1
-                        axis equal square; axis(anim_lim);
+                    % delete everything we don't need
+                    if j ~= 1 && j ~= numel(T)
+
+                        for k = 1:numel(hA)
+                            delete(hA{k});
+                        end
+                        for k = 1:numel(h1_s)
+                            delete(h1_s{k});
+                        end
+                        for k = 1:numel(h2_s)
+                            delete(h2_s{k});
+                        end
+                        for k = 1:numel(h3_s)
+                            delete(h3_s{k});
+                        end
+                        for k = 1:numel(h4_s)
+                            delete(h4_s{k});
+                        end
+
                     end
-                    hA{m}  = plot(axA, leg_2__x(:,j), leg_2__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
-                    hA{m}  = plot(axA, leg_3__x(:,j), leg_3__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
-                    hA{m}  = plot(axA, leg_4__x(:,j), leg_4__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
-                    hA{m}  = plot(axA, top__x(:,j), top__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
-                    hA{m}  = plot(axA, left__x(:,j), left__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
-                    hA{m}  = plot(axA, bot__x(:,j), bot__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
-                    hA{m}  = plot(axA, right__x(:,j), right__y(:,j), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
+
+                    % find the current step
+                    k = find(t == T(j));
+                    if numel(T) > 1
+                        if j == 1
+                            if T(j) == 0
+                                kold = nan;
+                            else
+                                kold = 1;
+                            end
+                        else
+                            if T(j-1) == 0
+                                kold = 1;
+                            else
+                                kold = find(t == T(j-1)) - 1;
+                            end
+                        end
+                    else
+                        kold = 1;
+                    end
+                    
+                    % plot the standard stuff and body axes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    hA{m}  = plot(axA, leg_1__x(:,k), leg_1__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
+                    if j == 1
+                        axis equal square; axis(anim_lim); hold on;
+                        set(axA, 'xticklabel', []); set(axA, 'yticklabel', []); box("off");
+                        xline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k');
+                        yline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k');
+                    end
+                    hA{m}  = plot(axA, leg_2__x(:,k), leg_2__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
+                    hA{m}  = plot(axA, leg_3__x(:,k), leg_3__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
+                    hA{m}  = plot(axA, leg_4__x(:,k), leg_4__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
+                    hA{m}  = plot(axA, top__x(:,k), top__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
+                    hA{m}  = plot(axA, left__x(:,k), left__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_b_i); m = m + 1;
+                    hA{m}  = plot(axA, bot__x(:,k), bot__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
+                    hA{m}  = plot(axA, right__x(:,k), right__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_b_j); m = m + 1;
 
                     % plot the trajectory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                    [m, hA] = ptrajectory2bnoslip( m, hA, axA, t, phi_tau, T, j, x, y, cs_idx_i, cs_idx_j, c_i, lW_s_i, c_j, lW_s_j, col_i(7,:) );
+                    if ~isnan(kold) % if this is not the first time step
+                        ptrajectory2bnoslip(axA, phi_tau, k, kold, x, y, cs_idx_i, cs_idx_j, c_i, lW_s_i, c_j, lW_s_j, col_i(7,:) );
+                    end
                     
                     % plot the contact state related stuff ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     % current contact state related plotting parameters, and active legs with inter-leg vector
-                    if phi_tau == cs_idx_i % 1st state
+                    if phi_tau(k) == cs_idx_i % 1st state
                         frame_scale = frame_scale_i;
                         lW_qf = lW_qf_i;
                         col_now = c_i;
                         c_1 = c_i;
                         c_2 = col_i(7,:);
-                        hA{m} = plot(axA, leg_i1__x(:,j), leg_i1__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
-                        hA{m} = plot(axA, leg_i2__x(:,j), leg_i2__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_i1__x(:,j), mean_leg_i1__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_i2__x(:,j), mean_leg_i2__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
-                        hA{m} = scatter(axA, legtip_i1__x(j), legtip_i1__y(j), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
-                        hA{m} = scatter(axA, legtip_i2__x(j), legtip_i2__y(j), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
-                        hA{m} = plot(axA, ksqi__x(:,j), ksqi__y(:,j), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); m = m + 1;
-                    elseif phi_tau == cs_idx_j % 2nd state
+                        hA{m} = plot(axA, leg_i1__x(:,k), leg_i1__y(:,k), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, leg_i2__x(:,k), leg_i2__y(:,k), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i1__x(:,k), mean_leg_i1__y(:,k), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i2__x(:,k), mean_leg_i2__y(:,k), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i1__x(k), legtip_i1__y(k), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i2__x(k), legtip_i2__y(k), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqi__x(:,k), ksqi__y(:,k), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); m = m + 1;
+                    elseif phi_tau(k) == cs_idx_j % 2nd state
                         frame_scale = frame_scale_j;
                         lW_qf = lW_qf_j;
                         col_now = c_j;
                         c_1 = col_i(7,:);
                         c_2 = c_j; 
-                        hA{m} = plot(axA, leg_j1__x(:,j), leg_j1__y(:,j), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
-                        hA{m} = plot(axA, leg_j2__x(:,j), leg_j2__y(:,j), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_j1__x(:,j), mean_leg_j1__y(:,j), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_j2__x(:,j), mean_leg_j2__y(:,j), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
-                        hA{m} = scatter(axA, legtip_j1__x(j), legtip_j1__y(j), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
-                        hA{m} = scatter(axA, legtip_j2__x(j), legtip_j2__y(j), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
-                        hA{m} = plot(axA, ksqj__x(:,j), ksqj__y(:,j), 'Color', c_j, 'LineWidth', lW_kq_j, 'LineStyle', '--'); m = m + 1;
+                        hA{m} = plot(axA, leg_j1__x(:,k), leg_j1__y(:,k), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, leg_j2__x(:,k), leg_j2__y(:,k), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j1__x(:,k), mean_leg_j1__y(:,k), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j2__x(:,k), mean_leg_j2__y(:,k), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j1__x(k), legtip_j1__y(k), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j2__x(k), legtip_j2__y(k), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqj__x(:,k), ksqj__y(:,k), 'Color', c_j, 'LineWidth', lW_kq_j, 'LineStyle', '--'); m = m + 1;
                     else % no active state
                         frame_scale = frame_scale_j;
                         lW_qf = lW_qf_j;
@@ -1030,24 +1079,29 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         c_2 = col_j(7,:); 
                     end
 
+                    % title based on the control input
+                    title(axA, ['$$' num2str(u_i(idxi)) '\, \psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '} +'...
+                        num2str(u_j(idxj)) '\, \psi_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'], 'Color', col_j(1,:),...
+                        'Interpreter', 'latex', FontSize=titleFS_j);
+
                     % SE(2) body frame 'b'
-                    hA{m} = quiver(axA, body__x(j), body__y(j), frame_scale*bodyf__x(1,j), frame_scale*bodyf__x(2,j), 'LineWidth', lW_qf, 'Color', col_now,...
+                    hA{m} = quiver(axA, body__x(k), body__y(k), frame_scale*bodyf__x(1,k), frame_scale*bodyf__x(2,k), 'LineWidth', lW_qf, 'Color', col_now,...
                             'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;
-                    hA{m} = quiver(axA, body__x(j), body__y(j), frame_scale*bodyf__y(1,j), frame_scale*bodyf__y(2,j), 'LineWidth', lW_qf, 'Color', col_now,...
+                    hA{m} = quiver(axA, body__x(k), body__y(k), frame_scale*bodyf__y(1,k), frame_scale*bodyf__y(2,k), 'LineWidth', lW_qf, 'Color', col_now,...
                         'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;
 
                     % layout scatter points ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                    for k = 1:C1.num
-                        h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, c_1, 'filled');
+                    for l = 1:C1.num
+                        h1_s{l} = scatter(C1.axes{l}, a1_i(k), a2_i(k), circS_i, c_1, 'filled');
                     end
-                    for k = 1:C2.num
-                        h2_s{k} = scatter(C2.axes{k}, a1_i(j), a2_i(j), circS_i, c_1, 'filled');
+                    for l = 1:C2.num
+                        h2_s{l} = scatter(C2.axes{l}, a1_i(k), a2_i(k), circS_i, c_1, 'filled');
                     end
-                    for k = 1:C3.num
-                        h3_s{k} = scatter(C3.axes{k}, a1_j(j), a2_j(j), circS_j, c_2, 'filled');
+                    for l = 1:C3.num
+                        h3_s{l} = scatter(C3.axes{l}, a1_j(k), a2_j(k), circS_j, c_2, 'filled');
                     end
-                    for k = 1:C4.num
-                        h4_s{k} = scatter(C4.axes{k}, a1_j(j), a2_j(j), circS_j, c_2, 'filled');
+                    for l = 1:C4.num
+                        h4_s{l} = scatter(C4.axes{l}, a1_j(k), a2_j(k), circS_j, c_2, 'filled');
                     end
 
                     drawnow;

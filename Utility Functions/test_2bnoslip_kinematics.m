@@ -87,7 +87,45 @@ plot(a2_j/max(a2_j), 'k--');
 %% 
 figure()
 plot(x, y)
-
+%% 
+figure()
+plot(a_n(3,:))
+%% LEG1
+% we are in the first to third submanifold-- hence leg 1 and leg 2 active are i, and leg 3 and leg 4 active are j
+figure()
+plot(pltkin_i.(['legbase' num2str(cs_i(1)) '_leg' num2str(cs_i(1)) '_x'])(a_i, l_i, a1_i, x, y, theta), 'r')
+hold on;
+plot(pltkin_i.legbase1_leg1_x(a_i, l_i, a_n(1, :), x, y, theta), 'b--')
+%% LEG2
+figure()
+plot(pltkin_i.(['legbase' num2str(cs_i(2)) '_leg' num2str(cs_i(2)) '_x'])(a_i, l_i, a2_i, x, y, theta), 'r')
+hold on;
+plot(pltkin_i.legbase2_leg2_x(a_i, l_i, a_n(2, :), x, y, theta), 'b--')
+%% LEG3
+figure()
+plot(pltkin_j.(['legbase' num2str(cs_j(1)) '_leg' num2str(cs_j(1)) '_x'])(a_j, l_j, a1_j, x, y, theta), 'r')
+hold on;
+plot(pltkin_j.legbase3_leg3_x(a_j, l_j, a_n(3, :), x, y, theta), 'b--')
+%% LEG3
+figure()
+plot(pltkin_j.(['legbase' num2str(cs_j(2)) '_leg' num2str(cs_j(2)) '_x'])(a_j, l_j, a2_j, x, y, theta), 'r')
+hold on;
+plot(pltkin_j.legbase4_leg4_x(a_j, l_j, a_n(4, :), x, y, theta), 'b--')
+%%
+% SE2 trajectories
+figure()
+yyaxis left
+plot(t,x,'k');
+hold on; grid on;
+plot(t,y,'k');
+yyaxis right
+plot(t,theta,'r'); grid on;
+figure()
+plot(x,y,'k')
+%% 
+figure()
+plot(t,theta)
+%% 
 
 
 
