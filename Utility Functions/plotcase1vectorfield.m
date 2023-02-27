@@ -33,7 +33,7 @@ if configs % check if we need to plot the location of the configuration
     scatter(ax,ai(i,j),aj(i,j),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
 end
 set(get(ax,'YLabel'),'rotation',0,'VerticalAlignment','middle');
-title(ax,title_txt,'Color',gc_col,FontSize=titleFS);
+title(ax,title_txt,'Color','k',FontSize=titleFS);
 xticks(ax,xtickval); yticks(ax,ytickval);
 xticklabels(ax,xticklab); yticklabels(ax,yticklab);
 ax.XAxis.FontSize = tickFS; ax.YAxis.FontSize = tickFS; 

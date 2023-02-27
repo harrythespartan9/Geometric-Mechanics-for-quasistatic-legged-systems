@@ -118,12 +118,19 @@ function dataij = noslip2bgaits(pi, pj, dataij)
             xi     = pi.open_trajectory{i}{2};
             yi     = pi.open_trajectory{i}{3};
             thetai = pi.open_trajectory{i}{4};
+            zxi    = pi.net_displacement(1,i);
+            zyi    = pi.net_displacement(2,i);
+            zthetai= pi.net_displacement(3,i);
             a1_i   = pi.open_trajectory{i}{5};
             a2_i   = pi.open_trajectory{i}{6};
+
             
             xj     = pj.open_trajectory{j}{2};
             yj     = pj.open_trajectory{j}{3};
             thetaj = pj.open_trajectory{j}{4};
+            zxj    = pj.net_displacement(1,j);
+            zyj    = pj.net_displacement(2,j);
+            zthetaj= pj.net_displacement(3,j);
             a1_j   = pj.open_trajectory{j}{5};
             a2_j   = pj.open_trajectory{j}{6};
             
@@ -136,8 +143,12 @@ function dataij = noslip2bgaits(pi, pj, dataij)
                                                                      phi_tau_i, phi_tau_j,...
                                                                      phi_state_i, phi_state_j,...
                                                                      t,...
-                                                                     xi, yi, thetai, a1_i, a2_i,...
-                                                                     xj, yj, thetaj, a1_j, a2_j);
+                                                                     xi, yi, thetai,...
+                                                                     zxi, zyi, zthetai,...
+                                                                     a1_i, a2_i,...
+                                                                     xj, yj, thetaj,...
+                                                                     zxj, zyj, zthetaj,...
+                                                                     a1_j, a2_j);
             
         end
     end

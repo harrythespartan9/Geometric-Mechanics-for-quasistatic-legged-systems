@@ -126,7 +126,19 @@ plot(x,y,'k')
 figure()
 plot(t,theta)
 %% 
-
+figure()
+% plot(x, y, 'r--');
+% hold on; axis equal;
+plot(b(1,:), b(2,:), 'r');
+%% 
+figure()
+plot(b(1,:))
+%% 
+figure()
+plot(b(2,:))
+%% 
+figure()
+plot(b(3,:))
 
 
 

@@ -34,7 +34,7 @@ if configs
 end
 colormap(ax,CUB); clim(ax,heat_lim);
 set(get(ax,'YLabel'),'rotation',0,'VerticalAlignment','middle');
-title(ax,title_txt,'Color',gc_col,FontSize=titleFS);
+title(ax,title_txt,'Color','k',FontSize=titleFS);
 xticks(ax,xtickval); yticks(ax,ytickval);
 xticklabels(ax,xticklab); yticklabels(ax,yticklab);
 ax.XAxis.FontSize = tickFS; ax.YAxis.FontSize = tickFS;

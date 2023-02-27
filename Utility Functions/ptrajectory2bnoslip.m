@@ -7,29 +7,23 @@ function ptrajectory2bnoslip(ax, tau, idx_now, idx_pre, x, y, csi, csj, c_i, lW_
     tau = tau(idx_pre:idx_now);
     x = x(idx_pre:idx_now); y = y(idx_pre:idx_now);
 
-    % the contact states
-    cs = unique(tau, 'stable'); % preserves the order
+    % obtain the starting and ending points for each contact state
+    idx_end = [find((diff(tau) ~= 0) == 1) numel(tau)];
+    idx_start = [1, idx_end(1:end-1)];
 
-    % let's iterate over these states
-    for n = 1 : numel(cs)
-
-        % if this is the first state, or another state
-        if n == 1
-            % find the starting point for the cs
-            idx_start = find(tau == cs(n), 1, 'first');
-        else
-            idx_start = find(tau == cs(n), 1, 'first') - 1; % stitch with the last point in previous state
-            
-        end
-        idx_end   = find(tau == cs(n), 1, 'last'); % the ending point for the state.
+    % plot the trajectories obtained in each contact state
+    for n = 1 : numel(idx_end)
+        
+        % find a point in the current interval to evaluate the contact state at
+        tau_now = tau(floor(0.5*( idx_start(n) + idx_end(n) )));
 
         % plot the trajectory
-        if cs(n) == csi
-            plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_i, 'Color', c_i);
-        elseif cs(n) == csj
-            plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_j, 'Color', c_j);
+        if tau_now == csi
+            plot(ax, x(idx_start(n):idx_end(n)), y(idx_start(n):idx_end(n)), 'LineWidth', 2*lW_s_i, 'Color', c_i);
+        elseif tau_now == csj
+            plot(ax, x(idx_start(n):idx_end(n)), y(idx_start(n):idx_end(n)), 'LineWidth', 2*lW_s_j, 'Color', c_j);
         else
-            plot(ax, x(idx_start:idx_end), y(idx_start:idx_end), 'LineWidth', 2*lW_s_j, 'Color', col);
+            plot(ax, x(idx_start(n):idx_end(n)), y(idx_start(n):idx_end(n)), 'LineWidth', 2*lW_s_j, 'Color', col);
         end
         
     end

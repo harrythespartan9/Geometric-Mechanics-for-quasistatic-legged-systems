@@ -6,8 +6,12 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
                                                                     phi_tau_i, phi_tau_j,...
                                                                     phi_state_i, phi_state_j,...
                                                                     t,...
-                                                                    xi, yi, thetai, a1_i, a2_i,...
-                                                                    xj, yj, thetaj, a1_j, a2_j)
+                                                                    xi, yi, thetai,...
+                                                                    zxi, zyi, zthetai,...
+                                                                    a1_i, a2_i,...
+                                                                    xj, yj, thetaj,...
+                                                                    zxj, zyj, zthetaj,...
+                                                                    a1_j, a2_j)
     
     % indices before, after, active, and switching phases of the contact state under consideration
     idxi_before =    t < phi_start_i(phi_state_i == 1.0);
@@ -32,7 +36,7 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     [A1_j, A2_j] = stitchshapefor2bgait(idxj_before, idxj_during, idxj_switch, idxj_after, a1_j, a2_j, 2);
 
     % compute the kinematics
-    b_phi = stitchSE2trajectories(xi, yi, thetai, xj, yj, thetaj, idxi_before, idxi_during, idxj_during, idxj_after);
+    [b_phi, z_phi] = stitchSE2trajectories(xi, yi, thetai, zxi, zyi, zthetai, xj, yj, thetaj, zxj, zyj, zthetaj, idxi_before, idxi_during, idxj_during, idxj_after);
 
     % Store the positive scaling gait results
     ptrajectory{1} = t;
@@ -49,6 +53,9 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     ptrajectory{12} = idxj_during;  % same as above for jth slice
     ptrajectory{13} = idxj_switch;
     ptrajectory{14} = phi_period;   % divides the gait cycle into 4 different time periods-- before i, during i, during j, after j
+    ptrajectory{15} = z_phi(1);
+    ptrajectory{16} = z_phi(2);
+    ptrajectory{17} = z_phi(3);
 
     % Store the gait period information
     pperiod.phi_start   = phi_start;
@@ -64,15 +71,24 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     % ------------------------------------------------------------------------------------------------------------------------------------------( -, - )--------
     % flip the trajectories to scale in the negative direction
     a1_i_mm = fliplr(a1_i); a2_i_mm = fliplr(a2_i);
-    xi_mm = fliplr(xi) - xi(end); yi_mm = fliplr(yi) - yi(end); thetai_mm = fliplr(thetai) - thetai(end);
+    xi_mm = [xi zxi]; yi_mm = [yi zyi]; thetai_mm = [thetai zthetai];
+    xi_mm = fliplr(xi_mm) - xi_mm(end); yi_mm = fliplr(yi_mm) - yi_mm(end); thetai_mm = fliplr(thetai_mm) - thetai_mm(end);
+    zxi_mm = xi_mm(end); zyi_mm = yi_mm(end); zthetai_mm = thetai_mm(end);
+    xi_mm = xi_mm(1:end-1); yi_mm = yi_mm(1:end-1); thetai_mm = thetai_mm(1:end-1);
+
     a1_j_mm = fliplr(a1_j); a2_j_mm = fliplr(a2_j);
-    xj_mm = fliplr(xj) - xj(end); yj_mm = fliplr(yj) - yj(end); thetaj_mm = fliplr(thetaj) - thetaj(end);
+    xj_mm = [xj zxj]; yj_mm = [yj zyj]; thetaj_mm = [thetaj zthetaj];
+    xj_mm = fliplr(xj_mm) - xj_mm(end); yj_mm = fliplr(yj_mm) - yj_mm(end); thetaj_mm = fliplr(thetaj_mm) - thetaj_mm(end);
+    zxj_mm = xj_mm(end); zyj_mm = yj_mm(end); zthetaj_mm = thetaj_mm(end);
+    xj_mm = xj_mm(1:end-1); yj_mm = yj_mm(1:end-1); thetaj_mm = thetaj_mm(1:end-1);
+
 
     % repeat earlier steps
     [A1_i, A2_i] = stitchshapefor2bgait(idxi_before, idxi_during, idxi_switch, idxi_after, a1_i_mm, a2_i_mm, 1);
     [A1_j, A2_j] = stitchshapefor2bgait(idxj_before, idxj_during, idxj_switch, idxj_after, a1_j_mm, a2_j_mm, 2);
     
-    b_phi = stitchSE2trajectories(xi_mm, yi_mm, thetai_mm, xj_mm, yj_mm, thetaj_mm, idxi_before, idxi_during, idxj_during, idxj_after);
+    [b_phi, z_phi] = stitchSE2trajectories(xi_mm, yi_mm, thetai_mm, zxi_mm, zyi_mm, zthetai_mm, xj_mm, yj_mm, thetaj_mm, zxj_mm, zyj_mm, zthetaj_mm,...
+        idxi_before, idxi_during, idxj_during, idxj_after);
     
     mtrajectory{1} = t;
     mtrajectory{2} = b_phi(1,:);
@@ -88,6 +104,9 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     mtrajectory{12} = idxj_during;
     mtrajectory{13} = idxj_switch;
     mtrajectory{14} = phi_period;
+    mtrajectory{15} = z_phi(1);
+    mtrajectory{16} = z_phi(2);
+    mtrajectory{17} = z_phi(3);
 
     mperiod.phi_start   = phi_start;
     mperiod.phi_start_i = phi_start_i;
@@ -103,7 +122,8 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     [A1_i, A2_i] = stitchshapefor2bgait(idxi_before, idxi_during, idxi_switch, idxi_after, a1_i_mm, a2_i_mm, 1);
     [A1_j, A2_j] = stitchshapefor2bgait(idxj_before, idxj_during, idxj_switch, idxj_after, a1_j, a2_j, 2);
     
-    b_phi = stitchSE2trajectories(xi_mm, yi_mm, thetai_mm, xj, yj, thetaj, idxi_before, idxi_during, idxj_during, idxj_after);
+    [b_phi, z_phi] = stitchSE2trajectories(xi_mm, yi_mm, thetai_mm, zxi_mm, zyi_mm, zthetai_mm, xj, yj, thetaj, zxj, zyj, zthetaj,...
+        idxi_before, idxi_during, idxj_during, idxj_after);
     
     mptrajectory{1} = t;
     mptrajectory{2} = b_phi(1,:);
@@ -119,6 +139,9 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     mptrajectory{12} = idxj_during;
     mptrajectory{13} = idxj_switch;
     mptrajectory{14} = phi_period;
+    mptrajectory{15} = z_phi(1);
+    mptrajectory{16} = z_phi(2);
+    mptrajectory{17} = z_phi(3);
 
     mpperiod.phi_start   = phi_start;
     mpperiod.phi_start_i = phi_start_i;
@@ -134,7 +157,8 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     [A1_i, A2_i] = stitchshapefor2bgait(idxi_before, idxi_during, idxi_switch, idxi_after, a1_i, a2_i, 1);
     [A1_j, A2_j] = stitchshapefor2bgait(idxj_before, idxj_during, idxj_switch, idxj_after, a1_j_mm, a2_j_mm, 2);
     
-    b_phi = stitchSE2trajectories(xi, yi, thetai, xj_mm, yj_mm, thetaj_mm, idxi_before, idxi_during, idxj_during, idxj_after);
+    [b_phi, z_phi] = stitchSE2trajectories(xi, yi, thetai, zxi, zyi, zthetai, xj_mm, yj_mm, thetaj_mm, zxj_mm, zyj_mm, zthetaj_mm,...
+        idxi_before, idxi_during, idxj_during, idxj_after);
     
     pmtrajectory{1} = t;
     pmtrajectory{2} = b_phi(1,:);
@@ -150,6 +174,9 @@ function [ ptrajectory, mtrajectory, mptrajectory, pmtrajectory, ...
     pmtrajectory{12} = idxj_during;
     pmtrajectory{13} = idxj_switch;
     pmtrajectory{14} = phi_period;
+    pmtrajectory{15} = z_phi(1);
+    pmtrajectory{16} = z_phi(2);
+    pmtrajectory{17} = z_phi(3);
 
     pmperiod.phi_start   = phi_start;
     pmperiod.phi_start_i = phi_start_i;

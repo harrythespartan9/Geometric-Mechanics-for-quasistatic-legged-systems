@@ -103,21 +103,21 @@ CUB = flipud([159.3750,99.6030,63.4312;
             150,150,150;
             99,99,99])/255;
 plot_info.CUB = interp1(linspace(0,100,size(CUB,1)), CUB, linspace(0,100,size(turbo,1)));
-% plot_info.col = (1/255)*[215,25,28; % contact state colors (distinct)
-%                         96,0,220;
-%                         44,123,182;
-%                         77,175,74;
-%                         255,127,0;
-%                         231,41,138;
-%                         99,99,99];
-plot_info.col = (1/255)*[0,0,0; % contact state colors (active- black and inactive- grey)
-            0,0,0;
-            0,0,0;
-            0,0,0;
-            0,0,0;
-            0,0,0;
-            72,72,72];
-plot_info.gc_col = plot_info.col(kin_info.cs_idx,:); % get the current gait constraint color
+plot_info.col = (1/255)*[215,25,28; % contact state colors (distinct)
+                        96,0,220;
+                        44,123,182;
+                        77,175,74;
+                        255,127,0;
+                        231,41,138;
+                        72,72,72]; % 99,99,99 old
+% plot_info.col = (1/255)*[0,0,0; % contact state colors (active- black and inactive- grey)
+%             0,0,0;
+%             0,0,0;
+%             0,0,0;
+%             0,0,0;
+%             0,0,0;
+%             72,72,72];
+plot_info.gc_col = plot_info.col(kin_info.cs_idx,:); 
 plot_info.col_backg = [255,255,255]/255; % plot background color
 
 % shape-space grid and plotting stuff -------------------------------------
@@ -173,7 +173,7 @@ y_label_txt = ['$$\' 'alpha_{' num2str(cs(2)) '}' '$$'];
 s_txt = [num2str(cs(1)) num2str(cs(2))];
 sgtitle_txt = ['$$S_{' s_txt '}$$'];
 q_title_txt = '$$q$$'; 
-ksq_title_text = ['$$k_{' s_txt '}^{2}$$'];
+ksq_title_text = ['$$F_{' s_txt '}$$']; % ['$$k_{' s_txt '}^{2}$$'] % old notation
 dpsi_title_text = ['$$d\psi_{' s_txt '}$$'];
 plot_info.cs1_shape_txt = cs1_shape_txt;
 plot_info.cs2_shape_txt = cs2_shape_txt;
@@ -566,42 +566,43 @@ for k = 1:numel(P.tileIdx) % iterate
     switch k
         
         case 1 % robot configuration 'q'
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% find a better way to do this later. %%%%%%%%%%%%%%
-            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
-                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), 'Color', col(cs_idx,:), 'LineWidth', lW);
-            axis equal square; hold on; 
-            set(axP{k}, 'xTick',[]); set(axP{k}, 'yTick',[]);
-            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
-                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), 'Color', col(cs_idx,:), 'LineWidth', lW);
-            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, 0, xx, yy, th)']),...
-                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', col(cs_idx,:), 'LineWidth', lW_r);
-            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, 0, xx, yy, th)']),...
-                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', col(cs_idx,:), 'LineWidth', lW_r);
-            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
-                eval(['pltkin.leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), circS, col(cs_idx,:), 'filled');
-            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
-                eval(['pltkin.leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), circS, col(cs_idx,:), 'filled');
-            quiver(axP{k}, sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_x(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
-                sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_y(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
-                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_u(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
-                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_v(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
-                'Color', col_q, 'LineWidth', lW_kq, 'LineStyle', ':', 'AutoScale', 'off', 'ShowArrowHead', 'off'); % ksq line
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            plot(axP{k}, pltkin.legbase1_leg1_x(1, 1, a1, xx, yy, th), pltkin.legbase1_leg1_y(1, 1, a1, xx, yy, th), 'Color', col(1,:), 'LineWidth', lW);
-            plot(axP{k}, pltkin.legbase2_leg2_x(1, 1, a2, xx, yy, th), pltkin.legbase2_leg2_y(1, 1, a2, xx, yy, th), 'Color', col(1,:), 'LineWidth', lW);
+            plot(axP{k}, pltkin.legbase1_leg1_x(1, 1, a1, xx, yy, th), pltkin.legbase1_leg1_y(1, 1, a1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
+            axis equal square; hold on; 
+            plot(axP{k}, pltkin.legbase2_leg2_x(1, 1, a2, xx, yy, th), pltkin.legbase2_leg2_y(1, 1, a2, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.legbase3_leg3_x(1, 1, a3, xx, yy, th), pltkin.legbase3_leg3_y(1, 1, a3, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.legbase4_leg4_x(1, 1, a4, xx, yy, th), pltkin.legbase4_leg4_y(1, 1, a4, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW);
             plot(axP{k}, pltkin.topright2topleft_x(1, xx, yy, th), pltkin.topright2topleft_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.topleft2botleft_x(1, xx, yy, th), pltkin.topleft2botleft_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.botleft2botright_x(1, xx, yy, th), pltkin.botleft2botright_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
             plot(axP{k}, pltkin.botright2topright_x(1, xx, yy, th), pltkin.botright2topright_y(1, xx, yy, th), 'Color', col(7,:), 'LineWidth', lW_b);
-            quiver(axP{k}, pltkin.body_x(xx, yy, th), pltkin.body_y(xx, yy, th), frame_scale*sum([1,0]*pltkin.bodyf_x(xx, yy, th)),...
-                frame_scale*sum([0,1]*pltkin.bodyf_x(xx, yy, th)),...
-                'LineWidth', lW_qf, 'Color', col(1,:), 'AutoScale', 'off', 'ShowArrowHead', 'off');
-            quiver(axP{k}, pltkin.body_x(xx, yy, th), pltkin.body_y(xx, yy, th), frame_scale*sum([1,0]*pltkin.bodyf_y(xx, yy, th)), frame_scale*sum([0,1]*pltkin.bodyf_y(xx, yy, th)),...
-                'LineWidth', lW_qf, 'Color', col(1,:), 'AutoScale', 'off', 'ShowArrowHead', 'off');
             quiver(axP{k}, 0, 0, frame_scale*1, 0, 'LineWidth', lW_qf, 'Color', 'k', 'AutoScale', 'off', 'ShowArrowHead', 'off');
             quiver(axP{k}, 0, 0, 0, frame_scale*1, 'LineWidth', lW_qf, 'Color', 'k', 'AutoScale', 'off', 'ShowArrowHead', 'off');
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% find a better way to do this later. %%%%%%%%%%%%%%       
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), 'Color', gc_col, 'LineWidth', lW);
+            set(axP{k}, 'xTick',[]); set(axP{k}, 'yTick',[]);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), 'Color', gc_col, 'LineWidth', lW);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_x(1, 1, 0, xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(1)) '_leg' num2str(cs(1)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', gc_col, 'LineWidth', lW_r);
+            plot(axP{k}, eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_x(1, 1, 0, xx, yy, th)']),...
+                eval(['pltkin.legbase' num2str(cs(2)) '_leg' num2str(cs(2)) '_y(1, 1, 0, xx, yy, th)']), 'LineStyle', '--', 'Color', gc_col, 'LineWidth', lW_r);
+            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(1)) '_x(1, 1, a' num2str(cs(1)) ', xx, yy, th)']),...
+                eval(['pltkin.leg' num2str(cs(1)) '_y(1, 1, a' num2str(cs(1)) ', xx, yy, th)']), circS, gc_col, 'filled');
+            scatter(axP{k}, eval(['pltkin.leg' num2str(cs(2)) '_x(1, 1, a' num2str(cs(2)) ', xx, yy, th)']),...
+                eval(['pltkin.leg' num2str(cs(2)) '_y(1, 1, a' num2str(cs(2)) ', xx, yy, th)']), circS, gc_col, 'filled');
+            quiver(axP{k}, sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_x(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
+                sum([1,0].*eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_y(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)'])),...
+                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_u(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
+                eval(['pltkin.k_leg' num2str(cs(1)) '_leg' num2str(cs(2)) '_v(1,1,a' num2str(cs(1)) ',a' num2str(cs(2)) ',xx,yy,th)']),...
+                'Color', col_q, 'LineWidth', lW_kq, 'LineStyle', ':', 'AutoScale', 'off', 'ShowArrowHead', 'off'); % ksq line
+            quiver(axP{k}, pltkin.body_x(xx, yy, th), pltkin.body_y(xx, yy, th), frame_scale*sum([1,0]*pltkin.bodyf_x(xx, yy, th)),...
+                frame_scale*sum([0,1]*pltkin.bodyf_x(xx, yy, th)),...
+                'LineWidth', lW_qf, 'Color', gc_col, 'AutoScale', 'off', 'ShowArrowHead', 'off');
+            quiver(axP{k}, pltkin.body_x(xx, yy, th), pltkin.body_y(xx, yy, th), frame_scale*sum([1,0]*pltkin.bodyf_y(xx, yy, th)), frame_scale*sum([0,1]*pltkin.bodyf_y(xx, yy, th)),...
+                'LineWidth', lW_qf, 'Color', gc_col, 'AutoScale', 'off', 'ShowArrowHead', 'off');
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%       
             axis(axP{k}, [limX, limY]); axP{k}.XColor = col_q; axP{k}.YColor = col_q; axP{k}.LineWidth = boxW;
             set(axP{k},'Color',col_backg); title(plot_info.q_title_txt,FontSize=titleFS);
 
@@ -644,4 +645,4 @@ plot_info.axP = axP; % store the parent axes
 plot_info.axC = plotchildlayout({CA,C1,C2,C3,C4},plot_kin,plot_info); % arrange the child layout structures in a cell array
 
 % Sumanifold kinematics title
-title(P.LayoutObj,plot_info.sgtitle_txt,'Color',plot_info.col(1,:),'Interpreter','latex','FontSize',plot_info.sgtitleFS);
+title(P.LayoutObj,plot_info.sgtitle_txt,'Color',gc_col,'Interpreter','latex','FontSize',plot_info.sgtitleFS);

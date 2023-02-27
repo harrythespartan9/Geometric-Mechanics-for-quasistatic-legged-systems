@@ -37,6 +37,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     xticklab_i = datai{1}.xticklab; yticklab_i = datai{1}.yticklab;
     xlimits_i = datai{1}.xlimits; ylimits_i = datai{1}.ylimits;
     ksq_lb_i =  datai{1}.ksq_lb;
+    domainPercentage = 5; % arrow length as a function of the shape-space domain
+    arrAngle = deg2rad(18); % using 30degrees as an experimental angle
     
     % sweep data for ith contact state
     a1_i = datai{2}.ai; a2_i = datai{2}.aj;
@@ -64,7 +66,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             P.grid = [3 1];
 
             % path constraint props to aid planning
-            colP_i = datai{1}.colP;
+%             colP_i = datai{1}.colP;
             lS_i = datai{1}.lS;
 
         case 2 % infinitesimal disps with trajectory + animation
@@ -142,8 +144,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C3.tile_start = (C3.start(1)-1)*P.grid(2) + C3.start(2);
             C3.sweeptxt = {'dz__x_sweep', 'dz__y_sweep'};
             if cond == 3
-                C3.titletxt = {['$$dz^{x}_{\psi_{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$'],...
-            ['$$dz^{y}_{\psi_{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
+                C3.titletxt = {['$$dz^{x}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$'],...
+            ['$$dz^{y}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
             else
                 C3.titletxt = {'$$dz^{x}_{\psi}$$', '$$dz^{y}_{\psi}$$'};
             end
@@ -154,7 +156,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.tile_start = (C4.start(1)-1)*P.grid(2) + C4.start(2);
             C4.sweeptxt = {'dz__theta_sweep'};
             if cond == 3
-                C4.titletxt = {['$$dz^{\theta}_{\psi_{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
+                C4.titletxt = {['$$dz^{\theta}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
             else
                 C4.titletxt = {'$$dz^{\theta}_{\psi}$$'};
             end
@@ -176,8 +178,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     C1.tile_start = (C1.start(1)-1)*P.grid(2) + C1.start(2);
     C1.sweeptxt = {'dz__x_sweep', 'dz__y_sweep'};
     if cond == 3
-        C1.titletxt = {['$$dz^{x}_{\psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$'],...
-            ['$$dz^{y}_{\psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
+        C1.titletxt = {['$$dz^{x}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$'],...
+            ['$$dz^{y}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
     else
         C1.titletxt = {'$$dz^{x}_{\psi}$$', '$$dz^{y}_{\psi}$$'};
     end
@@ -188,7 +190,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     C2.tile_start = (C2.start(1)-1)*P.grid(2) + C2.start(2);
     C2.sweeptxt = {'dz__theta_sweep'};
     if cond == 3
-        C2.titletxt = {['$$dz^{\theta}_{\psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
+        C2.titletxt = {['$$dz^{\theta}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
     else
         C2.titletxt = {'$$dz^{\theta}_{\psi}$$'};
     end
@@ -211,7 +213,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         if cond == 1
             contourf(ax{i},a1_i,a2_i,datai{2}.(C1.sweeptxt{i}),cfLvl_i,'FaceAlpha',fA_i,'LineWidth',lW_c_i);
             axis equal tight; hold on; view(2);
-            contour(ax{i}, a1_i,a2_i,ksq_sweep_i,cLvl_i,lS_i,'LineWidth',lW_c_i+0.5,'EdgeColor',colP_i); % path constraint contours for path planning
+            contour(ax{i}, a1_i,a2_i,ksq_sweep_i,cLvl_i,lS_i,'LineWidth',lW_c_i+0.5,'EdgeColor',gc_col_i); % path constraint contours for path planning
         else
             contourf(ax{i},a1_i,a2_i,datai{2}.(C1.sweeptxt{i}),cfLvl_i,'FaceAlpha',fA_i,'LineWidth',lW_c_i,'LineStyle','none'); %,'LineStyle','none'
             axis equal tight; hold on; view(2);
@@ -220,7 +222,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         colormap(ax{i},CUB_i); clim(ax{i},C1_lim);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
 %         if cond ~= 3
-        title(ax{i},C1.titletxt{i},'Color',gc_col_i,FontSize=titleFS_i);
+        title(ax{i},C1.titletxt{i},'Color','k',FontSize=titleFS_i);
 %         end
         if i == 1
             xlabel(ax{i},x_label_txt_i,FontSize=labelFS_i); 
@@ -246,7 +248,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         if cond == 1
             contourf(ax{i},a1_i,a2_i,datai{2}.(C2.sweeptxt{i}),cfLvl_i,'FaceAlpha',fA_i,'LineWidth',lW_c_i);
             axis equal tight; hold on; view(2);
-            contour(ax{i}, a1_i,a2_i,ksq_sweep_i,cLvl_i,lS_i,'LineWidth',lW_c_i+0.5,'EdgeColor',colP_i); % path constraint contours for path planning
+            contour(ax{i}, a1_i,a2_i,ksq_sweep_i,cLvl_i,lS_i,'LineWidth',lW_c_i+0.5,'EdgeColor',gc_col_i); % path constraint contours for path planning
         else
             contourf(ax{i},a1_i,a2_i,datai{2}.(C2.sweeptxt{i}),cfLvl_i,'FaceAlpha',fA_i,'LineWidth',lW_c_i,'LineStyle','none');
             axis equal tight; hold on; view(2);
@@ -255,7 +257,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         colormap(ax{i},CUB_i); clim(ax{i},C2_lim);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
 %         if cond ~= 3
-        title(ax{i},C2.titletxt{i},'Color',gc_col_i,FontSize=titleFS_i);
+        title(ax{i},C2.titletxt{i},'Color','k',FontSize=titleFS_i);
 %         end
         xticks(ax{i}, xtickval_i); yticks(ax{i}, ytickval_i);
         xticklabels(ax{i}, xticklab_i); yticklabels(ax{i}, yticklab_i);
@@ -273,7 +275,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         case 1
 
             % label the figure
-            title(P,sgtitle_txt_i,'Color',col_i(1,:),'Interpreter','latex','FontSize',sgtitleFS_i);
+            title(P,sgtitle_txt_i,'Color',gc_col_i,'Interpreter','latex','FontSize',sgtitleFS_i);
 
             % return empty out strcuts
             dataij = [];
@@ -298,6 +300,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             ztheta_i = path_i.net_displacement(3,:);
             dnum_i = datai{3}.dnum; 
             cs_idx_i = datai{3}.cs_idx;
+            ank = datai{3}.ank;
+
+            % get the initial condition of the path
+            ic_i = path_i.initial_condition;
 
             % path scaling vector (the main path is scaled)
             pscale = 10*(1:10);
@@ -324,7 +330,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             end
             
             % Set the main title
-            title(P,sgtitle_txt_i,'Color',col_i(1,:),'Interpreter','latex','FontSize',sgtitleFS_i);
+            title(P,sgtitle_txt_i,'Color',gc_col_i,'Interpreter','latex','FontSize',sgtitleFS_i);
             
             % Create a structure to hold the final frame information for each path scaling
             if vidF_i
@@ -342,6 +348,9 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 
             % Iterate over each open trajectory case
             for i = skp_path % plotting 10%, 40%, 70%, and 100%
+
+                % Obtain the path lengths (or t in our case)
+                t_int_i = path_i.path_length{i};
 
                 % Unpack the path data for the current trajectory
                 t_i      = path_i.open_trajectory{i}{1};
@@ -367,8 +376,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     end
                 end
 
-%                 % set the arrow scale for the path in the shape space
-%                 arrScale = 10;
+                % set the arrow size and angle for manual plotting
+                arrSize = domainPercentage/100*2*ank; % convert the length of the arrow to radians
 
                 % Child 1-- add the shape space trajectory on top
                 h1 = cell(1,C1.num); 
@@ -378,7 +387,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         delete(h1_s{j}); % delete(h1{j}); % delete from previous path
                     end
                     
-                    h1{j} = plot(C1.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', c_i);
+                    h1{j} = plot(C1.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                    plotpatharrow(C1.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
 %                     h1_A{j} = quiver( C1.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
 %                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
                 end
@@ -390,7 +400,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     if i ~= 1 && exist('h2_s', 'var')
                         delete(h2_s{j}); % delete(h2{j});
                     end
-                    h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', c_i);
+                    h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                    plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
 %                     h2_A{j} = quiver( C2.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
 %                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
                 end
@@ -415,13 +426,13 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         ax{j} = nexttile(C3.Layout_Obj, j);
                         switch j
                             case 1
-                                bx = plot(ax{j}, t_i, x_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                bx = plot(ax{j}, t_i, x_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 ylabel(ax{j}, '$$b^x$$', FontSize=labelFS_i); ylim(ax{j}, lim_bxy);
                             case 2
-                                by = plot(ax{j}, t_i, y_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                by = plot(ax{j}, t_i, y_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 ylabel(ax{j}, '$$b^y$$', FontSize=labelFS_i); ylim(ax{j}, lim_bxy);
                             case 3
-                                btheta = plot(ax{j}, t_i, theta_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                btheta = plot(ax{j}, t_i, theta_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 ylabel(ax{j}, '$$b^{\theta}$$', FontSize=labelFS_i);
                                 xlabel(ax{j}, '$$t$$', FontSize=labelFS_i); ylim(ax{j}, lim_btheta);
                         end
@@ -429,7 +440,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         ax{j}.XAxis.FontSize = tickFS_i-5; ax{j}.YAxis.FontSize = tickFS_i-5;
                         grid on; hold on; axis square; xlim(ax{j}, [min(t_i) max(t_i)]);
                     end
-                    title(C3.Layout_Obj, C3.titletxt, 'Color', gc_col_i, 'Interpreter', 'latex', FontSize=titleFS_i);
+                    title(C3.Layout_Obj, C3.titletxt, 'Color', 'k', 'Interpreter', 'latex', FontSize=titleFS_i);
                     C3.axes = ax;
 
                     % Child 4-- SE(2) net displacements
@@ -445,19 +456,19 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         ax{j} = nexttile(C4.Layout_Obj, j);
                         switch j
                             case 1
-                                plot(ax{j}, pscale, zx_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                plot(ax{j}, pscale, zx_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 grid on; hold on;
-                                zxiter = scatter(ax{j}, pscale(i), zx_i(i), circS_i, c_i, 'filled');
+                                zxiter = scatter(ax{j}, pscale(i), zx_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^x$$', FontSize=labelFS_i); ylim(lim_zxy);
                             case 2
-                                plot(ax{j}, pscale, zy_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                plot(ax{j}, pscale, zy_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 grid on; hold on; axis square;
-                                zyiter = scatter(ax{j}, pscale(i), zy_i(i), circS_i, c_i, 'filled');
+                                zyiter = scatter(ax{j}, pscale(i), zy_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^y$$', FontSize=labelFS_i); ylim(lim_zxy);
                             case 3
-                                plot(ax{j}, pscale, ztheta_i, '-', 'LineWidth', lW_s_i, 'Color', c_i);
+                                plot(ax{j}, pscale, ztheta_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 grid on; hold on; axis square;
-                                zthetaiter = scatter(ax{j}, pscale(i), ztheta_i(i), circS_i, c_i, 'filled');
+                                zthetaiter = scatter(ax{j}, pscale(i), ztheta_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^{\theta}$$', FontSize=labelFS_i);
                                 xlabel(ax{j}, 'Path scaling (\%)', FontSize=labelFS_i);  ylim(lim_ztheta);
                         end
@@ -465,7 +476,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         ax{j}.XAxis.FontSize = tickFS_i-5; ax{j}.YAxis.FontSize = tickFS_i-5;
                         xlim([min(pscale) max(pscale)]);
                     end
-                    title(C4.Layout_Obj, C4.titletxt, 'Color', gc_col_i, 'Interpreter', 'latex', FontSize=titleFS_i);
+                    title(C4.Layout_Obj, C4.titletxt, 'Color', 'k', 'Interpreter', 'latex', FontSize=titleFS_i);
                     C4.axes = ax;
 
                 else
@@ -519,11 +530,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     for j = 1:C3.num
                         switch j
                             case 1
-                                bx = plot(C3.axes{j}, t_i, x_i, '-', 'LineWidth', lW_s_i, 'Color', c_i); ylim(C3.axes{j}, lim_bxy);
+                                bx = plot(C3.axes{j}, t_i, x_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i); ylim(C3.axes{j}, lim_bxy);
                             case 2
-                                by = plot(C3.axes{j}, t_i, y_i, '-', 'LineWidth', lW_s_i, 'Color', c_i); ylim(C3.axes{j}, lim_bxy);
+                                by = plot(C3.axes{j}, t_i, y_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i); ylim(C3.axes{j}, lim_bxy);
                             case 3
-                                btheta = plot(C3.axes{j}, t_i, theta_i, '-', 'LineWidth', lW_s_i, 'Color', c_i); ylim(C3.axes{j}, lim_btheta);
+                                btheta = plot(C3.axes{j}, t_i, theta_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i); ylim(C3.axes{j}, lim_btheta);
                         end
                         xlim(C3.axes{j}, [min(t_i) max(t_i)]);
                     end
@@ -532,11 +543,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     for j = 1:C4.num
                         switch j
                             case 1
-                                zxiter = scatter(C4.axes{j}, pscale(i), zx_i(i), circS_i, c_i, 'filled');
+                                zxiter = scatter(C4.axes{j}, pscale(i), zx_i(i), circS_i, gc_col_i, 'filled');
                             case 2
-                                zyiter = scatter(C4.axes{j}, pscale(i), zy_i(i), circS_i, c_i, 'filled');
+                                zyiter = scatter(C4.axes{j}, pscale(i), zy_i(i), circS_i, gc_col_i, 'filled');
                             case 3
-                                zthetaiter = scatter(C4.axes{j}, pscale(i), ztheta_i(i), circS_i, c_i, 'filled');
+                                zthetaiter = scatter(C4.axes{j}, pscale(i), ztheta_i(i), circS_i, gc_col_i, 'filled');
                         end
                     end
 
@@ -632,45 +643,47 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     hA{6} = plot(axA, left__x(:,j), left__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i);
                     hA{7} = plot(axA, bot__x(:,j), bot__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i);
                     hA{8} = plot(axA, right__x(:,j), right__y(:,j), 'Color', col_i(7,:), 'LineWidth', lW_b_i);
-                    hA{9} = quiver(axA, body__x(j), body__y(j), frame_scale_i*bodyf__x(1,j), frame_scale_i*bodyf__x(2,j), 'LineWidth', lW_qf_i, 'Color', c_i,...
+                    hA{9} = quiver(axA, body__x(j), body__y(j), frame_scale_i*bodyf__x(1,j), frame_scale_i*bodyf__x(2,j), 'LineWidth', lW_qf_i, 'Color', gc_col_i,...
                         'AutoScale', 'off', 'ShowArrowHead', 'off'); % SE(2) body frame 'b'
-                    hA{10} = quiver(axA, body__x(j), body__y(j), frame_scale_i*bodyf__y(1,j), frame_scale_i*bodyf__y(2,j), 'LineWidth', lW_qf_i, 'Color', c_i,...
+                    hA{10} = quiver(axA, body__x(j), body__y(j), frame_scale_i*bodyf__y(1,j), frame_scale_i*bodyf__y(2,j), 'LineWidth', lW_qf_i, 'Color', gc_col_i,...
                         'AutoScale', 'off', 'ShowArrowHead', 'off');
                     % limit the position space for viewing
                     axis(axA, lim_temp);
                     % plot the body trajectory stuff
-                    hA{11} = plot(axA, body__x(1:j), body__y(1:j), 'LineWidth', 2*lW_s_i, 'Color', c_i);
+                    hA{11} = plot(axA, body__x(1:j), body__y(1:j), 'LineWidth', 2*lW_s_i, 'Color', gc_col_i);
                     % plot the active contact state related stuff
-                    hA{12} = plot(axA, leg_i__x(:,j), leg_i__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); 
-                    hA{13} = plot(axA, leg_j__x(:,j), leg_j__y(:,j), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i);
-                    hA{14} = plot(axA, mean_leg_i__x(:,j), mean_leg_i__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i);
-                    hA{15} = plot(axA, mean_leg_j__x(:,j), mean_leg_j__y(:,j), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i);
-                    hA{16} = scatter(axA, legtip_i__x(j), legtip_i__y(j), circS_i, col_i(cs_idx_i,:), 'filled');
-                    hA{17} = scatter(axA, legtip_j__x(j), legtip_j__y(j), circS_i, col_i(cs_idx_i,:), 'filled');
+                    hA{12} = plot(axA, leg_i__x(:,j), leg_i__y(:,j), 'Color', gc_col_i, 'LineWidth', lW_i); 
+                    hA{13} = plot(axA, leg_j__x(:,j), leg_j__y(:,j), 'Color', gc_col_i, 'LineWidth', lW_i);
+                    hA{14} = plot(axA, mean_leg_i__x(:,j), mean_leg_i__y(:,j), 'LineStyle', '--', 'Color', gc_col_i, 'LineWidth', lW_r_i);
+                    hA{15} = plot(axA, mean_leg_j__x(:,j), mean_leg_j__y(:,j), 'LineStyle', '--', 'Color', gc_col_i, 'LineWidth', lW_r_i);
+                    hA{16} = scatter(axA, legtip_i__x(j), legtip_i__y(j), circS_i, gc_col_i, 'filled');
+                    hA{17} = scatter(axA, legtip_j__x(j), legtip_j__y(j), circS_i, gc_col_i, 'filled');
                     hA{18} = plot(axA, ksqij__x(:,j), ksqij__y(:,j), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); % ksq line
-                    title(axA, ['$$' num2str((i*10)/100) '\, \psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '} $$'], 'Color', col_i(1,:),...
-                        'Interpreter', 'latex', FontSize=titleFS_i);
+                    pathtitle(axA, cs_i, (i*10)/100, 1, ic_i, t_int_i, titleFS_i);
+%                     title(axA, ['$$\left(' num2str((i*10)/100, 3) '\right) \, \psi^{' num2str(cs_i(1)) num2str(cs_i(2))...
+%                         '} \left( (' num2str(ic_i(1), 3) ', ' num2str(ic_i(2), 3) '), ' num2str(t_int_i, 3) ' \right) $$'], 'Color', gc_col_i,...
+%                         'Interpreter', 'latex', FontSize=titleFS_i);
                     % Child 1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     h1_s = cell(1,C1.num);
                     for k = 1:C1.num
-                        h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, c_i, 'filled');
+                        h1_s{k} = scatter(C1.axes{k}, a1_i(j), a2_i(j), circS_i, gc_col_i, 'filled');
                     end
 
                     % Child 2 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     h2_s = cell(1,C2.num);
                     for k = 1:C2.num
-                        h2_s{k} = scatter(C2.axes{k}, a1_i(j), a2_i(j), circS_i, c_i, 'filled');
+                        h2_s{k} = scatter(C2.axes{k}, a1_i(j), a2_i(j), circS_i, gc_col_i, 'filled');
                     end
 
                     % Child 3 current point SE(2) trajectory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     for k = 1:C3.num
                         switch k
                             case 1
-                                bxt = scatter(C3.axes{k}, t_i(j), x_i(j), circS_i, c_i, 'filled');
+                                bxt = scatter(C3.axes{k}, t_i(j), x_i(j), circS_i, gc_col_i, 'filled');
                             case 2
-                                byt = scatter(C3.axes{k}, t_i(j), y_i(j), circS_i, c_i, 'filled');
+                                byt = scatter(C3.axes{k}, t_i(j), y_i(j), circS_i, gc_col_i, 'filled');
                             case 3
-                                bthetat = scatter(C3.axes{k}, t_i(j), theta_i(j), circS_i, c_i, 'filled');
+                                bthetat = scatter(C3.axes{k}, t_i(j), theta_i(j), circS_i, gc_col_i, 'filled');
                         end
                     end
                     
@@ -718,6 +731,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             ztheta_i = path_i.net_displacement(3,:);
             dnum_i = datai{3}.dnum; 
             cs_idx_i = datai{3}.cs_idx;
+            ank_i = datai{3}.ank;
             
             path_j = dataj{5};
             pltkin_j = dataj{4};
@@ -735,6 +749,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             ztheta_j = path_j.net_displacement(3,:);
             dnum_j = dataj{3}.dnum; 
             cs_idx_j = dataj{3}.cs_idx;
+            ank_j = dataj{3}.ank;
+
+            % obtain the initial conditions for the paths
+            ic_i = path_i.initial_condition;
+            ic_j = path_j.initial_condition;
 
             % compute the 2-beat gait properties
             dataij = noslip2bgaits(path_i, path_j, dataij);
@@ -749,7 +768,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % number of gaits to animate
             numU = size(dataij.u, 1);
             % number of gait-cycles to plot for a chosen gait
-            gaitC_num = 3;
+            gaitC_num = 10;
 
             % plot the stratified panels for ith and jth contact states ----------------------------------------------------------------------------------------
 
@@ -762,7 +781,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 contour(ax{i}, a1_j,a2_j,ksq_sweep_j,[ksq_lb_j ksq_lb_j],'k--','LineWidth',lW_c_j);
                 colormap(ax{i},CUB_j); clim(ax{i},C3_lim);
                 set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
-                title(ax{i},C3.titletxt{i},'Color',gc_col_j,FontSize=titleFS_j);
+                title(ax{i},C3.titletxt{i},'Color','k',FontSize=titleFS_j); 
                 if i == 1
                     xlabel(ax{i},x_label_txt_j,FontSize=labelFS_j); 
                     ylabel(ax{i},y_label_txt_j,FontSize=labelFS_j);
@@ -789,7 +808,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 contour(ax{i}, a1_j,a2_j,ksq_sweep_j,[ksq_lb_j ksq_lb_j],'--k','LineWidth',lW_c_j);
                 colormap(ax{i},CUB_j); clim(ax{i},C4_lim);
                 set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
-                title(ax{i},C4.titletxt{i},'Color',gc_col_j,FontSize=titleFS_j);
+                title(ax{i},C4.titletxt{i},'Color','k',FontSize=titleFS_j);
                 xticks(ax{i}, xtickval_j); yticks(ax{i}, ytickval_j);
                 xticklabels(ax{i}, xticklab_j); yticklabels(ax{i}, yticklab_j);
                 ax{i}.XAxis.FontSize = tickFS_j; ax{i}.YAxis.FontSize = tickFS_j; 
@@ -811,7 +830,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % Setup the video and start animation layout -------------------------------------------------------------------------------------------------------
             if dataij.vidF
                 video = VideoWriter(['data_animation','.mp4'],'MPEG-4');
-                video.FrameRate = 60;
+                video.FrameRate = 20;
                 video.Quality = 100;
                 open(video);
             end
@@ -819,13 +838,17 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % create axes for the animation
             axA = nexttile(P, [3, 3]);
             title(P, ['$$S_{' num2str(cs_i(1)) num2str(cs_i(2))...
-                '} \leftrightarrow S_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'], 'Color', col_j(1,:), 'Interpreter', 'latex', FontSize=sgtitleFS_j);
+                '} \leftrightarrow S_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'], 'Color', 'k', 'Interpreter', 'latex', FontSize=sgtitleFS_j);
 
             % ANIMATE/PLOT SYSTEM CONFIG -----------------------------------------------------------------------------------------------------------------------
             for i = 1:numU % iterate over gaits to animate
 
                 % Find the gait we needed
                 idxi = find(u_i == u_i_setpt(i)); idxj = find(u_j == u_j_setpt(i));
+
+                % Find the path-lengths
+                t_int_i = path_i.path_length{ find(u_i == abs(u_i_setpt(i))) - numel(u_i)/2 };
+                t_int_j = path_j.path_length{ find(u_j == abs(u_j_setpt(i))) - numel(u_j)/2 };
 
                 % Obtain the kinematic data, plot it, and extend it for the number of gait cycles needed -------------------------------------------------------
                 a1_i    = gaits{idxi, idxj}.trajectory{5} ;
@@ -853,24 +876,30 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 h4_N = h4_A;
                 h4_s = h4_A; 
                 hA = cell(1, 0);            % animation plots
-  
+
+                % set the arrow size and angle for manual plotting
+                arrSize = domainPercentage/100*2*ank_i;
                 
                 % Plot the shape-space trajectory in the respective shape-space slices
                 for j = 1:C1.num
-                    h1_A{j} = plot(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', c_i); % plot the active path for i
+                    h1_A{j} = plot(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i); % plot the active path for i
                     h1_N{j} = plot(C1.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:)); % plot the inactive path for i
+                    plotpatharrow(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i); % plot the arrow in the middle of the active path
                 end
                 for j = 1:C2.num
-                    h2_A{j} = plot(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', c_i);
+                    h2_A{j} = plot(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i);
                     h2_N{j} = plot(C2.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
+                    plotpatharrow(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
                 for j = 1:C3.num
-                    h3_A{j} = plot(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
+                    h3_A{j} = plot(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
                     h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                    plotpatharrow(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
                 for j = 1:C4.num
-                    h4_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', c_j);
+                    h4_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
                     h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                    plotpatharrow(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
 
                 a1_i    = repmat(a1_i,    1, gaitC_num);
@@ -889,16 +918,21 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 x       = gaits{idxi, idxj}.trajectory{2} ;
                 y       = gaits{idxi, idxj}.trajectory{3} ;
                 theta   = gaits{idxi, idxj}.trajectory{4} ;
+                zx      = gaits{idxi, idxj}.trajectory{15};
+                zy      = gaits{idxi, idxj}.trajectory{16};
+                ztheta  = gaits{idxi, idxj}.trajectory{17};
                 tf      = sum(gaits{idxi, idxj}.periods.phi_tau);
                 temp_t  = t;
+                z = [zx; zy; ztheta]; ztemp = z;
                 temp = [x; y; theta]; b = temp;
                 for j = 2:gaitC_num % iterate and extend
                     % compute next
-                    temp = adginv(temp(3,end))*temp;
+                    xyztemp = ztemp + adginv(ztemp(3))*temp;   % update trajectory
+                    ztemp= ztemp + adginv(ztemp(3))*z;  % update net displacement
                     temp_t = tf+temp_t;
                     % update current
                     t = [t, temp_t];
-                    b = [b, b(:,end)+temp];
+                    b = [b, xyztemp];
                 end
                 x = b(1,:); y = b(2,:); theta = b(3,:);
                 dnum = numel(t);
@@ -912,9 +946,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 
                 % compute the animation limitsksqij
                 bl = 4*l_j;
-                thresh = 1;
-                anim_lim = max( [min(x, [], 'all')-thresh*bl, max(x, [], 'all')+thresh*bl, min(y, [], 'all')-thresh*bl, max(y, [], 'all')+thresh*bl]...
-                    , [], 'all' )* [-1, 1, -1, 1];
+                thresh = 1.25;
+                anim_lim = [min(x, [], 'all')-thresh*bl, max(x, [], 'all')+thresh*bl, min(y, [], 'all')-thresh*bl, max(y, [], 'all')+thresh*bl];
 
                 % Compute the animation quantities for the entire gait
                             % contact state i
@@ -974,7 +1007,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 %                     T = t(pbq == 1); % this gets a little too busy for figure generation purposes
                     T = t(find(pbq == 1, 1, 'last'));
                 else
-                    T = 1:gaitC_num:numel(t); % add the body configuration points to be plotted
+                    T = t(1:gaitC_num:numel(t)); % add the body configuration points to be plotted
                 end
                 m = 1; % plotting count
 
@@ -982,7 +1015,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 for j = 1:numel(T)
                     
                     % delete everything we don't need
-                    if j ~= 1 && j ~= numel(T)
+                    if j ~= 1 % && j ~= numel(T)
 
                         for k = 1:numel(hA)
                             delete(hA{k});
@@ -1025,11 +1058,12 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     % plot the standard stuff and body axes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     hA{m}  = plot(axA, leg_1__x(:,k), leg_1__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
                     if j == 1
-                        axis equal square; axis(anim_lim); hold on;
                         set(axA, 'xticklabel', []); set(axA, 'yticklabel', []); box("off");
                         xline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k');
                         yline(axA, 0, ':', 'LineWidth', 0.5, 'Color', 'k');
-                    end
+                    end 
+                    hold on; axis equal;
+                    axis(anim_lim);
                     hA{m}  = plot(axA, leg_2__x(:,k), leg_2__y(:,k), 'Color', col_i(7,:), 'LineWidth', lW_i); m = m + 1;
                     hA{m}  = plot(axA, leg_3__x(:,k), leg_3__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
                     hA{m}  = plot(axA, leg_4__x(:,k), leg_4__y(:,k), 'Color', col_j(7,:), 'LineWidth', lW_j); m = m + 1;
@@ -1040,7 +1074,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 
                     % plot the trajectory ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     if ~isnan(kold) % if this is not the first time step
-                        ptrajectory2bnoslip(axA, phi_tau, k, kold, x, y, cs_idx_i, cs_idx_j, c_i, lW_s_i, c_j, lW_s_j, col_i(7,:) );
+                        ptrajectory2bnoslip(axA, phi_tau, k, kold, x, y, cs_idx_i, cs_idx_j, gc_col_i, lW_s_i, gc_col_j, lW_s_j, col_i(7,:) );
                     end
                     
                     % plot the contact state related stuff ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1048,29 +1082,29 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     if phi_tau(k) == cs_idx_i % 1st state
                         frame_scale = frame_scale_i;
                         lW_qf = lW_qf_i;
-                        col_now = c_i;
-                        c_1 = c_i;
+                        col_now = gc_col_i;
+                        c_1 = col_now;
                         c_2 = col_i(7,:);
-                        hA{m} = plot(axA, leg_i1__x(:,k), leg_i1__y(:,k), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
-                        hA{m} = plot(axA, leg_i2__x(:,k), leg_i2__y(:,k), 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_i); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_i1__x(:,k), mean_leg_i1__y(:,k), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_i2__x(:,k), mean_leg_i2__y(:,k), 'LineStyle', '--', 'Color', col_i(cs_idx_i,:), 'LineWidth', lW_r_i); m = m + 1;
-                        hA{m} = scatter(axA, legtip_i1__x(k), legtip_i1__y(k), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
-                        hA{m} = scatter(axA, legtip_i2__x(k), legtip_i2__y(k), circS_i, col_i(cs_idx_i,:), 'filled'); m = m + 1;
-                        hA{m} = plot(axA, ksqi__x(:,k), ksqi__y(:,k), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); m = m + 1;
+                        hA{m} = plot(axA, leg_i1__x(:,k), leg_i1__y(:,k), 'Color', col_now, 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, leg_i2__x(:,k), leg_i2__y(:,k), 'Color', col_now, 'LineWidth', lW_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i1__x(:,k), mean_leg_i1__y(:,k), 'LineStyle', '--', 'Color', col_now, 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_i2__x(:,k), mean_leg_i2__y(:,k), 'LineStyle', '--', 'Color', col_now, 'LineWidth', lW_r_i); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i1__x(k), legtip_i1__y(k), circS_i, col_now, 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_i2__x(k), legtip_i2__y(k), circS_i, col_now, 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqi__x(:,k), ksqi__y(:,k), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); m = m + 1; % ksq_plot
                     elseif phi_tau(k) == cs_idx_j % 2nd state
                         frame_scale = frame_scale_j;
                         lW_qf = lW_qf_j;
-                        col_now = c_j;
+                        col_now = gc_col_j;
                         c_1 = col_i(7,:);
-                        c_2 = c_j; 
-                        hA{m} = plot(axA, leg_j1__x(:,k), leg_j1__y(:,k), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
-                        hA{m} = plot(axA, leg_j2__x(:,k), leg_j2__y(:,k), 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_j); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_j1__x(:,k), mean_leg_j1__y(:,k), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
-                        hA{m} = plot(axA, mean_leg_j2__x(:,k), mean_leg_j2__y(:,k), 'LineStyle', '--', 'Color', col_j(cs_idx_j,:), 'LineWidth', lW_r_j); m = m + 1;
-                        hA{m} = scatter(axA, legtip_j1__x(k), legtip_j1__y(k), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
-                        hA{m} = scatter(axA, legtip_j2__x(k), legtip_j2__y(k), circS_j, col_j(cs_idx_j,:), 'filled'); m = m + 1;
-                        hA{m} = plot(axA, ksqj__x(:,k), ksqj__y(:,k), 'Color', c_j, 'LineWidth', lW_kq_j, 'LineStyle', '--'); m = m + 1;
+                        c_2 = col_now; 
+                        hA{m} = plot(axA, leg_j1__x(:,k), leg_j1__y(:,k), 'Color', col_now, 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, leg_j2__x(:,k), leg_j2__y(:,k), 'Color', col_now, 'LineWidth', lW_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j1__x(:,k), mean_leg_j1__y(:,k), 'LineStyle', '--', 'Color', col_now, 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = plot(axA, mean_leg_j2__x(:,k), mean_leg_j2__y(:,k), 'LineStyle', '--', 'Color', col_now, 'LineWidth', lW_r_j); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j1__x(k), legtip_j1__y(k), circS_j, col_now, 'filled'); m = m + 1;
+                        hA{m} = scatter(axA, legtip_j2__x(k), legtip_j2__y(k), circS_j, col_now, 'filled'); m = m + 1;
+                        hA{m} = plot(axA, ksqj__x(:,k), ksqj__y(:,k), 'Color', c_j, 'LineWidth', lW_kq_j, 'LineStyle', '--'); m = m + 1; % ksq_plot
                     else % no active state
                         frame_scale = frame_scale_j;
                         lW_qf = lW_qf_j;
@@ -1080,10 +1114,12 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     end
 
                     % title based on the control input
-                    title(axA, ['$$' num2str(u_i(idxi)) '\, \psi_{' num2str(cs_i(1)) num2str(cs_i(2)) '} +'...
-                        num2str(u_j(idxj)) '\, \psi_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'], 'Color', col_j(1,:),...
-                        'Interpreter', 'latex', FontSize=titleFS_j);
-
+                    pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [t_int_i; t_int_j], titleFS_j);
+%                     title(axA, ['$$ \left(' num2str(u_i(idxi), 3) '\right) \, \psi^{' num2str(cs_i(1)) num2str(cs_i(2))...
+%                         '} \left( (' num2str(ic_i(1), 3) ', ' num2str(ic_i(2), 3) '), ' num2str(t_int_i, 3) ' \right) + \left('...
+%                         num2str(u_j(idxj), 3) '\right) \, \psi^{' num2str(cs_j(1)) num2str(cs_j(2))...
+%                         '} \left( (' num2str(ic_j(1), 3) ', ' num2str(ic_j(2), 3) '), ' num2str(t_int_j, 3) ' \right) $$'], 'Color', 'k',... % col_j(1,:)
+%                         'Interpreter', 'latex', FontSize=titleFS_j);
                     % SE(2) body frame 'b'
                     hA{m} = quiver(axA, body__x(k), body__y(k), frame_scale*bodyf__x(1,k), frame_scale*bodyf__x(2,k), 'LineWidth', lW_qf, 'Color', col_now,...
                             'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;
