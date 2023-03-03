@@ -180,7 +180,7 @@ classdef Path2 < RigidGeomQuad
                   0,          0,            1, 0, 0;
                   0,          0,            0, 1, 0;
                   0,          0,            0, 0, 1]*[thePath2.dz; thePath2.dphi]*dirn;
-            DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                     % configuration vector field
+            DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                   % configuration vector field
 
             % integrate
             switch cond
@@ -239,7 +239,7 @@ classdef Path2 < RigidGeomQuad
                 thePath2.closed_trajectory{iP} = thePath2.close_trajectory(thePath2.open_trajectory{iP}, thePath2.deadband_dutycycle); % close it-- might not use this much
                 thePath2.path_length{iP} = thePath2.open_trajectory{iP}{1}(end); % get the path length
                 thePath2.initial_condition{iP} = [thePath2.open_trajectory{iP}{5}(1) thePath2.open_trajectory{iP}{6}(1)]; % path initial and final conditions
-                thePath2.final_condition{iP} = [thePath2.open_trajectory{iP}{5}(1) thePath2.open_trajectory{iP}{6}(1)];
+                thePath2.final_condition{iP} = [thePath2.open_trajectory{iP}{5}(end) thePath2.open_trajectory{iP}{6}(end)];
                 
                 % compute interpolated negatively scaled paths
                 thePath2.open_trajectory{iN} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{1}, i*0.1, cond, dnum);
@@ -247,7 +247,7 @@ classdef Path2 < RigidGeomQuad
                 thePath2.closed_trajectory{iN} = thePath2.close_trajectory(thePath2.open_trajectory{iN}, thePath2.deadband_dutycycle);
                 thePath2.path_length{iN} = thePath2.open_trajectory{iN}{1}(end);
                 thePath2.initial_condition{iN} = [thePath2.open_trajectory{iN}{5}(1) thePath2.open_trajectory{iN}{6}(1)];
-                thePath2.final_condition{iN} = [thePath2.open_trajectory{iN}{5}(1) thePath2.open_trajectory{iN}{6}(1)];
+                thePath2.final_condition{iN} = [thePath2.open_trajectory{iN}{5}(end) thePath2.open_trajectory{iN}{6}(end)];
             end
 
             % store the path discretization

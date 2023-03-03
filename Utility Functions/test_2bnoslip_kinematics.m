@@ -144,8 +144,24 @@ figure()
 plot(path12.open_trajectory{20}{2}, path12.open_trajectory{20}{3}, 'r');
 hold on; grid on;
 plot(path12.open_trajectory{1}{2}, path12.open_trajectory{1}{3}, 'b');
+%% 
+figure()
+plot(path_1{2}, path_1{3}, 'r', 'LineWidth', 1.2);
+hold on; grid on; axis equal square;
+plot(path_2{2}, path_2{3}, 'r--', 'LineWidth', 1.2);
+axis([-1 1 -1 1]);
 
+figure()
+plot(path_1{1}, path_1{4}, 'r', 'LineWidth', 1.2);
+hold on; grid on;
+plot(path_2{1}, path_2{4}, 'r--', 'LineWidth', 1.2);
 
+figure()
+plot(path_1{5}, path_1{6}, 'r', 'LineWidth', 1.2);
+hold on; grid on; axis equal square;
+plot(path_2{5}, path_2{6}, 'r--', 'LineWidth', 1.2);
+axis(pi/2*[-1 1 -1 1]);
+%% 
 
 
 
