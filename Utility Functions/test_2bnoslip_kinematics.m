@@ -139,6 +139,12 @@ plot(b(2,:))
 %% 
 figure()
 plot(b(3,:))
+%% 
+figure()
+plot(path12.open_trajectory{20}{2}, path12.open_trajectory{20}{3}, 'r');
+hold on; grid on;
+plot(path12.open_trajectory{1}{2}, path12.open_trajectory{1}{3}, 'b');
+
 
 
 

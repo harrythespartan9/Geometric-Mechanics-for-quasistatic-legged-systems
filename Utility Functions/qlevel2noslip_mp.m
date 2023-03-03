@@ -13,6 +13,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         case 2
             dataij = []; 
             dataij.vidF = false; % just return the complete gait trajectory information
+            dataij.gaitC_num = 10;
             cond = 3;
         case 3
             cond = 3;
@@ -49,9 +50,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 
     % Compute the limits on the data-- helps with countour plotting
     [C1_lim,C2_lim] = se2limits(dz__x_sweep_i,dz__y_sweep_i,dz__theta_sweep_i);
-
-    % Create two child layouts-- one for translational panels and
-    % one for rotation panel
+    
     set(groot,'defaultAxesTickLabelInterpreter','latex'); 
     set(groot,'defaulttextinterpreter','latex');
     set(groot,'defaultLegendInterpreter','latex');
@@ -302,11 +301,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             cs_idx_i = datai{3}.cs_idx;
             ank = datai{3}.ank;
 
-            % get the initial condition of the path
-            ic_i = path_i.initial_condition;
+            % get the integration direction
+            dirn_i = path_i.int_dirn;
 
             % path scaling vector (the main path is scaled)
-            pscale = 10*(1:10);
+            pscale = 10*([-fliplr(1:10) 1:10]);
 
             % initialize the tiled layouts
             C3.Layout_Obj = tiledlayout(P,C3.grid(1),C3.grid(2),'TileSpacing','tight','Padding','tight'); 
@@ -315,7 +314,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.Layout_Obj.Layout.Tile = C4.tile_start; C4.Layout_Obj.Layout.TileSpan = C4.span_grid;
             
             % compute the span of the animation in world coordinates-- for the largest path
-            xM = path_i.open_trajectory{10}{2}; yM = path_i.open_trajectory{10}{3};
+            xM = path_i.open_trajectory{20}{2}; yM = path_i.open_trajectory{20}{3};
             bl = 4*l_i; % body length of the robot-- need to add this to the rigid robot properties
             thresh = 1; % one body length
             lim_temp = max( [min(xM, [], 'all')-thresh*bl, max(xM, [], 'all')+thresh*bl, min(yM, [], 'all')-thresh*bl, max(yM, [], 'all')+thresh*bl]...
@@ -334,14 +333,13 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             
             % Create a structure to hold the final frame information for each path scaling
             if vidF_i
-                skp = 3;
-                skp_path = 1:skp:numel(path_i.open_trajectory);
+                skp_path = [1, 8, 13, 20];
                 datai{1}.skp_path = skp_path;
             else
                 if isfield(datai{1}, 'skp_path')
                     skp_path = datai{1}.skp_path;
                 else
-                    skp_path = 10; % if no path is requested, the plot the full path length
+                    skp_path = 20; % if no path is requested, the plot the full path length
                 end
             end
             
@@ -349,8 +347,35 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % Iterate over each open trajectory case
             for i = skp_path % plotting 10%, 40%, 70%, and 100%
 
+                % delete the arrows from last time
+                if i ~= skp_path(1)
+                    if exist('h1_A', 'var')
+                        for j = 1:numel(h1_A)
+                            delete(h1_A{j});
+                        end
+                    end
+                    if exist('h1', 'var')
+                        for j = 1:numel(h1)
+                            delete(h1{j});
+                        end
+                    end
+                    if exist('h2_A', 'var')
+                        for j = 1:numel(h2_A)
+                            delete(h2_A{j});
+                        end
+                    end
+                    if exist('h2', 'var')
+                        for j = 1:numel(h2)
+                            delete(h2{j});
+                        end
+                    end
+                end
+
                 % Obtain the path lengths (or t in our case)
                 t_int_i = path_i.path_length{i};
+
+                % get the initial condition of the path
+                ic_i = path_i.initial_condition{i};
 
                 % Unpack the path data for the current trajectory
                 t_i      = path_i.open_trajectory{i}{1};
@@ -381,33 +406,28 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 
                 % Child 1-- add the shape space trajectory on top
                 h1 = cell(1,C1.num); 
-%                 h1_A = cell(1,C1.num);
+                h1_A = cell(1,C1.num);
                 for j = 1:C1.num
                     if i ~= 1 && exist('h1_s', 'var')
-                        delete(h1_s{j}); % delete(h1{j}); % delete from previous path
+                        delete(h1_s{j});
                     end
-                    
                     h1{j} = plot(C1.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
-                    plotpatharrow(C1.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
-%                     h1_A{j} = quiver( C1.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
-%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
+                    h1_A{j} = plotpatharrow(C1.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
 
                 % Child 2-- same as above
                 h2 = cell(1,C2.num); 
-%                 h2_A = cell(1,C2.num);
+                h2_A = cell(1,C2.num);
                 for j = 1:C2.num
                     if i ~= 1 && exist('h2_s', 'var')
                         delete(h2_s{j}); % delete(h2{j});
                     end
                     h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
-                    plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
-%                     h2_A{j} = quiver( C2.axes{j}, ai(ceil(numD/2)-1), aj(ceil(numD/2)-1), ai(ceil(numD/2))-ai(ceil(numD/2)-1),...
-%                             aj(ceil(numD/2))-aj(ceil(numD/2)-1), arrScale, 'LineWidth', lW_s, 'Color', c, 'AutoScale', 'off');
+                    h2_A{j} = plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
                 
                 % if this is the first frame, create the child 3 plots
-                if i == 1
+                if i == skp_path(1)
                     
                     % limit thresholds for se(2) trajectories
                     lowxy = 0.05; % 5% of the leg length
@@ -659,10 +679,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     hA{16} = scatter(axA, legtip_i__x(j), legtip_i__y(j), circS_i, gc_col_i, 'filled');
                     hA{17} = scatter(axA, legtip_j__x(j), legtip_j__y(j), circS_i, gc_col_i, 'filled');
                     hA{18} = plot(axA, ksqij__x(:,j), ksqij__y(:,j), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); % ksq line
-                    pathtitle(axA, cs_i, (i*10)/100, 1, ic_i, t_int_i, titleFS_i);
-%                     title(axA, ['$$\left(' num2str((i*10)/100, 3) '\right) \, \psi^{' num2str(cs_i(1)) num2str(cs_i(2))...
-%                         '} \left( (' num2str(ic_i(1), 3) ', ' num2str(ic_i(2), 3) '), ' num2str(t_int_i, 3) ' \right) $$'], 'Color', gc_col_i,...
-%                         'Interpreter', 'latex', FontSize=titleFS_i);
+                    pathtitle(axA, cs_i, pscale(i)/100, 1, ic_i, dirn_i*t_int_i, titleFS_i);
                     % Child 1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     h1_s = cell(1,C1.num);
                     for k = 1:C1.num
@@ -751,9 +768,9 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             cs_idx_j = dataj{3}.cs_idx;
             ank_j = dataj{3}.ank;
 
-            % obtain the initial conditions for the paths
-            ic_i = path_i.initial_condition;
-            ic_j = path_j.initial_condition;
+            % get the integration direction
+            dirn_i = path_i.int_dirn;
+            dirn_j = path_j.int_dirn;
 
             % compute the 2-beat gait properties
             dataij = noslip2bgaits(path_i, path_j, dataij);
@@ -768,7 +785,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % number of gaits to animate
             numU = size(dataij.u, 1);
             % number of gait-cycles to plot for a chosen gait
-            gaitC_num = 10;
+            if ~isfield(dataij, 'gaitC_num')
+                gaitC_num = 10;
+            else
+                gaitC_num = dataij.gaitC_num;
+            end
 
             % plot the stratified panels for ith and jth contact states ----------------------------------------------------------------------------------------
 
@@ -847,8 +868,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 idxi = find(u_i == u_i_setpt(i)); idxj = find(u_j == u_j_setpt(i));
 
                 % Find the path-lengths
-                t_int_i = path_i.path_length{ find(u_i == abs(u_i_setpt(i))) - numel(u_i)/2 };
-                t_int_j = path_j.path_length{ find(u_j == abs(u_j_setpt(i))) - numel(u_j)/2 };
+                t_int_i = path_i.path_length{ idxi };
+                ic_i    = path_i.initial_condition{ idxi };
+                t_int_j = path_j.path_length{ idxj };
+                ic_j    = path_j.initial_condition{ idxj };
 
                 % Obtain the kinematic data, plot it, and extend it for the number of gait cycles needed -------------------------------------------------------
                 a1_i    = gaits{idxi, idxj}.trajectory{5} ;
@@ -866,15 +889,19 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 h1_A = cell(1, C1.num);     % child 1
                 h1_N = h1_A;
                 h1_s = h1_A;
+                h1_arr = cell(1, C1.num);
                 h2_A = cell(1, C2.num);     % child 2
                 h2_N = h2_A;
                 h2_s = h2_A;
+                h2_arr = cell(1, C2.num);
                 h3_A = cell(1, C3.num);     % child 3
                 h3_N = h3_A;
                 h3_s = h3_A;
+                h3_arr = cell(1, C3.num);
                 h4_A = cell(1, C4.num);     % child 4
                 h4_N = h4_A;
-                h4_s = h4_A; 
+                h4_s = h4_A;
+                h4_arr = cell(1, C4.num);
                 hA = cell(1, 0);            % animation plots
 
                 % set the arrow size and angle for manual plotting
@@ -884,22 +911,22 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 for j = 1:C1.num
                     h1_A{j} = plot(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i); % plot the active path for i
                     h1_N{j} = plot(C1.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:)); % plot the inactive path for i
-                    plotpatharrow(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i); % plot the arrow in the middle of the active path
+                    h1_arr{j} = plotpatharrow(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i); % plot the arrow in the middle of the active path
                 end
                 for j = 1:C2.num
                     h2_A{j} = plot(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i);
                     h2_N{j} = plot(C2.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
-                    plotpatharrow(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
+                    h2_arr{j} = plotpatharrow(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
                 for j = 1:C3.num
                     h3_A{j} = plot(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
                     h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
-                    plotpatharrow(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
+                    h3_arr{j} = plotpatharrow(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
                 for j = 1:C4.num
                     h4_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
                     h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
-                    plotpatharrow(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
+                    h4_arr{j} = plotpatharrow(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
 
                 a1_i    = repmat(a1_i,    1, gaitC_num);
@@ -1114,7 +1141,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     end
 
                     % title based on the control input
-                    pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [t_int_i; t_int_j], titleFS_j);
+                    pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [dirn_i*t_int_i; dirn_j*t_int_j], titleFS_j);
 %                     title(axA, ['$$ \left(' num2str(u_i(idxi), 3) '\right) \, \psi^{' num2str(cs_i(1)) num2str(cs_i(2))...
 %                         '} \left( (' num2str(ic_i(1), 3) ', ' num2str(ic_i(2), 3) '), ' num2str(t_int_i, 3) ' \right) + \left('...
 %                         num2str(u_j(idxj), 3) '\right) \, \psi^{' num2str(cs_j(1)) num2str(cs_j(2))...

@@ -16,6 +16,13 @@ for i = 1:numP
     else
         temp = ' + ';
     end
+    % condition ic if it is a very small number
+    if abs(ic(i,1)) < 1e-2
+        ic(i,1) = 0;
+    end
+    if abs(ic(i,2)) < 1e-2
+        ic(i,2) = 0;
+    end
     % Compute the current character
     if u(i, idx(i)) == 1 % if the input is equal to 1
         psi_text = [psi_text, temp, '\psi^{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}_{' num2str(t_int(i), 3)...
