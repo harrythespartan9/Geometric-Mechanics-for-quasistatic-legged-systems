@@ -24,13 +24,15 @@ for i = 1:numP
         ic(i,2) = 0;
     end
     % Compute the current character
-    if u(i, idx(i)) == 1 % if the input is equal to 1
-        psi_text = [psi_text, temp, '\psi^{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}_{' num2str(t_int(i), 3)...
-            '} \left(' num2str(ic(i,1), 3) ', ' num2str(ic(i,2), 3) '\right)'];
-    else
-        psi_text = [psi_text, temp, '\left(' num2str(u(i, idx(i)), 3) '\right) \psi^{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}_{' num2str(t_int(i), 3)...
-            '} \left(' num2str(ic(i,1), 3) ', ' num2str(ic(i,2), 3) '\right)'];
-    end
+%     if u(i, idx(i)) == 1 % if the input is equal to 1                                                     %%%%%%%%%%%%%%%%%%% COMMENTED ON 20230404 (YYYYMMDD)
+%         psi_text = [psi_text, temp, '\psi^{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}_{' num2str(t_int(i), 3)...
+%             '} \left(' num2str(ic(i,1), 3) ', ' num2str(ic(i,2), 3) '\right)'];
+%     else
+%         psi_text = [psi_text, temp, '\left(' num2str(u(i, idx(i)), 3) '\right) \psi^{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}_{' num2str(t_int(i), 3)...
+%             '} \left(' num2str(ic(i,1), 3) ', ' num2str(ic(i,2), 3) '\right)'];
+%     end
+    psi_text = [psi_text, temp, '\hat{\phi}_{' num2str(cs(i, 1)) num2str(cs(i, 2)) '}' ' \left( ' num2str(u(i, idx(i)), 3) ', ' num2str(-t_int(i, 1), 3)...
+        ', ' num2str(t_int(i, 2), 3) ', \left( ' num2str(ic(i, 1), 3) ', ' num2str(ic(i, 2), 3) ' \right) \right)'];
 end
 % finish this text off with equation ending decorators
 psi_text = [psi_text, ' $$'];

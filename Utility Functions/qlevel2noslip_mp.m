@@ -143,10 +143,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C3.tile_start = (C3.start(1)-1)*P.grid(2) + C3.start(2);
             C3.sweeptxt = {'dz__x_sweep', 'dz__y_sweep'};
             if cond == 3
-                C3.titletxt = {['$$dz^{x}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$'],...
-            ['$$dz^{y}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
+                C3.titletxt = {['$$dz^{x}_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$'],...
+            ['$$dz^{y}_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$']};
             else
-                C3.titletxt = {'$$dz^{x}_{\psi}$$', '$$dz^{y}_{\psi}$$'};
+                C3.titletxt = {'$$dz^{x}$$', '$$dz^{y}$$'};
             end
             % child 4-- jth dz_rotation
             C4 = []; C4.limits = C4_lim;
@@ -155,9 +155,9 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C4.tile_start = (C4.start(1)-1)*P.grid(2) + C4.start(2);
             C4.sweeptxt = {'dz__theta_sweep'};
             if cond == 3
-                C4.titletxt = {['$$dz^{\theta}_{\psi^{' num2str(cs_j(1)) num2str(cs_j(2)) '}}$$']};
+                C4.titletxt = {['$$dz^{\theta}_{' num2str(cs_j(1)) num2str(cs_j(2)) '}$$']};
             else
-                C4.titletxt = {'$$dz^{\theta}_{\psi}$$'};
+                C4.titletxt = {'$$dz^{\theta}$$'};
             end
 
             % Unpack plotting tools
@@ -177,10 +177,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     C1.tile_start = (C1.start(1)-1)*P.grid(2) + C1.start(2);
     C1.sweeptxt = {'dz__x_sweep', 'dz__y_sweep'};
     if cond == 3
-        C1.titletxt = {['$$dz^{x}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$'],...
-            ['$$dz^{y}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
+        C1.titletxt = {['$$dz^{x}_{' num2str(cs_i(1)) num2str(cs_i(2)) '}$$'],...
+            ['$$dz^{y}_{' num2str(cs_i(1)) num2str(cs_i(2)) '}$$']};
     else
-        C1.titletxt = {'$$dz^{x}_{\psi}$$', '$$dz^{y}_{\psi}$$'};
+        C1.titletxt = {'$$dz^{x}$$', '$$dz^{y}$$'};
     end
     % child 2-- ith dz_theta
     C2 = []; C2.limits = C2_lim;
@@ -189,9 +189,9 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     C2.tile_start = (C2.start(1)-1)*P.grid(2) + C2.start(2);
     C2.sweeptxt = {'dz__theta_sweep'};
     if cond == 3
-        C2.titletxt = {['$$dz^{\theta}_{\psi^{' num2str(cs_i(1)) num2str(cs_i(2)) '}}$$']};
+        C2.titletxt = {['$$dz^{\theta}_{' num2str(cs_i(1)) num2str(cs_i(2)) '}$$']};
     else
-        C2.titletxt = {'$$dz^{\theta}_{\psi}$$'};
+        C2.titletxt = {'$$dz^{\theta}$$'};
     end
 
     % Create the figure
@@ -425,6 +425,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
                     h2_A{j} = plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
+
+                % Obtain the integration time for the ic and main path
+                temp_t = cumsum(path_i.int_time);
+                t_int_i = path_i.path_length{i}/temp_t(2) * temp_t;
                 
                 % if this is the first frame, create the child 3 plots
                 if i == skp_path(1)
@@ -465,10 +469,10 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
 
                     % Child 4-- SE(2) net displacements
                     [lim_zxy, lim_ztheta] = se2limits(zx_i, zy_i, ztheta_i);
-                    if lim_zxy(2) < lowxy
+                    if max(abs(lim_zxy)) < lowxy
                         lim_zxy = lowxy*[-1, 1];
                     end
-                    if lim_ztheta(2) < lowtheta
+                    if max(abs(lim_ztheta)) < lowtheta
                         lim_ztheta = lowtheta*[-1, 1];
                     end
                     ax = cell(1,C4.num);
@@ -476,25 +480,25 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         ax{j} = nexttile(C4.Layout_Obj, j);
                         switch j
                             case 1
-                                plot(ax{j}, pscale, zx_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                                plot(ax{j}, pscale/100, zx_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 grid on; hold on;
                                 zxiter = scatter(ax{j}, pscale(i), zx_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^x$$', FontSize=labelFS_i); ylim(lim_zxy);
                             case 2
-                                plot(ax{j}, pscale, zy_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                                plot(ax{j}, pscale/100, zy_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
                                 grid on; hold on; axis square;
                                 zyiter = scatter(ax{j}, pscale(i), zy_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^y$$', FontSize=labelFS_i); ylim(lim_zxy);
                             case 3
-                                plot(ax{j}, pscale, ztheta_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                                plot(ax{j}, pscale/100, ztheta_i, '-', 'LineWidth', lW_s_i, 'Color', gc_col_i); % added /100 to plot in decimal
                                 grid on; hold on; axis square;
                                 zthetaiter = scatter(ax{j}, pscale(i), ztheta_i(i), circS_i, gc_col_i, 'filled');
                                 ylabel(ax{j}, '$$z^{\theta}$$', FontSize=labelFS_i);
-                                xlabel(ax{j}, 'Path scaling (\%)', FontSize=labelFS_i);  ylim(lim_ztheta);
+                                xlabel(ax{j}, '$$u$$', FontSize=labelFS_i);  ylim(lim_ztheta); % 'Path scaling (\%)'
                         end
                         set(get(ax{j},'YLabel'),'rotation',0,'VerticalAlignment','middle'); axis square;
                         ax{j}.XAxis.FontSize = tickFS_i-5; ax{j}.YAxis.FontSize = tickFS_i-5;
-                        xlim([min(pscale) max(pscale)]);
+                        xlim([min(pscale/100) max(pscale/100)]);
                     end
                     title(C4.Layout_Obj, C4.titletxt, 'Color', 'k', 'Interpreter', 'latex', FontSize=titleFS_i);
                     C4.axes = ax;
@@ -679,6 +683,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     hA{16} = scatter(axA, legtip_i__x(j), legtip_i__y(j), circS_i, gc_col_i, 'filled');
                     hA{17} = scatter(axA, legtip_j__x(j), legtip_j__y(j), circS_i, gc_col_i, 'filled');
                     hA{18} = plot(axA, ksqij__x(:,j), ksqij__y(:,j), 'Color', c_i, 'LineWidth', lW_kq_i, 'LineStyle', '--'); % ksq line
+%                     pathtitle(axA, cs_i, pscale(i)/100, 1, ic_i, dirn_i*t_int_i, titleFS_i); %%%%%%%%%%%%%%%%%%% LEGACIED ON 20230404 (YYYYMMDD)
                     pathtitle(axA, cs_i, pscale(i)/100, 1, ic_i, dirn_i*t_int_i, titleFS_i);
                     % Child 1 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                     h1_s = cell(1,C1.num);
@@ -867,11 +872,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 % Find the gait we needed
                 idxi = find(u_i == u_i_setpt(i)); idxj = find(u_j == u_j_setpt(i));
 
-                % Find the path-lengths
+                % Find the path-lengths and points of interest
                 t_int_i = path_i.path_length{ idxi };
-                ic_i    = path_i.initial_condition{ idxi };
+                ic_i    = path_i.point_of_interest;
                 t_int_j = path_j.path_length{ idxj };
-                ic_j    = path_j.initial_condition{ idxj };
+                ic_j    = path_j.point_of_interest;
 
                 % Obtain the kinematic data, plot it, and extend it for the number of gait cycles needed -------------------------------------------------------
                 a1_i    = gaits{idxi, idxj}.trajectory{5} ;
@@ -928,6 +933,12 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
                     h4_arr{j} = plotpatharrow(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
+                
+                % Obtain the integration time for the ic and main path
+                temp_ti = cumsum(path_i.int_time);
+                temp_tj = cumsum(path_j.int_time);
+                t_int_i = path_i.path_length{ idxi }/temp_ti(2) * temp_ti;
+                t_int_j = path_j.path_length{ idxj }/temp_tj(2) * temp_tj;
 
                 a1_i    = repmat(a1_i,    1, gaitC_num);
                 a2_i    = repmat(a2_i,    1, gaitC_num);
@@ -1141,7 +1152,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     end
 
                     % title based on the control input
-                    pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [dirn_i*t_int_i; dirn_j*t_int_j], titleFS_j);
+% % % % %                     pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [dirn_i*t_int_i; dirn_j*t_int_j], titleFS_j); %%%%%%%%%%%%%%%%%%% LEGACIED ON 20230404 (YYYYMMDD)
+                    pathtitle(axA, [cs_i; cs_j], [u_i; u_j], [idxi; idxj], [ic_i; ic_j], [dirn_i*t_int_i; dirn_j*t_int_j], titleFS_j); 
 %                     title(axA, ['$$ \left(' num2str(u_i(idxi), 3) '\right) \, \psi^{' num2str(cs_i(1)) num2str(cs_i(2))...
 %                         '} \left( (' num2str(ic_i(1), 3) ', ' num2str(ic_i(2), 3) '), ' num2str(t_int_i, 3) ' \right) + \left('...
 %                         num2str(u_j(idxj), 3) '\right) \, \psi^{' num2str(cs_j(1)) num2str(cs_j(2))...

@@ -28,7 +28,7 @@ kin_info = returnSijfxn(kin_info,cs(1),cs(2));
 % -------------------------------------------------------------------------
 plot_info.configs = num2cell([nan(3,1),configs]); % modify the config format
 plot_info.fields = fields; % the columns requested
-plot_info.m = 2160*(numel(fields)+1)/5; % scaled figure x-resolution
+plot_info.m = 2250*(numel(fields)+1)/5; % scaled figure x-resolution
 plot_info.n = 1800; % fixed figure y-resolution
 plot_info.tickFS = 18*fontscale; 
 plot_info.labelFS = 18*fontscale; % compute various font sizes
@@ -103,12 +103,12 @@ CUB = flipud([159.3750,99.6030,63.4312;
             150,150,150;
             99,99,99])/255;
 plot_info.CUB = interp1(linspace(0,100,size(CUB,1)), CUB, linspace(0,100,size(turbo,1)));
-plot_info.col = (1/255)*[215,25,28; % contact state colors (distinct)
-                        96,0,220;
+plot_info.col = (1/255)*[255,127,0; % contact state colors (distinct)
+                        231,41,138;
                         44,123,182;
                         77,175,74;
-                        255,127,0;
-                        231,41,138;
+                        215,25,28; % contact state colors (distinct)
+                        96,0,220;
                         72,72,72]; % 99,99,99 old
 % plot_info.col = (1/255)*[0,0,0; % contact state colors (active- black and inactive- grey)
 %             0,0,0;
@@ -172,6 +172,7 @@ x_label_txt = ['$$\' 'alpha_{' num2str(cs(1)) '}' '$$']; % attaching dollahs for
 y_label_txt = ['$$\' 'alpha_{' num2str(cs(2)) '}' '$$'];
 s_txt = [num2str(cs(1)) num2str(cs(2))];
 sgtitle_txt = ['$$S_{' s_txt '}$$'];
+savetitle_txt = ['S' s_txt];
 q_title_txt = '$$q$$'; 
 ksq_title_text = ['$$F^{' s_txt '}$$']; % ['$$k_{' s_txt '}^{2}$$'] % old notation
 dpsi_title_text = ['$$d\psi^{' s_txt '}$$'];
@@ -184,6 +185,7 @@ plot_info.sgtitle_txt = sgtitle_txt;
 plot_info.q_title_txt = q_title_txt;
 plot_info.ksq_title_text = ksq_title_text;
 plot_info.dpsi_title_text = dpsi_title_text;
+plot_info.savetitle_txt = savetitle_txt;
 
 % get the symbolic variables needed to setup the kinematics ---------------
 load('case_1_kinematics');

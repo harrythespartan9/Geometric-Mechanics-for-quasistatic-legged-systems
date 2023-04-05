@@ -21,7 +21,7 @@ classdef Path2 < RigidGeomQuad
 
         int_dirn             % direction to integrate the path along: +phi or -phi with scaling
 
-        int_time             % Integration time in the backward and forward direction from the middle_path
+        int_time             % Integration time in the backward (1) and forward direction (2) from the middle_path
 
         int_cond             % checks if the pof is on the path, beginning, or at the end of the path
 
