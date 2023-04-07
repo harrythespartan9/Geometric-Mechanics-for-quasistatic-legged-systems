@@ -80,14 +80,14 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             C3.grid = [3, 1];  C3.num = prod(C3.grid);
             C3.span_grid = C3.grid;
             C3.tile_start = (C3.start(1)-1)*P.grid(2) + C3.start(2);
-            C3.titletxt = '$$b(\psi)$$';
+            C3.titletxt = '$$b(\hat{\phi})$$';
             % child 4--  SE(2) net displacements
             C4 = [];
             C4.start = [1, 6]; 
             C4.grid = [3, 1]; C4.num = prod(C4.grid);
             C4.span_grid = C4.grid;
             C4.tile_start = (C4.start(1)-1)*P.grid(2) + C4.start(2);
-            C4.titletxt = '$$z(\psi)$$';
+            C4.titletxt = '$$z(\hat{\phi})$$';
 
             % Unpack plotting tools
             lW_s_i = datai{1}.lW_s;
@@ -359,6 +359,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                             delete(h1{j});
                         end
                     end
+                    if exist('h1b', 'var')
+                        for j = 1:numel(h1b)
+                            delete(h1b{j});
+                        end
+                    end
                     if exist('h2_A', 'var')
                         for j = 1:numel(h2_A)
                             delete(h2_A{j});
@@ -367,6 +372,11 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                     if exist('h2', 'var')
                         for j = 1:numel(h2)
                             delete(h2{j});
+                        end
+                    end
+                    if exist('h2b', 'var')
+                        for j = 1:numel(h2b)
+                            delete(h2b{j});
                         end
                     end
                 end
@@ -405,24 +415,26 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 arrSize = domainPercentage/100*2*ank; % convert the length of the arrow to radians
 
                 % Child 1-- add the shape space trajectory on top
-                h1 = cell(1,C1.num); 
+                h1 = cell(1,C1.num); h1b = h1;
                 h1_A = cell(1,C1.num);
                 for j = 1:C1.num
                     if i ~= 1 && exist('h1_s', 'var')
                         delete(h1_s{j});
                     end
                     h1{j} = plot(C1.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                    h1b{j} = plot(C1.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
                     h1_A{j} = plotpatharrow(C1.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
 
                 % Child 2-- same as above
-                h2 = cell(1,C2.num); 
+                h2 = cell(1,C2.num); h2b = h2;
                 h2_A = cell(1,C2.num);
                 for j = 1:C2.num
                     if i ~= 1 && exist('h2_s', 'var')
                         delete(h2_s{j}); % delete(h2{j});
                     end
                     h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
+                    h2b{j} = plot(C2.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
                     h2_A{j} = plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
 
