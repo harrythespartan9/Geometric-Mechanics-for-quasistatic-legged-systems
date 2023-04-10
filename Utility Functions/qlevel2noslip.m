@@ -22,6 +22,8 @@ fontscale = plot_info.fontscale;
 % to the ground. For the user chosen feet, we identify which contact state
 % it belongs to through the function below.
 kin_info = returnSijfxn(kin_info,cs(1),cs(2));
+rot_in_ij = @(theta) [cos(theta), -sin(theta);
+                        sin(theta), cos(theta)];
 
 % -------------------------------------------------------------------------
 % compute parameters dependent on the parameters provided -----------------
@@ -42,6 +44,8 @@ plot_info.idxQ = 1:skipV:dnum; % indices to plot the connection vector field
 plot_info.iQ = 1:sV:dnum; % gait constraint vector fields
 plot_info.xtickval = -pi/3:pi/3:pi/3;
 plot_info.xticklab = {'$$-\frac{\pi}{3}$$','$$0$$','$$\frac{\pi}{3}$$'};
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xtickval = [-pi/2, 0, pi];
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xticklab = {'$$-\frac{\pi}{2}$$','$$0$$','$$\pi$$'};
 plot_info.ytickval = plot_info.xtickval;
 plot_info.yticklab = plot_info.xticklab;
 
@@ -123,11 +127,16 @@ plot_info.col_backg = [255,255,255]/255; % plot background color
 % shape-space grid and plotting stuff -------------------------------------
 % grid
 plot_kin = [];
+%%%%%%%%%%%%%%%%%%%%%%%%
 [tempX,tempY] = linspaceworiginforshapespace(dnum,ank);
 % dnum_right = ceil(dnum/2); dnum_left = dnum - dnum_right;
 % temp_left = linspace(-ank,0,dnum_left+1);  temp_right = linspace(0,ank,dnum_right);
 % tempX = [temp_left(1:end-1), temp_right]; tempY = tempX;
 [ai,aj] = meshgrid(tempX,tempY); % origin needs to be a part of the grid
+%%%%%%%%%%%%%%%%%%%%%%%%
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % X = linspace(-ank, 2*ank, dnum); Y = X;
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % [ai,aj] = meshgrid(X,Y);
+%%%%%%%%%%%%%%%%%%%%%%%%
 plot_kin.ai = ai;
 plot_kin.aj = aj;
 plot_info.xlimits = [ai(1) ai(end)]; plot_info.ylimits = [aj(1) aj(end)];
@@ -139,7 +148,8 @@ ijM = find(tempX>-pi/2 & tempX<pi/2, 1, 'last');
 ii = randi([ijm ijM]); jj = randi([ijm ijM]); % get a random shape over the restricted
                                   % range of [-pi/2,pi/2]
 plot_info.i = ii; plot_info.j = jj;
-% plot_info.i = 729; plot_info.j = 733; % manually chosen 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % ii = 41; jj = 78; % manually chosen 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.i = ii; plot_info.j = jj; 
 plot_info.xx = 3; plot_info.yy = 3; plot_info.th = pi/4; % pi/4
 limX = [-1, 7]; limY = [-1, 7];
 scaleDraw = max([diff(limX),diff(limY)])/23.5;
@@ -256,11 +266,17 @@ dpsi_x = matlabFunction(dpsi(1),'Vars',symvarsij);
 dpsi_y = matlabFunction(dpsi(2),'Vars',symvarsij); % normalized version
 dpsi_x_sweep = dpsi_x(aa, ll, ai, aj); dpsi_x_sweep = conditiondatasweep(dpsi_x_sweep,[dnum,dnum]); dpsi_x_sweep(iV) = nan(size(dpsi_x_sweep(iV))); 
 plot_kin.dpsi_x_sweep = dpsi_x_sweep;
-dpsi_y_sweep = dpsi_y(aa, ll, ai, aj); dpsi_y_sweep = conditiondatasweep(dpsi_y_sweep,[dnum,dnum]); dpsi_y_sweep(iV) = nan(size(dpsi_y_sweep(iV))); 
+dpsi_y_sweep = dpsi_y(aa, ll, ai, aj); dpsi_y_sweep = conditiondatasweep(dpsi_y_sweep,[dnum,dnum]); dpsi_y_sweep(iV) = nan(size(dpsi_y_sweep(iV)));
 plot_kin.dpsi_y_sweep = dpsi_y_sweep;
 kin_info.dpsi_x = dpsi_x;
 kin_info.dpsi_y = dpsi_y;
 kin_info.dpsi = dpsi;
+%%%%%%%%%%%%%%% % let's compute the gradient directions too to shown the full velocity basis (grey for slipping directions)
+dpsi_sweep = [dpsi_x_sweep(:)'; dpsi_y_sweep(:)'];
+ndpsi_sweep = round(rot_in_ij(pi/2))*dpsi_sweep;
+ndpsi_x_sweep = reshape(ndpsi_sweep(1,:), size(dpsi_x_sweep));
+ndpsi_y_sweep = reshape(ndpsi_sweep(2,:), size(dpsi_y_sweep));
+%%%%%%%%%%%%%%%
 % connection
 if aF
     A__x_1 = matlabFunction(kin.Ax_ij{i}{1,1},'Vars',symvarsij);
@@ -628,6 +644,8 @@ for k = 1:numel(P.tileIdx) % iterate
             quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),dpsi_x_sweep(iQ,iQ),dpsi_y_sweep(iQ,iQ),0.5,...
                 'LineWidth',lW_V,'Color',gc_col);
             axis equal tight; hold on; view(2);
+            quiver(axP{k}, ai(iQ,iQ),aj(iQ,iQ),ndpsi_x_sweep(iQ,iQ),ndpsi_y_sweep(iQ,iQ),0.5,...
+                'LineWidth',lW_V,'Color',col(7,:));
             contour(axP{k}, ai, aj, ksq_sweep, [ksq_lb ksq_lb], 'k--', 'LineWidth', lW_contour+1);
             scatter(axP{k},eval(['a' num2str(cs(1))]),eval(['a' num2str(cs(2))]),circS_q,col_q,'filled','MarkerEdgeColor','k','LineWidth',lW_m,'Marker','square'); % config
             set(get(axP{k},'YLabel'),'rotation',0,'VerticalAlignment','middle');
