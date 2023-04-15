@@ -3,13 +3,15 @@
 function out = adj_adjinv_SE3(in, f)
 
     % Check if the input is a cell array ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
     if ~iscell(in) % if not a cell array ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         
         % If an output is received, this is the single transformation case.
         out = compute_adj_adjinv_SE3(in, f);
 
     else
+        
+        % Initialize the output container
+        out = cell(1, numel(in));
 
         % Iterate over all the transforms (checking each) and compute the adjoint or adj-inv
         for i = 1:numel(in)

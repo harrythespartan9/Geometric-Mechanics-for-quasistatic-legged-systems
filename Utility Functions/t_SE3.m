@@ -1,6 +1,7 @@
 % This function computes the translational SE(3) transformation from the current frame. It is better if the 3-element vector's first dimension is 3-- else this
 % transformation is done on the input array. Works on both numeric and symbolic inputs.
 function out = t_SE3(in)
+
     
     % check if there is at least one dimension with size 3
     if sum(size(in) == 3) == 0
@@ -12,39 +13,47 @@ function out = t_SE3(in)
     in = permute(in, [in3idx, listins(listins ~= in3idx)]);
     numelin = prod(ins)/ins(in3idx);
 
-    % iterate and compute the translational SE(3) transformation
-    out = cell(1, numelin); % initialize
-    for i = 1:numelin
+    % compute the translational transformation
+    switch numelin
 
-        switch numelin
+        case 1
 
-            case 1
+            out = [eye(3,3), in;
+              zeros(1,3), 1];
 
-                out = [eye(3,3), in;
-                  zeros(1,3), 1];
-
-            case 0
-                
-                out{i} = [eye(3,3), in(:,i);
-                  zeros(1,3), 1];
-
-        end
-
-        % out array formatting
-        if iscell(out) % if the output is a cell, condition it.
-            switch ~isempty(ins(in3idx+1:numel(ins)))
+        otherwise
             
-                case 0 % if empty (or if 2D)
-        
-                    out = reshape(out, [ins(1:in3idx-1), 1]);
-        
-                case 1 % not empty
-        
-                    out = reshape(out, [ins(1:in3idx-1), ins(in3idx+1:numel(ins))]);
-        
+            % initialize
+            out = cell(1, numelin);
+
+            % iterate and compute the translational SE(3) transformation
+            for i = 1:numelin
+                
+                out{i} = [eye(3,3), in(:,i); % compute
+                        zeros(1,3), 1];
+
             end
+
+    end
+
+        
+
+    % out array formatting
+    if iscell(out) % if the output is a cell, condition it.
+
+        switch ~isempty(ins(in3idx+1:numel(ins)))
+        
+            case 0 % if empty (or if 2D)
+    
+                out = reshape(out, [ins(1:in3idx-1), 1]);
+    
+            case 1 % not empty
+    
+                out = reshape(out, [ins(1:in3idx-1), ins(in3idx+1:numel(ins))]);
+    
         end
 
     end
+
 
 end

@@ -2,6 +2,7 @@
 % dimension that is 3.
 function out = crossprodform(in)
     
+    
     % check if there is at least one dimension with size 3
     if sum(size(in) == 3) == 0
         error('ERROR! There should be atleast one dimension with size 3.');
@@ -12,45 +13,45 @@ function out = crossprodform(in)
     in = permute(in, [in3idx, listins(listins ~= in3idx)]);
     numelin = prod(ins)/ins(in3idx);
 
-    % iterate and compute the translational SE(3) transformation
-    out = cell(1, numelin); % initialize
-    for i = 1:numelin
+    % compute the translational SE(3) transformation
+    switch numelin
 
+        case 1
 
-        switch numelin
+            out = [0, -in(3), in(2);
+                   in(3), 0, -in(1);
+                   -in(2), in(1), 0];
 
-            case 1
+        case 0
 
-                out = [0, -in(3), in(2);
-                       in(3), 0, -in(1);
-                       -in(2), in(1), 0];
+            out = cell(1, numelin); % initialize
 
-            case 0
-                
-                out{i} = [0, -in(3, i), in(2, i);
+            for i = 1:numelin % iterate
+            
+                out{i} = [0, -in(3, i), in(2, i); % compute
                        in(3, i), 0, -in(1, i);
                        -in(2, i), in(1, i), 0];
 
-        end
-
-        % out array formatting
-        if iscell(out) % if the output is a cell, condition it.
-
-            switch ~isempty(ins(in3idx+1:numel(ins)))
-            
-                case 0 % if empty (or if 2D)
-        
-                    out = reshape(out, [ins(1:in3idx-1), 1]);
-        
-                case 1 % not empty
-        
-                    out = reshape(out, [ins(1:in3idx-1), ins(in3idx+1:numel(ins))]);
-        
             end
-
-        end
-
 
     end
 
+    % out array formatting
+    if iscell(out) % if the output is a cell, condition it.
+
+        switch ~isempty(ins(in3idx+1:numel(ins)))
+        
+            case 0 % if empty
+    
+                out = reshape(out, [ins(1:in3idx-1), 1]);
+    
+            case 1 % not empty
+    
+                out = reshape(out, [ins(1:in3idx-1), ins(in3idx+1:numel(ins))]);
+    
+        end
+
+    end
+
+    
 end

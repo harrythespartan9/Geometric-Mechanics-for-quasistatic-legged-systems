@@ -3,7 +3,7 @@
 function out = compute_adj_adjinv_SE3(in, f)
 
     % Perform all checks and return the rotational and translational components of the SE(3) transformation
-    [R, p] = returnSE3comp(in);
+    [R, p] = returnSE3vars(in);
     
     % Compute the adjoint or adjoint inverse based on the input flag
     switch f
@@ -18,6 +18,11 @@ function out = compute_adj_adjinv_SE3(in, f)
             out = [R', zeros(size(R));
                 -R'*crossprodform(p), R'];
     
+    end
+
+    % If the computation was symbolic, return after simplifying
+    if isa(out, 'sym')
+        out = simplify(out, 'Steps', 10);
     end
 
 end
