@@ -1,5 +1,5 @@
-% This function computes the translational SE(3) transformation from the current frame. It is better if the 3-element vector's first dimension is 3-- else this
-% transformation is done on the input array. Works on both numeric and symbolic inputs.
+% This function computes the translational SE(3) transformation from the current SE(3) frame. It is better if the 3-element vector's first dimension is 3-- 
+% else this transformation is done on the input array. Works on both numeric and symbolic inputs.
 function out = t_SE3(in)
 
     

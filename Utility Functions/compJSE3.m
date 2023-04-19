@@ -6,17 +6,17 @@ function out = compJSE3(J_b__i, J_ib__i, i, idx)
     if sum(size(J_b__i) == [6, 6]) ~= 2
     
         if nargin < 4
-            error('ERROR! The body jacobian must be a 4x4 SE(3) transform.');
+            error('ERROR! The body jacobian must be a 6x6 SE(3) transform.');
         else
-            error(['ERROR! The' num2str(idx) ' body jacobian must be a 4x4 SE(3) transform.']);
+            error(['ERROR! The' num2str(idx) ' body jacobian must be a 6x6 SE(3) transform.']);
         end
     
     elseif sum(size(J_ib__i) == [6, 2]) ~= 2
     
         if nargin < 4
-            error('ERROR! The hip jacobian must be a 4x4 SE(3) transform.');
+            error('ERROR! The hip jacobian must be a 6x2 transform on the group vector.');
         else
-            error(['ERROR! The' num2str(idx) ' hip jacobian must be a 4x4 SE(3) transform.']);
+            error(['ERROR! The' num2str(idx) ' hip jacobian must be a 6x2 transform on the group vector.']);
         end
     
     else
