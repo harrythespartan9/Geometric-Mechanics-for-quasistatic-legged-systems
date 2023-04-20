@@ -16,6 +16,7 @@ function [S, L] = interpswingliftSE3(He, H, idx, j, r)
             newvars = [newvars, r{2*i-1}(idx), r{2*i}(idx)];
         else
             vars = [vars, eval(['alpha_' num2str(i)]), eval(['beta_' num2str(i)])]; % shape elements of the interpolation leg
+            % break;
         end
     end
     H = subs(H, oldvars, newvars);
@@ -28,7 +29,7 @@ function [S, L] = interpswingliftSE3(He, H, idx, j, r)
     % Compute the foot tip at the specific swing and lift values
     for i = 1:10
         S{i} = He*fH(ri_alpha(i), 0); % calculate the swing first
-        L{i} = He*fH(ri_alpha(10), ri_beta(i)); % calculate the swing from the lift
+        L{i} = He*fH(ri_alpha(10), ri_beta(i)); % calculate the swing from the end of the lift
     end
 
 end

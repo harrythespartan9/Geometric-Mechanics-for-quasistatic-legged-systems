@@ -20,8 +20,8 @@ function out = rotx_SE3(in)
             out = cell(size(in));
             for i = 1:numel(in)
                 out{i} = [1, 0, 0, 0;
-                          0, cos(in(in)), sin(in(in)), 0;
-                          0, -sin(in(in)), cos(in(in)), 0;
+                          0, cos(in(i)), sin(in(i)), 0;
+                          0, -sin(in(i)), cos(in(i)), 0;
                           zeros(1,3), 1];
             end
             out = reshape(out, size(in));
