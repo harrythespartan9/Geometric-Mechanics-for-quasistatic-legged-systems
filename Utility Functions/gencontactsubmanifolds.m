@@ -48,12 +48,14 @@ function out = gencontactsubmanifolds(n)
             tempi_C = cos(tempi_C) + 1i*sin(tempi_C);                               % convert phases into complex numbers along a unit circle- C1
             
 
-            totaldiff = c1diff(tempi_C);                                            % initialize total C1 difference
-            diffipool = unique(totaldiff);                                          % find the distinct pools
+            [diffipool, circshnum] = c1diff(tempi_C);                               % initialize total C1 difference
+            tempi(circshnum == 1, :) = circshift(tempi(circshnum == 1, :), -1);
+            diffipool(circshnum == 1, :) = -diffipool(circshnum == 1, :);
+            totaldiff = unique(diffipool);                                          % find the distinct pools
             pool = [];                                                              % initialize an empty pool array to obtain the sorted tempi
     
-            for j = 1:numel(diffipool)
-                pool_temp = tempi(totaldiff == diffipool(j), :);                    % obtain the current pool
+            for j = 1:numel(totaldiff)
+                pool_temp = tempi(tempi == totaldiff(j), :);                    % obtain the current pool
                 pool_temp = columnwiseL2Rsort(pool_temp);                           % sort it by each column
                 pool = [pool; pool_temp];                                           % append the sorted set to the bottom
             end
