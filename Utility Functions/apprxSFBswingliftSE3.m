@@ -5,7 +5,7 @@ function out = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin)
     if iscell(b) && iscell(ht3_e__i_exp)
         if numel(b) == 6 && numel(ht3_e__i_exp) == 4
             verifylength(b); verifylength(ht3_e__i_exp);
-            if numel(b{1}) ~= size(ht3_e__i_exp{1}, 1)
+            if numel(b{1}) ~= size(ht3_e__i_exp{1}, 2)
                 error('ERROR! The body and shape trajectories should have the same number of discretizations.');
             else
                 t = numel(b{1});
@@ -17,28 +17,35 @@ function out = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin)
         error('ERROR! The body and shape trajectories need to be cell arrays.');
     end
     
-    syms alpha beta 
-    H3_b__i = kin.H3_b__i;                                                               % analytical transforms to each leg
-    r_bound = deg2rad(30)*[-1, 1];                                                       % symmetric lift and swing bounds for fmincon optimization
-    out = cell(8, t);                                                                    % approximated lift and swing angles
-    
+    symb = kin.transforms.sym;                                                            % unpack everything you need from HAMR6's kinematic struct
+    func = kin.transforms.fun;
+    Rsymb= kin.config.R; assume(Rsymb, 'real');                                           % an important assumption about our inputs
+
+    obj_fun = @fxninx;                                                                    % declare the static path to the objective function outside the loop
+
+    H3_b__i = symb.H3_b__i;                                                               % analytical transforms to each leg from the body frame
+
+    r_bound = repmat(deg2rad(30)*[-1, 1], [8, 1]);                                        % symmetric lift and swing bounds for fmincon optimization
+
+    sq_err = sym('0');                                                                    % squared error norm of the approximate vs actual foot location
+                                                                                                                    % added over all feet for a given t
+    out = cell(1, t);                                                                     % approximated lift and swing angles -- as a cell array
+
     for i = 1:t
         
-        H3_e__b = kin.fH3_e__b( b{1}(i), b{2}(i), b{3}(i), b{4}(i), b{5}(i), b{6}(i) );  % current transform to body coordinates
-        
-        sq_err_sum = sym('0');                                                           % 'zero' symbolic initialization of squared error container
+        H3_e__b = func.fH3_e__b( b{1}(i), b{2}(i), b{3}(i), b{4}(i), b{5}(i), b{6}(i) );  % current transform to body coordinates
 
         for j = 1:4
-
-        err = ht3_e__i_exp{j}(:, i) - t_SE3(H3_e__b*H3_b__i{j});
-        sq_err_sum = sq_err_sum + err'*err;                                              % for each foot, obtain the squared error between the observation 
-                                                                                         % and analytical calculation-- this will be summed between every leg
+        
+            err = ht3_e__i_exp{j}(:, i) - p_SE3(H3_e__b*H3_b__i{j});
+            sq_err = sq_err +  err'*err;                                                  % for each foot, obtain the squared error between the observation 
+                                                                                          % and analytical calculation-- this will be summed between every leg
         end
 
-        ht3_e__i_sqerr = matlabFunction(sq_err_sum, 'Vars', kin.shape_space.r);          % convert this to a function
+        fsq_err = matlabFunction(simplify(sq_err), 'Vars', Rsymb);                        % create a function with all the errors
 
-        out{:, i} = num2cell(fmincon(ht3_e__i_sqerr, zeros(8, 1), [], [], [], [],...
-            r_bound, r_bound));                                                          % run fmincon to compute the swing and lift angles that minimize
+        out{i} = fmincon(@(x) obj_fun(x, fsq_err), zeros(8, 1),...                        % obtain the shape elements that minimize the objective function
+                [], [], [], [], r_bound(:, 1), r_bound(:, 2), [], optimoptions('fmincon', 'Display', 'off'));
 
     end
 
