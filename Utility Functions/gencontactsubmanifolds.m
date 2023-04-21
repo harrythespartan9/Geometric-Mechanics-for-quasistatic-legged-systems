@@ -55,8 +55,8 @@ function out = gencontactsubmanifolds(n)
             pool = [];                                                              % initialize an empty pool array to obtain the sorted tempi
     
             for j = 1:numel(totaldiff)
-                pool_temp = tempi(tempi == totaldiff(j), :);                    % obtain the current pool
-                pool_temp = columnwiseL2Rsort(pool_temp);                           % sort it by each column
+                pool_temp = tempi(diffipool == totaldiff(j), :);                    % obtain the current pool
+                pool_temp = sortfirstcolumn(pool_temp);                           % sort it by each column
                 pool = [pool; pool_temp];                                           % append the sorted set to the bottom
             end
 

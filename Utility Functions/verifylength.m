@@ -5,7 +5,7 @@ function verifylength(a)
             num = numel(a{i});
         else
             if num ~= numel(a{i}) % if the number trajectory path discretizations aren't equal
-                error('ERROR! The body trajectory discretization in each direction should be the same.');
+                error('ERROR! The trajectory discretization in each direction should be the same.');
             end
         end
     end
