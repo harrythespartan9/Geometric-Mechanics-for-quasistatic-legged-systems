@@ -27,11 +27,13 @@ function out = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin)
 
     r_bound = repmat(deg2rad(30)*[-1, 1], [8, 1]);                                        % symmetric lift and swing bounds for fmincon optimization
 
-    sq_err = sym('0');                                                                    % squared error norm of the approximate vs actual foot location
-                                                                                                                    % added over all feet for a given t
     out = cell(1, t);                                                                     % approximated lift and swing angles -- as a cell array
 
     for i = 1:t
+
+        sq_err = sym('0');                                                                % squared error norm of the approximate vs actual foot location
+                                                                                                               % added over all feet for a given t--
+                                                                                                               % reinitialize this every time!!!
         
         H3_e__b = func.fH3_e__b( b{1}(i), b{2}(i), b{3}(i), b{4}(i), b{5}(i), b{6}(i) );  % current transform to body coordinates
 
@@ -45,7 +47,7 @@ function out = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin)
         fsq_err = matlabFunction(simplify(sq_err), 'Vars', Rsymb);                        % create a function with all the errors
 
         out{i} = fmincon(@(x) obj_fun(x, fsq_err), zeros(8, 1),...                        % obtain the shape elements that minimize the objective function
-                [], [], [], [], r_bound(:, 1), r_bound(:, 2), [], optimoptions('fmincon', 'Display', 'off'));
+                [], [], [], [], r_bound(:, 1), r_bound(:, 2), [], optimoptions('fmincon', 'Display', 'off', 'UseParallel', true));
 
     end
 
