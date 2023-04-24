@@ -1,4 +1,4 @@
-% The 2-beat gait trajectory of the no-slip quadrupedal model goes through state transitions between different contact states and this is capture by the color
+% The 2-beat gait trajectory of the no-slip quadrupedal model goes through state transitions between different contact states and this is captured by the color
 % of the trajectory. When contact state is inactive, we use dark grey and when a contact state is active, we use the corresponding no-slip scalar field to
 % highlight the distance between the legs.
 function ptrajectory2bnoslip(ax, tau, idx_now, idx_pre, x, y, csi, csj, c_i, lW_s_i, c_j, lW_s_j, col) % [m, h] = % m, h, 

@@ -32,7 +32,6 @@ function out = computeSE3trajectory(r, b, kin)
     fH3_e__b = kin.transforms.fun.fH3_e__b;      % origin to body function
     hip_bound = t_SE3(kin.bounds.hip);           % closed-shape vectors of the hip bounding box
     body_bound = t_SE3(kin.bounds.body);         % closed-shape vectors of the hip bounding box
-    
 
     % Initialize your containers
     tH3_e__b = cell(1, t); taxH3_e__b = cell(1, t); % body and frames
@@ -41,11 +40,12 @@ function out = computeSE3trajectory(r, b, kin)
     tH3_e__icT = cell(4, t); tH3_e__icB = cell(4, t); tH3_icB__icT = cell(4, t); % top and bot boxes and bot2top displacements
     tH3_e__i = cell(4, t); taxH3_e__i = cell(4, t); % leg and frames
     tH3_e__i_swing = cell(4, t); tH3_e__i_lift = cell(4, t); % leg in swing direction first, then lift direction-- shows the trajectory in current leg
+    plotlim = nan(6, t);
     tbody = cell(1, t); % plotting structs
     tframes = cell(1, t);
     tboxes = tframes; 
     tlegs = tframes; tlegs0 = tlegs;
-    tfootS = cell(4, t); tfootL = tframes; % needs to be separate because the trajectories for swing and lift are disjointed 
+    tfootS = cell(4, t); tfootL = tframes; % needs to be separate because the trajectories for swing and lift are disjointed
 
     % iterate over the number of frames
     for i = 1:t
@@ -60,6 +60,7 @@ function out = computeSE3trajectory(r, b, kin)
         xyzSE3 = return_stacked_tSE3_coords(tH3_e__b{i});
         uvwSE3 = [taxH3_e__b{i}{1}(:)'; taxH3_e__b{i}{2}(:)'; taxH3_e__b{i}{3}(:)'];
         framesSE3 = [repmat(xyzSE3, 3, 1), uvwSE3];
+        limSE3 = xyzSE3 + uvwSE3;
         tbody{i} = xyzSE3;
         
         % Initialize other plotting containers
@@ -79,6 +80,7 @@ function out = computeSE3trajectory(r, b, kin)
             tH3_e__icT{j, i} = tH3_e__b{i}*H3_b__icT{j}; % top
             xyzSE3 = return_stacked_tSE3_coords(tH3_e__icT{j, i});
             uvwSE3 = return_stacked_tSE3_coords(tH3_e__icT{j, i}*body_bound{j} - tH3_e__icT{j, i});
+            limSE3 = [limSE3; xyzSE3 + uvwSE3];
             boxesSE3 = [ boxesSE3; [xyzSE3, uvwSE3] ];
             
             tH3_e__icB{j, i} = tH3_e__b{i}*H3_b__icB{j}; % bot
@@ -100,6 +102,7 @@ function out = computeSE3trajectory(r, b, kin)
             xyzSE3 = return_stacked_tSE3_coords(tH3_e__i{j, i});
             uvwSE3 = [taxH3_e__i{j, i}{1}(:)'; taxH3_e__i{j, i}{2}(:)'; taxH3_e__i{j, i}{3}(:)'];
             framesSE3 = [ framesSE3; [repmat(xyzSE3, 3, 1), uvwSE3] ];
+            limSE3 = [limSE3; xyzSE3 + uvwSE3];
 
             [tH3_e__i_swing{j, i}, tH3_e__i_lift{j, i}] = interpswingliftSE3(tH3_e__b{i}, H3_b__i{j}, i, j, r); % leg interpolation
             tfootS{j ,i} = return_stacked_tSE3_coords(tH3_e__i_swing{j, i});                                                         %%%% swing lift traj
@@ -110,6 +113,11 @@ function out = computeSE3trajectory(r, b, kin)
 
         end
 
+        % Compute the plotting limits in each frame
+        plotlim(:, i) = [min(limSE3(:,1)), max(limSE3(:,1)),...
+            min(limSE3(:,2)), max(limSE3(:,2)),...
+            min(limSE3(:,3)), max(limSE3(:,3))]';
+
         % Assign the frames, boxes, and legs objects for plotting
         tframes{i} = framesSE3;
         tboxes{i} = boxesSE3;
@@ -119,6 +127,7 @@ function out = computeSE3trajectory(r, b, kin)
     end
 
     % Pack up the results and return
+    out.plotlim = plotlim;
     out.tH3_e__b = tH3_e__b; out.taxH3_e__b = taxH3_e__b;
     out.tH3_e__ib = tH3_e__ib; out.taxH3_e__ib = taxH3_e__ib;
     out.tH3_e__icT = tH3_e__icT;
