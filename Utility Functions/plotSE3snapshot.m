@@ -24,14 +24,17 @@ function h = plotSE3snapshot(ax, traj, v, fno)
     tlegs = traj.tlegs{fno}; tlegs0 = traj.tlegs0{fno};
     tfootS = traj.tfootS(:, fno);
     tfootL = traj.tfootL(:, fno);
-    plotlim = [min(traj.plotlim(:, 1)), max(traj.plotlim(:, 2)),...
-            min(traj.plotlim(:, 3)), max(traj.plotlim(:, 4)),...
-            min(traj.plotlim(:, 5)), max(traj.plotlim(:, 6))];
+    plotlim = [min(traj.plotlim(1, :)), max(traj.plotlim(2, :)),...
+            min(traj.plotlim(3, :)), max(traj.plotlim(4, :)),...
+            min(traj.plotlim(5, :)), max(traj.plotlim(6, :))] + 0.07*traj.bl*repmat([-1, 1], [1, 3]);
     gr_col = [100, 100, 100]/255; % gray color used for robot body, etc
     if exist('traj.exp', 'var')
         spcl_col = traj.exp.col(fno) ;
         foot = [tlegs(:,1), tlegs(:,2), tlegs(:,3)] + [tlegs(:,4), tlegs(:,5), tlegs(:,6)];
         body = [tframes(1,1), tframes(1,2), tframes(1,3)];
+        plotlim = [min(traj.plotlim(:, 1)), max(traj.plotlim(:, 2)),...
+                min(traj.plotlim(:, 3)), max(traj.plotlim(:, 4)),...
+                min(traj.plotlim(:, 5)), max(traj.plotlim(:, 6))] + 0.07*traj.bl*repmat([-1, 1], [1, 3]);
     end
 
     % plot the swing and lift trajectories in a loop
@@ -42,8 +45,8 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             % plot the required configuration
             quiver3(tframes(:,1), tframes(:,2), tframes(:,3), tframes(:,4), tframes(:,5), tframes(:,6),...
                 'LineWidth', 1.2, 'Color', gr_col, 'AutoScale', 'off');                                           % all the frames-- body, hip, and legs
-            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded'); xlabel(ax, 'X'); ylabel(ax, 'Y'); 
-            zlabel(ax, 'Z'); xticklabels(ax, ''); yticklabels(ax, ''); zticklabels(ax, ''); axis(ax, plotlim);
+            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim); xlabel(ax, 'X'); ylabel(ax, 'Y'); 
+            zlabel(ax, 'Z'); xticklabels(ax, ''); yticklabels(ax, ''); zticklabels(ax, '');
             view(v); % set the camera angle
             quiver3(tboxes(:,1), tboxes(:,2), tboxes(:,3), tboxes(:,4), tboxes(:,5), tboxes(:,6),...
                 'LineWidth', 3.0, 'Color', gr_col, 'AutoScale', 'off', 'ShowArrowHead', 'off');                   % all the bounding boxes -- except feet
@@ -63,13 +66,12 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             c = 1;
             h{c} = quiver3(tframes(:,1), tframes(:,2), tframes(:,3), tframes(:,4), tframes(:,5), tframes(:,6),...
                 'LineWidth', 1.2, 'Color', gr_col, 'AutoScale', 'off'); c=c+1;                                           
-            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded'); xlabel(ax, 'X'); ylabel(ax, 'Y'); 
+            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim); xlabel(ax, 'X'); ylabel(ax, 'Y'); 
             zlabel(ax, 'Z'); xticklabels(ax, ''); yticklabels(ax, ''); zticklabels(ax, '');
             view(v); % set the camera angle
             h{c} = quiver3(tboxes(:,1), tboxes(:,2), tboxes(:,3), tboxes(:,4), tboxes(:,5), tboxes(:,6),...
                 'LineWidth', 3.0, 'Color', gr_col, 'AutoScale', 'off', 'ShowArrowHead', 'off'); c=c+1;
             scatter3(body(1), body(2), body(3), 100, spcl_col, 'filled', '.');                                  % COM position (doesn't get deleted)
-
             for j = 1:4
                 switch traj.exp.C_i{j}(fno)
                     case 0
