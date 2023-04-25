@@ -137,6 +137,7 @@ function out = computeSE3trajectory(r, b, kin)
     out.tH3_e__i = tH3_e__i; out.taxH3_e__i = taxH3_e__i;
     out.tH3_e__i_swing = tH3_e__i_swing;
     out.tH3_e__i_lift = tH3_e__i_lift;
+    out.tbody = tbody;
     out.tframes = tframes;
     out.tboxes = tboxes;
     out.tlegs = tlegs;

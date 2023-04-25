@@ -35,7 +35,7 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
                         c = c + (temp{i}(k) == S);
                     end
                     c = sum(c, 2); tS{i} = find(c == numel(temp{i}) & Slvl == numel(temp{i}));          % current submanifold
-                    tcol{i} = col(tS{i}, :)';                                                           % associated color
+                    tcol{i} = col(tS{i}, :);                                                           % associated color
                 end
 
             otherwise
@@ -56,7 +56,7 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
                             c = c + (temp{i}(k) == S);
                         end
                         c = sum(c, 2); tS{i} = find(c == numel(temp{i}) & Slvl == numel(temp{i}));
-                        tcol{i} = col(tS{i}, :)';
+                        tcol{i} = col(tS{i}, :);
                     end
                 else 
                     tS(i) = tS(i - 1);                                                          % same submanifold and color as the last time step

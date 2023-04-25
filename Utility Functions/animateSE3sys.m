@@ -14,7 +14,7 @@ function animateSE3sys(traj, v)
         video = VideoWriter([Name,'.mp4'],'MPEG-4');
         video.FrameRate = fps;
         video.Quality = qual;
-        open(video);
+        % open(video);
     end
 
     % plot
@@ -32,13 +32,13 @@ function animateSE3sys(traj, v)
         h = plotSE3snapshot(gca, traj, camlos, i); % SE(3) snapshot
 
         if vidF
-            writeVideo(video,getframe(f)); % get the frame
+            % writeVideo(video,getframe(f)); % get the frame
         end
 
     end
 
     if vidF
-        close(video); % close the video
+        % close(video); % close the video
     end
 
 end

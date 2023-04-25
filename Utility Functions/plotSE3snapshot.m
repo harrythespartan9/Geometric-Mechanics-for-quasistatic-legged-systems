@@ -18,7 +18,8 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             'information is needed to plot the SE(3) configuration. Refer to "HAMR6_SE3.mlx" as a tutorial to generate compatible kinematics.']);
     end
 
-    % Unpack the plotting structs and defining vars I need
+    % Unpack
+    tbody = traj.tbody{fno};
     tframes = traj.tframes{fno};
     tboxes = traj.tboxes{fno};
     tlegs = traj.tlegs{fno}; tlegs0 = traj.tlegs0{fno};
@@ -28,17 +29,16 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             min(traj.plotlim(3, :)), max(traj.plotlim(4, :)),...
             min(traj.plotlim(5, :)), max(traj.plotlim(6, :))] + 0.07*traj.bl*repmat([-1, 1], [1, 3]);
     gr_col = [100, 100, 100]/255; % gray color used for robot body, etc
-    if exist('traj.exp', 'var')
-        spcl_col = traj.exp.col(fno) ;
+    if isfield(traj, 'exp')
+        spcl_col = traj.exp.col{fno} ;
         foot = [tlegs(:,1), tlegs(:,2), tlegs(:,3)] + [tlegs(:,4), tlegs(:,5), tlegs(:,6)];
-        body = [tframes(1,1), tframes(1,2), tframes(1,3)];
         plotlim = [min(traj.plotlim(:, 1)), max(traj.plotlim(:, 2)),...
                 min(traj.plotlim(:, 3)), max(traj.plotlim(:, 4)),...
                 min(traj.plotlim(:, 5)), max(traj.plotlim(:, 6))] + 0.07*traj.bl*repmat([-1, 1], [1, 3]);
     end
 
     % plot the swing and lift trajectories in a loop
-    switch exist('traj.exp', 'var')
+    switch isfield(traj, 'exp')
 
         case 0 %%%%%%%%%%%%%%%% simple case with just a single configuration
 
@@ -71,7 +71,7 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             view(v); % set the camera angle
             h{c} = quiver3(tboxes(:,1), tboxes(:,2), tboxes(:,3), tboxes(:,4), tboxes(:,5), tboxes(:,6),...
                 'LineWidth', 3.0, 'Color', gr_col, 'AutoScale', 'off', 'ShowArrowHead', 'off'); c=c+1;
-            scatter3(body(1), body(2), body(3), 100, spcl_col, 'filled', '.');                                  % COM position (doesn't get deleted)
+            scatter3(tbody(1), tbody(2), tbody(3), 100, spcl_col, 'filled', '.');                                  % COM position (doesn't get deleted)
             for j = 1:4
                 switch traj.exp.C_i{j}(fno)
                     case 0
