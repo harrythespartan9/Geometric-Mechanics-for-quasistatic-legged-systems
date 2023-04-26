@@ -1,6 +1,6 @@
 % This function computes the current submanifold and the corresponding color, when provided with a contact trajectory, contact change trajectory, and contact
 % data for the kinematics of the system being analyzed. No input concistency checks are done in this function-- ensure you're
-function [tS, tcol] = compute_submanifold_color(C, delC, kin)
+function [tS, tcol] = compute_submanifold_color(C, delC, kin) % , tcirc
 
     % Unpack
 
@@ -9,6 +9,7 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
     t = numel(C{1});
     tS = cell(1, t);
     tcol = cell(1, t);
+    % tcirc = cell(1, t);
     temp = cell(1, t);
     S = kin.contact.submanifolds;
     Slvl = kin.contact.submanifold_level;
@@ -19,6 +20,8 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
 
         switch i
 
+
+
             case 1
 
                 for j = 1:4
@@ -28,14 +31,16 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
                 end
                 if isempty(temp{i})
                     tcol{i} = [100, 100, 100]/255;
-                    tS{i} = nan;
+                    tS{i} = nan; 
+                    % tcirc{i} = 25;
                 else
                     c = zeros(size(S));
                     for k = 1:numel(temp{i})
                         c = c + (temp{i}(k) == S);
                     end
                     c = sum(c, 2); tS{i} = find(c == numel(temp{i}) & Slvl == numel(temp{i}));          % current submanifold
-                    tcol{i} = col(tS{i}, :);                                                           % associated color
+                    tcol{i} = col(tS{i}, :);                                                            % associated color
+                    % tcirc{i} = 100;                                                                     % associated animation scatter size
                 end
 
             otherwise
@@ -49,7 +54,8 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
                     end
                     if isempty(temp{i})
                         tcol{i} = [100, 100, 100]/255;
-                        tS{i} = nan;
+                        tS{i} = nan; 
+                        % tcirc{i} = 25;
                     else
                         c = zeros(size(S));
                         for k = 1:numel(temp{i})
@@ -57,11 +63,15 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin)
                         end
                         c = sum(c, 2); tS{i} = find(c == numel(temp{i}) & Slvl == numel(temp{i}));
                         tcol{i} = col(tS{i}, :);
+                        % tcirc{i} = 100;
                     end
                 else 
-                    tS(i) = tS(i - 1);                                                          % same submanifold and color as the last time step
+                    tS(i) = tS(i - 1);                                                          % same submanifold, color, and scat_size as the last time step
                     tcol{i} = tcol{i - 1};
+                    % tcirc{i} = tcirc{i - 1};
                 end
+
+
 
         end
 
