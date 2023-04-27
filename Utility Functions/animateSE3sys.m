@@ -7,7 +7,7 @@ function animateSE3sys(traj, v)
     qual = v.Quality;
     camlos = v.View;
     vidF = v.VidF;
-    t = traj.exp.t;
+    t = traj.exp.tnum;
     
     % initialize video
     if vidF
@@ -31,6 +31,11 @@ function animateSE3sys(traj, v)
 
         h = plotSE3snapshot(gca, traj, camlos, i); % SE(3) snapshot
         drawnow;
+        if isfield(v, 'Speed')
+            title(gca, ['Speed = '...
+                num2str(v.Speed) 'x'],...
+                'FontSize', 25);
+        end
 
         if vidF
             writeVideo(video,getframe(f)); % get the frame
