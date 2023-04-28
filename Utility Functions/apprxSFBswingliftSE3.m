@@ -25,7 +25,7 @@ function out = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin)
 
     H3_b__i = symb.H3_b__i;                                                               % analytical transforms to each leg from the body frame
 
-    r_bound = repmat(deg2rad(30)*[-1, 1], [8, 1]);                                        % symmetric lift and swing bounds for fmincon optimization
+    r_bound = repmat(deg2rad(89)*[-1, 1], [8, 1]);                                        % symmetric lift and swing bounds for fmincon optimization-- 89 degs
 
     out = cell(1, t);                                                                     % approximated lift and swing angles -- as a cell array
 
