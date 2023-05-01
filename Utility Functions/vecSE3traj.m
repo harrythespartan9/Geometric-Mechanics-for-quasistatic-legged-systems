@@ -27,11 +27,4 @@ function out = vecSE3traj(in)
     end
 
 
-
-
-
-
-
-
-
 end

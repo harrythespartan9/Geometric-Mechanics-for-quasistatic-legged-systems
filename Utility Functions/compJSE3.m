@@ -1,5 +1,5 @@
 % This function computes the jacobian in the right format and returns it to the upper function.
-function out = compJSE3(J_b__i, J_ib__i, i, idx)
+function out = compJSE3(J_b__i, J_ib__i, i, n, idx)
 
     
     % Make sure the jacobians are the right size.
@@ -21,7 +21,7 @@ function out = compJSE3(J_b__i, J_ib__i, i, idx)
     
     else
         
-        out = [ J_b__i, [ zeros(6, 2*(i-1)), J_ib__i, zeros(6, 2*(4-i)) ] ]; % compute the full Jacobian
+        out = [ J_b__i, [ zeros(6, 2*(i-1)), J_ib__i, zeros(6, 2*(n-i)) ] ]; % compute the full Jacobian
     
     end
 

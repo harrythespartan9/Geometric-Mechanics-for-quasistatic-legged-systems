@@ -1,5 +1,5 @@
 % This function computes the adjoint-inverse pullback matrix for moving velocities from body frame to global frame.
-function out = adginv(in)
+function out = TeLg_old(in)
 
     out = [cos(in), -sin(in), 0;
            sin(in),  cos(in), 0;

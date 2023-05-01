@@ -1,5 +1,6 @@
 % This function extracts the rotation matrix from the given SE(3) transformation.
 function out = R_SE3(in)
+
     
     if iscell(in)
         out = cell(size(in));

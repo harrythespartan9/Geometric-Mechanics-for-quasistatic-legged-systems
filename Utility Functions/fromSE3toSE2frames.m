@@ -19,7 +19,7 @@ function out = fromSE3toSE2frames(in)
         if sum(size(in) == [4, 4]) ~= 2 % if it is not a 4x4 matrix
             error('ERROR! The input not a 4x4 SE(3) transformation matrix.');
         else
-            Rtemp = in(1:2, 1:2); ptemp = in(4, 1:2);
+            Rtemp = in(1:2, 1:2); ptemp = in(1:2, 4);
             out = v2M_SE2([ptemp; (Rtemp(1, 1)/norm(Rtemp(:, 1)) + Rtemp(2, 2)/norm(Rtemp(:, 2)))/2]);
         end
     end

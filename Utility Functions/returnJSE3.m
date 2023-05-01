@@ -7,14 +7,14 @@ function out = returnJSE3(J_b__i, J_ib__i, i, n)
         
         case 1
 
-            out = compJSE3(J_b__i, J_ib__i, i, []); % compute
+            out = compJSE3(J_b__i, J_ib__i, i, n); % compute
 
         otherwise
             
             out = cell(size(J_b__i)); % initialize
             for j = 1:numel(out) % iterate
                 
-                out{j} = compJSE3(J_b__i{j}, J_ib__i{j}, i{j}, j);
+                out{j} = compJSE3(J_b__i{j}, J_ib__i{j}, i{j}, n, j);
                 
             end
 

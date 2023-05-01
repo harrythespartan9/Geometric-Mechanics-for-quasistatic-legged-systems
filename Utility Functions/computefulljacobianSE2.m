@@ -1,6 +1,6 @@
 % This function computes the full jacobian from the jacobian about the body and hip joints provided. The goal is to add a column of zeros for hip joints that
 % don't directly control the corresponding leg.
-function Jout = computefulljacobianSE3(J_b__i, J_ib__i, n)
+function Jout = computefulljacobianSE2(J_b__i, J_ib__i, n)
 
     % enumerate legs 'i'
     i = num2cell(1:numel(J_b__i));
@@ -14,7 +14,7 @@ function Jout = computefulljacobianSE3(J_b__i, J_ib__i, n)
                 
                 if numel(J_b__i) == numel(J_ib__i)
                     
-                    Jout = returnJSE3(J_b__i, J_ib__i, i, n); % compute each full jacobian requested
+                    Jout = returnJSE2(J_b__i, J_ib__i, i, n); % compute each full jacobian requested
     
                 else
 
@@ -48,7 +48,7 @@ function Jout = computefulljacobianSE3(J_b__i, J_ib__i, n)
 
             else
                 
-                Jout = returnJSE3(J_b__i, J_ib__i, i, n); % compute the single jacobian requested
+                Jout = returnJSE2(J_b__i, J_ib__i, i, n); % compute the single jacobian requested
 
             end
 
