@@ -11,8 +11,8 @@ function out = fromSE3toSE2frames(in)
             if sum(size(in{i}) == [4, 4]) ~= 2 % if it is not a 4x4 matrix
                 error('ERROR! The input not a 4x4 SE(3) transformation matrix.');
             else
-                Rtemp = in{i}(1:2, 1:2); ptemp = in{i}(1:2, 4); % reduce it to the 2D projection
-                out{i} = v2M_SE2([ptemp; (Rtemp(1, 1)/norm(Rtemp(:, 1)) + Rtemp(2, 2)/norm(Rtemp(:, 2)))/2]); % estimate the SE(2) representation
+                Rtemp = in{i}(1:2, 1:2); ptemp = in{i}(1:2, 4); % reduce it to xy directions
+                out{i} = v2M_SE2([ptemp; compute_yaw2d(Rtemp)]); % estimate the SE(2) representation
             end      
         end
     else
@@ -20,8 +20,10 @@ function out = fromSE3toSE2frames(in)
             error('ERROR! The input not a 4x4 SE(3) transformation matrix.');
         else
             Rtemp = in(1:2, 1:2); ptemp = in(1:2, 4);
-            out = v2M_SE2([ptemp; (Rtemp(1, 1)/norm(Rtemp(:, 1)) + Rtemp(2, 2)/norm(Rtemp(:, 2)))/2]);
+            out = v2M_SE2([ptemp; compute_yaw2d(Rtemp)]);
         end
     end
+    
+
 end
 
