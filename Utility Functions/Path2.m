@@ -336,6 +336,29 @@ classdef Path2 < RigidGeomQuad
             closedTraj = {[t, t_d]; [x, x_d]; [y, y_d]; [theta, theta_d]; [ai, ai_d]; [aj, aj_d]};
 
         end
+
+        % given a contact and shape trajectory-- say from an experiment, obtain an estimate for the SE(2) body velocity and then integrate it to obtain the body
+        % trajectory
+        function b_hat = estimate_SE2_trajectory(exp_traj, hamr_params)
+
+            % unpack your experimental trajectory
+            J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
+            T = exp_traj.t - exp_traj.t(1); % zero the first time-step
+            r = exp_traj.r(1:2:end); r = convert2case1convention(r);
+            r_dot = exp_traj.r_dot(1:2:end); r_dot = convert2case1convention(r_dot); % just the swing and swing velocities
+            b = exp_traj.b;
+            c = exp_traj.C_i;
+
+            % Initial condition for body trajectory
+            x0 = [-b{2}(1); b{1}(1); b{6}(1)]; % since it is an SE(2) slice, we only need x (-y when moving from HAMR's SE(3) to our SE(2) convention), y (x), 
+                                               % and yaw values.
+
+            % Compute the body velocity using ode45
+            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T} ), T, x0  ); % pass the time vector for interp1
+            b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
+            b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)';
+
+        end
         
 
     end

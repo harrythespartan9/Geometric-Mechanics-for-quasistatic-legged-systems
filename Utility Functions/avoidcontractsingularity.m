@@ -1,6 +1,6 @@
 % This functions takes the symbolic kinematics of a no-slip, quadrupedal robot, and constraints the level-2 shape-space slice to avoid ill-conditioned regions 
-% near the contracting singularity to aid motion planning. If you very small perturb to the shape-space near this singularity, the resulting displacement in the
-% position space is very large, and hence undesirable for motion planning.
+% near the contracting singularity to aid motion planning. If you add a very small perturbaTION to the shape-space near this singularity, the resulting 
+% displacement in the position space is very large (unstable region), and hence undesirable for motion planning.
 function [idxV, ksq_lb] = avoidcontractsingularity(kin_info, ksq, ksq_sweep, aa, ll, lb)
 
 % initialize vars

@@ -250,7 +250,12 @@ symvarsij = eval(['[a, l, ' cs1_shape_txt ', ' cs2_shape_txt ']']); % fxn vars
 ksq = kin.ksq_ij{i};
 ksq_sweep = ksq(aa, ll, ai, aj);
 %%%%%%%%%%%%%%% compute the contracting singularity location for the current Sij and get the indices within the premittable shape space limits
-lb = 1; % set a heuristic ksq lower bound around the contracting singularity
+perct = 10; % what percentage of body length you want to stop at-- a heuristic ksq lower bound around the contracting singularity
+if isa(bl, 'sym')
+    lb = double(subs((kin_info.bl/perct)^2, l, ll));
+else
+    lb = (kin_info.bl/perct)^2;
+end
 [plot_info.iV, plot_info.ksq_lb] = avoidcontractsingularity(kin_info, ksq, ksq_sweep, aa, ll, lb);
 ksq_lb = plot_info.ksq_lb; iV = plot_info.iV;
 %%%%%%%%%%%%%%%

@@ -1,4 +1,4 @@
-function plot_ksq_isocontflow(k,d_x,d_y,cs1,cs2)
+function plot_ksq_isocontflow(k,d_x,d_y,cs1,cs2,aa,ll)
 
 % Get the text for the labels
 xtxt = ['$\alpha_' num2str(cs1) '$'];
@@ -9,7 +9,7 @@ cftitle_txt = ['$k^2_{' num2str(cs1) num2str(cs2) '}$ iso-contours and flow'];
 
 % Unlock the joint limits of the system.
 ank = 1*pi; % symmetrically defined about 0.
-aa = 1; ll = 1;
+% % aa = 1; ll = 1; % now, we provide these values as inputs
 
 % Plot info
 dnum = 1001; % set this arbitrarily
