@@ -347,7 +347,12 @@ classdef Path2 < RigidGeomQuad
             r = exp_traj.r(1:2:end); r = convert2case1convention(r);
             r_dot = exp_traj.r_dot(1:2:end); r_dot = convert2case1convention(r_dot); % just the swing and swing velocities
             b = exp_traj.b;
-            c = exp_traj.C_i;
+            
+            if numel(hamr_params) == 3
+                c = exp_traj.C_i;
+            elseif numel(hamr_params) == 4
+                c = expkin_contact_thresholding(exp_traj.ht3_e__i ,hamr_params{4});
+            end
 
             % Initial condition for body trajectory
             x0 = [-b{2}(1); b{1}(1); b{6}(1)]; % since it is an SE(2) slice, we only need x (-y when moving from HAMR's SE(3) to our SE(2) convention), y (x), 
@@ -356,7 +361,7 @@ classdef Path2 < RigidGeomQuad
             % Compute the body velocity using ode45
             [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T} ), T, x0  ); % pass the time vector for interp1
             b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
-            b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)';
+            b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
 
         end
         

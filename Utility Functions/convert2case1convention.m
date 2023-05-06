@@ -4,7 +4,7 @@ function rout = convert2case1convention(rin)
 %   This function takes this experimental kinematics and modulates it into the form we need for planar analysis.
     if iscell(rin)
         rout = cell(size(rin));
-        for i = 1:2:numel(rin)
+        for i = 1:numel(rin)
             if i == 2  || i == 3
                 rout{i} = -rin{i}; % the hip frame is rotated by pi on the left side of the body-- flipping the swing angle convention
             else

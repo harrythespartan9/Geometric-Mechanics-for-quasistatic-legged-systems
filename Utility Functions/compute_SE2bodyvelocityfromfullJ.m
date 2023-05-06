@@ -12,13 +12,11 @@ function bdotS = compute_SE2bodyvelocityfromfullJ(t, aa, ll, x, in)
     syms a l alpha_1 alpha_2 alpha_3 alpha_4 real
 
     % Construct the pfaffian constraint from the current active contact states and then compute the current local connection
-    pfaff = [];
+    pfaff = []; tr_dot_now = [];
     for i = 1:numel(c)
-        if tc(i)
-            pfaff = [pfaff; J{i}];
-        end
+        pfaff = [pfaff; tc(i)*J{i}]; % generate the current local connection
     end
     pfaff = double( subs( pfaff, [a, l, alpha_1, alpha_2, alpha_3, alpha_4], [aa, ll, tr(1), tr(2), tr(3), tr(4)] ) );
-    bdotS = -TeLg(x(3))*pfaff(:, 1:3)\pfaff(:, 4:end)*tr_dot;
+    bdotS = -TeLg(x(3)) * (pfaff(:, 1:3)\pfaff(:, 4:end)) * tr_dot;
 
 end
