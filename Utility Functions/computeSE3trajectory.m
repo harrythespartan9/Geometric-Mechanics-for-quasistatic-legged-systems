@@ -1,7 +1,8 @@
-% This function plots the snapshot of the given SE(3) quadrupedal system kinematics-- needs a bounding box formulation, 2DOF hip frame, and leg frame functions. 
+% This function computes the 3D reconstruction of a given SE(3) quadrupedal system kinematics along it's trajectory q(t) 
+% (configuration 'q' = body 'b' x shape 'r')-- needs symbolic and function SE(3) kinematics of the underlying system.
 % Follow the steps in "HAMR6_SE3.mlx" section 1 to generate compatible kinematics for your system.
 % Inputs: r-- shape trajectory; for a 2DOF leg quadruped this would be 1x8 cell array with each each cell being t-vector long
-%         b-- body trajectory; since this is SE(3), this would be a collection of body displacements and YPR angles (look up ZYX Tait-Bryan angles)
+%         b-- body trajectory; since this is SE(3), this would be a collection of body displacements and YPR angles in XYZ convention (look up Euler angles)
 
 function out = computeSE3trajectory(r, b, kin)
     
@@ -93,8 +94,10 @@ function out = computeSE3trajectory(r, b, kin)
             boxesSE3 = [ boxesSE3; [xyzSE3, uvwSE3] ];
 
             tH3_ib__i{j, i} = fH3_ib__i{j}(r{1}(i), r{2}(i), r{3}(i), r{4}(i), r{5}(i), r{6}(i), r{7}(i), r{8}(i)); % hip to foot
+            % xyzSE3 = return_stacked_tSE3_coords(tH3_e__ib{j, i}); % old way, prolly incorrect
+            % uvwSE3 = return_stacked_tSE3_coords(tH3_ib__i{j, i});
             xyzSE3 = return_stacked_tSE3_coords(tH3_e__ib{j, i});                                                                    %%%% plotting legs-r and r0
-            uvwSE3 = return_stacked_tSE3_coords(tH3_ib__i{j, i});
+            uvwSE3 = return_stacked_tSE3_coords(tH3_e__ib{j, i}*tH3_ib__i{j, i}) - xyzSE3;
             legsSE3 = [ legsSE3; [xyzSE3, uvwSE3] ];
             
             tH3_e__i{j, i} = tH3_e__b{i}*fH3_b__i{j}(r{1}(i), r{2}(i), r{3}(i), r{4}(i), r{5}(i), r{6}(i), r{7}(i), r{8}(i)); % leg and frames

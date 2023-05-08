@@ -1,4 +1,4 @@
-%V2M_SE2 converts the vector form of an SE2 group element to its actionable matrix form
+%V2M_SE2 converts the vector form of an SE2 group element to its matrix form for group actions.
 function M = v2M_SE2(v)
     
     % Compute the Matrix form directly
