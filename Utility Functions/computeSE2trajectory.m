@@ -22,12 +22,21 @@ function out = computeSE2trajectory(r, b, kin)
         error('ERROR! The body and shape trajectories need to be cell arrays.');
     end
     
+    Rtocase1 = round(v2M_SE2([0, 0, pi/2])); % rotate by 90
+    r = convert2case1convention(r); % shape to case 1
+    btemp = nan(3, t);
+    for i = 1:numel(b)
+        btemp(i, :) = b{i};
+    end
+    btemp = Rtocase1*btemp; 
+    b{1} = btemp(1, :); b{2} = btemp(2, :); b{3} = btemp(3, :); % body trajectory to case 1
+    
     % Let's unpack the kinematics
-    fh2_e__b = kin.transforms.fun.fH2_e__b;      % origin to body function
-    fh2_b__ib = kin.transforms.fun.fH2_b__ib;    % body to hip function
-    % fh2_ib__i = kin.transforms.fun.fH2_ib__i;  % hip to leg function
-    fh2_b__i = kin.transforms.fun.fH2_b__i;      % body to leg function
-    fh2_b__ic = kin.transforms.fun.fH2_e__ic;    % body to corners function
+    fh2_e__b = kin.transforms.fun.fh2_e__b;      % origin to body function
+    fh2_b__ib = kin.transforms.fun.fh2_b__ib;    % body to hip function
+    % fh2_ib__i = kin.transforms.fun.fh2_ib__i;  % hip to leg function
+    fh2_b__i = kin.transforms.fun.fh2_b__i;      % body to leg function
+    fh2_b__ic = kin.transforms.fun.fh2_b__ic;    % body to corners function
     bl = kin.params.bl;                          % system's body length
     ll = kin.params.ll;                           % system's smallest length parameter from body frame to hip bounds, 'l'
     aa = kin.params.aa;                          % system's leg to 'l' ratio, 'a'
@@ -50,45 +59,46 @@ function out = computeSE2trajectory(r, b, kin)
         th2_e__b{j} = fh2_e__b( b{1}(j), b{2}(j), b{3}(j) );
         taxh2_e__b{j} = generateSE2frames(th2_e__b{j}, bl/10); % frame is 10% body-length
 
-        xyzSE2 = th2_e__b{j}'; uvwSE2 = [taxh2_e__b{j}{1}(:)'; taxh2_e__b{j}{2}(:)'];
-        framesSE2 = [repmat(xyzSE2, 2, 1), uvwSE2];
-        tbody{j} = xyzSE2;
+        xySE2 = th2_e__b{j}(1:2)'; uvSE2 = [taxh2_e__b{j}{1}(:)'; taxh2_e__b{j}{2}(:)'];
+        framesSE2 = [repmat(xySE2, 2, 1), uvSE2];
+        tbody{j} = xySE2;
 
-        boxesSE2 = double.empty(0, 6); legsSE2 = boxesSE2; legs0SE2 = legsSE2; limSE2 = double.empty(0, 3);
+        boxesSE2 = double.empty(0, 4); legsSE2 = boxesSE2; legs0SE2 = legsSE2; limSE2 = double.empty(0, 2);
         
         for i = 1:4
             
             th2_b__ib = fh2_b__ib{i}(ll);
             th2_e__ib{i, j} = seqSE2transformation([th2_e__b{j}, th2_b__ib]);
-            taxh2_e__ib{i, j} = generateSE2framesgenerateSE2frames(th2_e__ib{i, j}, bl/20); % frame is 5% body_length
-            xyzSE2 = th2_e__ib{i, j}'; uvwSE2 = [taxh2_e__ib{i, j}{1}(:)'; taxh2_e__ib{i, j}{2}(:)']; % HIP
-            framesSE2 = [framesSE2; [repmat(xyzSE2, 2, 1), uvwSE2] ];
+            taxh2_e__ib{i, j} = generateSE2frames(th2_e__ib{i, j}, bl/20); % frame is 5% body_length
+            xySE2 = th2_e__ib{i, j}(1:2)'; uvSE2 = [taxh2_e__ib{i, j}{1}(:)'; taxh2_e__ib{i, j}{2}(:)']; % HIP
+            framesSE2 = [framesSE2; [repmat(xySE2, 2, 1), uvSE2] ];
 
-            th2_b__i = fh2_b__i(aa, ll, r{i}(j)); tfootS{i, j} = interpswingSE2(th2_e__b{j}, fh2_b__i, {aa, ll, r{i}(j)});
+            th2_b__i = fh2_b__i{i}(aa, ll, r{i}(j)); tfootS{i, j} = interpswingSE2(th2_e__b{j}, fh2_b__i{i}, {aa, ll, r{i}(j)});
             th2_e__i{i, j} = seqSE2transformation([th2_e__b{j}, th2_b__i]);
             taxh2_e__i{i, j} = generateSE2frames(th2_e__i{i, j}, bl/20);
-            xyzSE2 = th2_e__i{i, j}'; uvwSE2 = [taxh2_e__i{i, j}{1}(:)'; taxh2_e__i{i, j}{2}(:)']; % LEG
-            framesSE2 = [framesSE2; [repmat(xyzSE2, 2, 1), uvwSE2] ];
-            limSE2 = [limSE2; xyzSE2 + uvwSE2 ];
+            xySE2 = th2_e__i{i, j}(1:2)'; uvSE2 = [taxh2_e__i{i, j}{1}(:)'; taxh2_e__i{i, j}{2}(:)']; % LEG
+            framesSE2 = [framesSE2; [repmat(xySE2, 2, 1), uvSE2] ];
+            limSE2 = [limSE2; repmat(xySE2, 2, 1) + uvSE2 ];
             temp_leg = th2_e__i{i, j}' - th2_e__ib{i, j}';
-            legsSE2 = [legsSE2; [th2_e__ib{i, j}', temp_leg] ];
-            th2_b__i0 = fh2_b__i(aa, ll, 0);
+            legsSE2 = [legsSE2; [th2_e__ib{i, j}(1:2)', temp_leg(1:2)] ];
+            th2_b__i0 = fh2_b__i{i}(aa, ll, 0);
             th2_e__i0 = seqSE2transformation([th2_e__b{j}, th2_b__i0]); % LEG-ORIGIN
-            temp_leg = th2_e__i0{i, j}' - th2_e__ib{i, j}';
-            legs0SE2 = [legs0SE2; [th2_e__ib{i, j}', temp_leg] ];
-            limSE2 = [limSE2; xyzSE2 + uvwSE2 ];
+            temp_leg = th2_e__i0' - th2_e__ib{i, j}';
+            legs0SE2 = [legs0SE2; [th2_e__ib{i, j}(1:2)', temp_leg(1:2)] ];
+            limSE2 = [limSE2; repmat(xySE2, 2, 1) + uvSE2 ];
             
             th2_b__ic = fh2_b__ic{i}(ll);
             th2_e__ic{i, j} = seqSE2transformation([th2_e__b{j}, th2_b__ic]);
-            xyzSE2 = th2_e__ic{i, j}'; limSE2 = [limSE2; xyzSE2 ];
+            xySE2 = th2_e__ic{i, j}(1:2)'; limSE2 = [limSE2; xySE2 ];
             if i == 4
-                uvwSE2 = fh2_b__ic{1}(ll)' - th2_b__ic';
+                uvSE2 = fh2_b__ic{1}(ll)' - th2_b__ic';
             else
-                uvwSE2 = fh2_b__ic{i+1}(ll)' - th2_b__ic';
+                uvSE2 = fh2_b__ic{i+1}(ll)' - th2_b__ic';
             end
-            boxesSE2 = [ boxesSE2; [xyzSE2, uvwSE2] ];
+            boxesSE2 = [ boxesSE2; [xySE2, uvSE2(1:2)] ];
 
         end
+        
 
         % Compute the plotting limits in each frame
         plotlim(:, j) = [min(limSE2(:,1)), max(limSE2(:,1)),...
@@ -104,22 +114,17 @@ function out = computeSE2trajectory(r, b, kin)
 
     % Pack up the results and return
     out.plotlim = plotlim;
-    out.tH3_e__b = tH3_e__b; out.taxH3_e__b = taxH3_e__b;
-    out.tH3_e__ib = tH3_e__ib; out.taxH3_e__ib = taxH3_e__ib;
-    out.tH3_e__icT = tH3_e__icT;
-    out.tH3_e__icB = tH3_e__icB;
-    out.tH3_icB__icT = tH3_icB__icT;
-    out.tH3_ib__i = tH3_ib__i;
-    out.tH3_e__i = tH3_e__i; out.taxH3_e__i = taxH3_e__i;
-    out.tH3_e__i_swing = tH3_e__i_swing;
-    out.tH3_e__i_lift = tH3_e__i_lift;
+    out.th2_e__b = th2_e__b; out.taxh2_e__b = taxh2_e__b;
+    out.th2_e__ib = th2_e__ib; out.taxh2_e__ib = taxh2_e__ib;
+    out.th2_e__ic = th2_e__ic;
+    out.th2_e__i = th2_e__i; out.taxh2_e__i = taxh2_e__i;
     out.tbody = tbody;
     out.tframes = tframes;
     out.tboxes = tboxes;
     out.tlegs = tlegs;
     out.tlegs0 = tlegs0;
     out.tfootS = tfootS;
-    out.tfootL = tfootL;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% NOTE THAT THE RESULTS ARE IN THE CASE 1 FORMAT-- PLOT ACCORDINGLY.
 
 end
 

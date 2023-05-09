@@ -6,10 +6,10 @@ function ax = generateSE2frames(H, l)
     col3_select = [zeros(2,1); 1]; % just 3rd col (translation vector)
     
     % initialize the output axes
-    ax = cell(1, 3);
+    ax = cell(1, 2);
 
     % generate frames
-    ax{1} = row12_select*(H*t_SE2([l, 0]) - H)*col3_select;
-    ax{2} = row12_select*(H*t_SE2([0, l]) - H)*col3_select;
+    ax{1} = row12_select*(v2M_SE2(H)*t_SE2([l, 0]) - v2M_SE2(H))*col3_select;
+    ax{2} = row12_select*(v2M_SE2(H)*t_SE2([0, l]) - v2M_SE2(H))*col3_select;
 
 end

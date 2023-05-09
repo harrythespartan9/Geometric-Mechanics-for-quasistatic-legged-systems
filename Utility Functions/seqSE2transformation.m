@@ -4,8 +4,13 @@ function cum_vector = seqSE2transformation(in_arr)
     %   corresponding matrix forms to act on each other.
 
     % Initialize SE(2) transform containers
-    cum_angle = sym(0);
-    cum_transform = sym(eye(3));
+    if isa(in_arr, 'sym')
+        cum_angle = sym(0);
+        cum_transform = sym(eye(3));
+    else
+        cum_angle = 0;
+        cum_transform = eye(3);
+    end
 
     % Iterate over each transform in the order of the input array arranged from left to right
     for i = 1:size(in_arr, 2)
