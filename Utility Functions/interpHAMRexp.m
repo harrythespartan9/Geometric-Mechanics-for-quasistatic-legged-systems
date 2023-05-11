@@ -13,8 +13,8 @@ function [tc, tr, tr_dot] = interpHAMRexp(t, data)
     tc = nan(numel(c), 1); tr = nan(numel(r), 1); tr_dot = nan(numel(r_dot), 1);
     for i = 1:numel(c)
         tc(i) = logical(interp1(T, double(c{i}), t, 'previous')); % no extrapolation needed
-        tr(i) = interp1(T, r{i}, t, 'linear');
-        tr_dot(i) = interp1(T, r_dot{i}, t, 'linear');
+        tr(i) = interp1(T, r{i}, t, 'pchip');
+        tr_dot(i) = interp1(T, r_dot{i}, t, 'pchip');
     end
 
 end
