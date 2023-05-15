@@ -17,7 +17,7 @@ function animateSE2sys(traj, v)
     end
 
     % plot
-    f = figure('units','pixels','position',[0 0 1920 1080],'Color','w');
+    f = figure('units','pixels','position',[0 0 1920 1080],'Color','w'); ax = gca;
     set(f,'Visible','on');
     
     for i = 1:t
@@ -28,10 +28,10 @@ function animateSE2sys(traj, v)
             end
         end
 
-        h = plotSE2snapshot(gca, traj, i); % SE(3) snapshot
+        h = plotSE2snapshot(ax, traj, i); % SE(3) snapshot
         drawnow;
         if isfield(v, 'Speed')
-            title(gca, ['Speed = '...
+            title(ax, ['Speed = '...
                 num2str(v.Speed) 'x'],...
                 'FontSize', 25);
         end

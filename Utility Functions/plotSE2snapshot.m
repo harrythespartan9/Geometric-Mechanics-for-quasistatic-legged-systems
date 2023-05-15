@@ -3,15 +3,15 @@
 function h = plotSE2snapshot(ax, traj, fno)
     
     % make sure the frame number is not an erroneous input
-    if nargin > 3
+    if nargin > 2
         if isempty(fno)
             fno = 1;
         else
-            if fno > numel(traj.tH3_e__b)
+            if fno > numel(traj.th2_e__b)
                 error('ERROR! The frame for the snapshot can''t be higher than the number of frames in the trajectory.');
             end
         end
-    elseif nargin == 3
+    elseif nargin == 2
         fno = 1;
     else
         error(['ERROR! A current axis object (obtain using the "gca" command or "gcf.CurrentAxes" command), trajectory struct, and system''s kinematic ' ...
@@ -24,8 +24,13 @@ function h = plotSE2snapshot(ax, traj, fno)
     tboxes = traj.tboxes{fno};
     tlegs = traj.tlegs{fno}; tlegs0 = traj.tlegs0{fno};
     tfootS = traj.tfootS(:, fno);
-    plotlim = [min(traj.plotlim(1, :)), max(traj.plotlim(2, :)),...
-            min(traj.plotlim(3, :)), max(traj.plotlim(4, :))] + 0.07*traj.bl*repmat([-1, 1], [1, 2]);
+    plotlim = [min(traj.plotlim(3, :)), max(traj.plotlim(4, :)),...
+            min(-traj.plotlim(2, :)), max(-traj.plotlim(1, :))] + 0.07*traj.bl*repmat([-1, 1], [1, 2]);
+    if plotlim(1) > plotlim(2)
+        plotlim = [plotlim(2), plotlim(1), plotlim(3:end)];
+    elseif plotlim(3) > plotlim(4)
+        plotlim = [plotlim(1:2), plotlim(4), plotlim(3)];
+    end
     gr_col = [100, 100, 100]/255; % gray color used for robot body, etc
     if isfield(traj, 'exp')
         spcl_col = traj.exp.col{fno} ;
@@ -46,7 +51,7 @@ function h = plotSE2snapshot(ax, traj, fno)
 
             % plot the required configuration
             xline(0, ':', 'LineWidth', 0.5, 'Color', 'k');
-            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim);
+            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim); 
             xlabel(ax, 'X'); ylabel(ax, 'Y'); xticklabels(ax, ''); yticklabels(ax, '');
             yline(0, ':', 'LineWidth', 0.5, 'Color', 'k');                                                          % axes at the origin and labels
             quiver(tframes(:,2), -tframes(:,1), tframes(:,4), -tframes(:,3),...

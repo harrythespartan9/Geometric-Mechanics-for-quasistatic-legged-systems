@@ -91,9 +91,11 @@ function out = computeSE2trajectory(r, b, kin)
             th2_e__ic{i, j} = seqSE2transformation([th2_e__b{j}, th2_b__ic]);
             xySE2 = th2_e__ic{i, j}(1:2)'; limSE2 = [limSE2; xySE2 ];
             if i == 4
-                uvSE2 = fh2_b__ic{1}(ll)' - th2_b__ic';
+                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{1}(ll)])...
+                    - seqSE2transformation([th2_e__b{j}, th2_b__ic]);
             else
-                uvSE2 = fh2_b__ic{i+1}(ll)' - th2_b__ic';
+                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{i+1}(ll)])...
+                    - seqSE2transformation([th2_e__b{j}, th2_b__ic]);
             end
             boxesSE2 = [ boxesSE2; [xySE2, uvSE2(1:2)] ];
 
@@ -103,6 +105,7 @@ function out = computeSE2trajectory(r, b, kin)
         % Compute the plotting limits in each frame
         plotlim(:, j) = [min(limSE2(:,1)), max(limSE2(:,1)),...
             min(limSE2(:,2)), max(limSE2(:,2))]';
+        
 
         % Assign the frames, boxes, and legs objects for plotting
         tframes{j} = framesSE2;
