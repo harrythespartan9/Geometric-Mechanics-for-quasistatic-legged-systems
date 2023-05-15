@@ -91,12 +91,13 @@ function out = computeSE2trajectory(r, b, kin)
             th2_e__ic{i, j} = seqSE2transformation([th2_e__b{j}, th2_b__ic]);
             xySE2 = th2_e__ic{i, j}(1:2)'; limSE2 = [limSE2; xySE2 ];
             if i == 4
-                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{1}(ll)])...
-                    - seqSE2transformation([th2_e__b{j}, th2_b__ic]);
+                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{1}(ll)])'...
+                    - seqSE2transformation([th2_e__b{j}, th2_b__ic])';
             else
-                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{i+1}(ll)])...
-                    - seqSE2transformation([th2_e__b{j}, th2_b__ic]);
+                uvSE2 = seqSE2transformation([th2_e__b{j}, fh2_b__ic{i+1}(ll)])'...
+                    - seqSE2transformation([th2_e__b{j}, th2_b__ic])';
             end
+            uvSE2 = uvSE2(1:2);
             boxesSE2 = [ boxesSE2; [xySE2, uvSE2(1:2)] ];
 
         end

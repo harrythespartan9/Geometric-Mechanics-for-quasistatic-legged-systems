@@ -64,7 +64,7 @@ function h = plotSE2snapshot(ax, traj, fno)
                 quiver(tlegs0(j,2), -tlegs0(j,1), tlegs0(j,4), -tlegs0(j,3),...
                     'LineStyle', '-',...
                     'LineWidth', 1.2, 'Color', gr_col, 'AutoScale', 'off', 'ShowArrowHead', 'off');                 % all lges origin/eq position from the hip
-                plot(tfootS{j}(:, 2), -tfootS{j}(:, 1), '--', 'LineWidth', 1.2, 'Color', gr_col);  % swing angle
+                plot(tfootS{j}(2, :), -tfootS{j}(1, :), '--', 'LineWidth', 1.2, 'Color', gr_col);                   % swing angle highlight
             end
 
         case 1 %%%%%%%%%%%%%%%% with experimentally obtained contact states
@@ -107,7 +107,7 @@ function h = plotSE2snapshot(ax, traj, fno)
                 h{c} = quiver(tlegs0(j,2), -tlegs0(j,1), tlegs0(j,4), -tlegs0(j,3),...
                     'LineStyle', '-',...
                     'LineWidth', 1.2, 'Color', j_col, 'AutoScale', 'off', 'ShowArrowHead', 'off'); c=c+1;           
-                h{c} = plot(tfootS{j}(:, 2), -tfootS{j}(:, 1), '--', 'LineWidth', 1.2, 'Color', j_col); c=c+1;
+                h{c} = plot(tfootS{j}(2, :), -tfootS{j}(1, :), '--', 'LineWidth', 1.2, 'Color', j_col); c=c+1;
             end
 
     end                                                                                                 %%%%%%% plotting order in HAMR format
