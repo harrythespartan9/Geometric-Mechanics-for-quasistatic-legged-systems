@@ -339,13 +339,19 @@ classdef Path2 < RigidGeomQuad
 
         % given a contact and shape trajectory-- say from an experiment, obtain an estimate for the SE(2) body velocity and then integrate it to obtain the body
         % trajectory
-        function b_hat = estimate_SE2_trajectory(exp_traj, hamr_params)
+        function b_hat = estimate_SE2_trajectory(traj, hamr_params, flag1)
 
-            % unpack your experimental trajectory
+            % Unpack the trajectory structure
+            exp_traj = traj.exp;
+
+            % unpack your experimental/estimated trajectory
             J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
             T = exp_traj.t - exp_traj.t(1); % zero the first time-step
-            r = exp_traj.r(1:2:end); r = convert2case1convention(r);
-            r_dot = exp_traj.r_dot(1:2:end); r_dot = convert2case1convention(r_dot); % just the swing and swing velocities
+            if nargin < 3
+                flag1 = false;
+            end
+            r = exp_traj.r(1:2:end); r_dot = exp_traj.r_dot(1:2:end);   % use the experimental shapes
+            r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % just the swing and swing velocities in the right format
             b = exp_traj.b;
             
             if numel(hamr_params) == 3
@@ -359,7 +365,11 @@ classdef Path2 < RigidGeomQuad
                                                % and yaw values.
 
             % Compute the body velocity using ode45
-            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T} ), T, x0  ); % pass the time vector for interp1
+            if flag1
+                [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}, traj.est.rP(1:2:end)), T, x0  ); % pass the time vector for interp1
+            else
+                [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}), T, x0  ); % pass the time vector for interp1
+            end
             b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
             b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
 
