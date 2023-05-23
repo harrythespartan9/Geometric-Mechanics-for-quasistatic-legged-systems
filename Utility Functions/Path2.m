@@ -339,7 +339,10 @@ classdef Path2 < RigidGeomQuad
 
         % given a contact and shape trajectory-- say from an experiment, obtain an estimate for the SE(2) body velocity and then integrate it to obtain the body
         % trajectory
-        function b_hat = estimate_SE2_trajectory(traj, hamr_params, flag1)
+        % % case 0: shape trajectories estimated from experiments
+        % % case 1: pure sinusoidal swing with contact during backward swing
+        % % case 2: case 1 but with phase offset to reduce slip between 
+        function b_hat = estimate_SE2_trajectory(traj, hamr_params, flag)
 
             % Unpack the trajectory structure
             exp_traj = traj.exp;
@@ -348,34 +351,36 @@ classdef Path2 < RigidGeomQuad
             J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
             T = exp_traj.t - exp_traj.t(1); % zero the first time-step
             if nargin < 3
-                flag1 = false;
+                flag = 0;
             end
-            r = exp_traj.r(1:2:end); r_dot = exp_traj.r_dot(1:2:end);   % use the experimental shapes
-            r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % just the swing and swing velocities in the right format
-            b = exp_traj.b;
-            
-            if numel(hamr_params) == 3
-                c = exp_traj.C_i;
-            elseif numel(hamr_params) == 4
-                c = expkin_contact_thresholding(exp_traj.ht3_e__i ,hamr_params{4});
+            switch flag
+                case 0 % exp shapes
+                    r = exp_traj.r(1:2:end); r_dot = exp_traj.r_dot(1:2:end);
+                    if numel(hamr_params) == 3
+                        c = exp_traj.C_i;
+                    elseif numel(hamr_params) == 4
+                        c = expkin_contact_thresholding(exp_traj.ht3_e__i ,hamr_params{4});
+                    end
+                case 1 % pure sinusoidal shapes with backswing contact
+                    [r, r_dot] = genSine_r_rdot(traj.est.r1_params, exp_traj.t); 
+                    r = r(1:2:end); r_dot = r_dot(1:2:end);
+                    c = genBackSwingContact(r_dot);
+                % case 2 % pure sinusoidal shapes with backswing contact + phase between legs sharing a level-2 contact state
             end
+            r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % conversion to the right format
 
             % Initial condition for body trajectory
-            x0 = [-b{2}(1); b{1}(1); b{6}(1)]; % since it is an SE(2) slice, we only need x (-y when moving from HAMR's SE(3) to our SE(2) convention), y (x), 
-                                               % and yaw values.
+            x0 = [-exp_traj.b{2}(1); exp_traj.b{1}(1); exp_traj.b{6}(1)]; % since it is an SE(2) slice, we only need x (-y when moving from HAMR's SE(3) to our 
+                                                                          % SE(2) convention), y (x), and yaw values.
 
             % Compute the body velocity using ode45
-            if flag1
-                [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}, traj.est.rP(1:2:end)), T, x0  ); % pass the time vector for interp1
-            else
-                [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}), T, x0  ); % pass the time vector for interp1
-            end
+            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}), T, x0  ); % pass the time vector for interp1
             b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
             b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
 
         end
         
-
+        
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,5 +1,5 @@
 function xdot = compute_fwddiff(t, x)
-%COMPUTE_FWDDIFF This function computes a first order forward difference based time derivative.
+%COMPUTE_FWDDIFF This function computes a first order, forward difference based time derivative.
 %   We compute the time derivate of an input function by taking the first order forward difference. The derivative corresponding to the last time step will be
 %   NaN.
     
