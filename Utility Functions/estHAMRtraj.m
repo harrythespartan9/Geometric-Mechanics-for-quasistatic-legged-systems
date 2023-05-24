@@ -14,7 +14,7 @@ function out = estHAMRtraj(char, kin, out)
         load(char);  % load the dataset based on the input character
         exp_num = []; f = [];
         for i = 1:numel(Metrics)
-            if string(Metrics(i).Gait) == 'Trot' % only supporta trot for now
+            if string(Metrics(i).Gait) == 'Trot' % only supports trot for now
                 exp_num = [exp_num, i];
                 f = [f, Metrics(i).Frequency];
             end

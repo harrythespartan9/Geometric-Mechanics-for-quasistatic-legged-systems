@@ -336,6 +336,30 @@ classdef Path2 < RigidGeomQuad
             closedTraj = {[t, t_d]; [x, x_d]; [y, y_d]; [theta, theta_d]; [ai, ai_d]; [aj, aj_d]};
 
         end
+        
+        % This function computes the no-slip shape var 2 trajectory given shape var 1 traj.
+        function [rout, rout_dot] = compute_noslip_trajectory(in)
+            
+            % Unpack
+            rinp = in{1}; % pure sine params
+            t = in{2}; % time vector
+            dpsi = in{3}; % 2x1 vector output
+            rin0 = in{4}; % ic
+            aa = in{5}; ll = in{6}; % robot params
+            
+            % Compute requirements to compute 'rout_dot'
+            rin = genswing_t(t, rinp); rin_dot = genswingrate_t(t, rinp);
+
+            % ODE intergrate to obtain 'rout'
+            [~, rout] = ode45(   @(t,x) (  [0, 1]*dpsi( aa, ll, genswing_t(t, rinp), x )  ) ./...
+                (  [1, 0]*dpsi( aa, ll, genswing_t(t, rinp), x) ) .* genswingrate_t(t, rinp),...
+                t - t(1), rin0   ); % compute
+            rout = rout(:)'; % row vector needed
+
+            % vectorially compute 'rout_dot'
+            rout_dot = (  [0, 1]*dpsi( aa, ll, rin, rout )  ) ./ (  [1, 0]*dpsi( aa, ll, rin, rout) ) .* rin_dot;
+
+        end
 
         % given a contact and shape trajectory-- say from an experiment, obtain an estimate for the SE(2) body velocity and then integrate it to obtain the body
         % trajectory
@@ -349,7 +373,7 @@ classdef Path2 < RigidGeomQuad
 
             % unpack your experimental/estimated trajectory
             J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
-            T = exp_traj.t - exp_traj.t(1); % zero the first time-step
+            that = exp_traj.t - exp_traj.t(1); % zero the first time-step
             if nargin < 3
                 flag = 0;
             end
@@ -363,9 +387,11 @@ classdef Path2 < RigidGeomQuad
                     end
                 case 1 % pure sinusoidal shapes with backswing contact
                     [r, r_dot] = genSine_r_rdot(traj.est.r1_params, exp_traj.t); 
-                    r = r(1:2:end); r_dot = r_dot(1:2:end);
+                    r = r(1:2:end); r_dot = r_dot(1:2:end); 
                     c = genBackSwingContact(r_dot);
-                % case 2 % pure sinusoidal shapes with backswing contact + phase between legs sharing a level-2 contact state
+                case 2 % pure sinusoidal shapes with backswing contact + phase between legs sharing a level-2 contact state
+                    r = traj.est.r2(1:2:end); r_dot = traj.est.r2_dot(1:2:end);  % (['r2', ijchar]) % (['r2', ijchar, '_dot'])
+                    c = genBackSwingContact(r_dot);
             end
             r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % conversion to the right format
 
@@ -374,15 +400,15 @@ classdef Path2 < RigidGeomQuad
                                                                           % SE(2) convention), y (x), and yaw values.
 
             % Compute the body velocity using ode45
-            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, T}), T, x0  ); % pass the time vector for interp1
+            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, that}), that, x0  ); % pass the time vector for interp1
             b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
             b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
-
+            
         end
         
         
     end
-
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    
 end

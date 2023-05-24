@@ -1,6 +1,6 @@
 function r_out = apprxsineswing(traj)
 %APPRXSINESWING approximates the input experimental swing timeseries data as a pure sinusoid.
-%   This function approximates the input function as pure sinusoid by identifying postive and negative peaks. Also, this function assumes that the 
+%   This function approximates the input function as pure sinusoid by identifying postive and negative peaks.
     
     % Unpack
     % t = traj.exp.t;
