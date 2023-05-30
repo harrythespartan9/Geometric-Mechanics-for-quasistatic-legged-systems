@@ -1,8 +1,8 @@
-function [r, r_dot] = generateNoslipTrajectory(dpsi_ij, traj, robot_params, gait_type)
+function [r, r_dot] = generateNoslipTrajectory(dpsi_ij, input, robot_params, gait_type)
 %GENERATENOSLIPTRAJECTORY given the two-beat gait type, compute the noslip shape trajectory for one of the legs in each stance pair.
 %   
-%   Inputs: The no-slip shape velocity direction, 'dpsi_ij', locomotion kinematics, 'traj', physical parameters of the robot, 'robot_params', and a 
-%           character array describing the type of gait, 'gait_type'.
+%   Inputs: The no-slip shape velocity direction, 'dpsi_ij', inputs-- time vector and pure sine fit params, 'input', physical parameters of the robot, 
+%           'robot_params', and a character array describing the type of gait, 'gait_type'.
 %   
 %   Outputs: 'r' a set of shape trajectories that respect the no-slip constraint for each level-2 contact state and 'r_dot' the corresponding shape-velocity
 %           trajectory
@@ -32,41 +32,28 @@ function [r, r_dot] = generateNoslipTrajectory(dpsi_ij, traj, robot_params, gait
     end
 
     % Unpack
-    aa = robot_params{1}; ll = robot_params{2}; keep_char = robot_params{3};
-    t = traj.exp.t; rp = traj.est.r1_params;
-    [r, r_dot] = genSine_r_rdot(rp, t); % assign the H1 time series for now
-    r_swing = r(1:2:end);
-    rp = rp(1:2:end); % just swing sine parameters
+    aa = robot_params{1}; ll = robot_params{2};
+    t = input{1}; r_params = input{2};
 
-    % iterate over each stance phase and adjust the phase of the jth leg to minimize slippage
-    temp = r(1:2:end); temp_dot = r_dot(1:2:end);
+    % Compute the no-slip trajectory for each two beat input gait from the current shape velocity trajectory
+    r = cell(size(r_params)); r_dot = r;
     for iter = 1:size(C, 1)
-        
-        i = C(iter, 1); j = C(iter, 2); % get the leg indices
-        fidx = S(:, 1) == i & S(:, 2) == j ; % get the function indices
-        
-        % get the inputs that remain constant and then use that to compute the outputs
-        switch keep_char
-            case 'i'
-                in = {rp{i}, t, dpsi_ij{fidx}, r_swing{j}(1), aa, ll}; idx = i; idx_noslip = j;
-            case 'j'
-                in = {rp{j}, t, dpsi_ij{fidx}, r_swing{i}(1), aa, ll}; idx = j; idx_noslip = i;
-        end
-        if idx == 2 || idx == 3
-            in{1}(1) = -in{1}(1); in{1}(end) = -in{1}(end); % negate the sine params for conversion to case 1
-        end
-        if idx_noslip == 2 || idx_noslip == 3
-            in{4} = -in{4}; % negate the initial condition
-        end
-        
-        % compute the corresponding no-slip satisfying r and r_dot
-        [temp{idx_noslip}, temp_dot{idx_noslip}] = Path2.compute_noslip_trajectory(in);
-        if idx_noslip == 2 || idx_noslip == 3
-            temp{idx_noslip} = -temp{idx_noslip}; temp_dot{idx_noslip} = -temp_dot{idx_noslip}; % bring it back to HAMR format
-        end
-        
+        % get the leg pair for the current contact state, the initial conditions for the ode integration, and the current shape vel constraint
+        i = C(iter, 1); j = C(iter, 2); muli = mul2case1(i); mulj = mul2case1(j);
+        dpsiNow = dpsi_ij{i == S(:, 1) & j == S(:, 2)};
+        alpha_0 = [muli*genswing_t(0, r_params{i});  mulj*genswing_t(0, r_params{j})];
+        % compute the no-slip trajectory for alpjha_ij
+        [~, temp] = ode45(    @(t,x) projShapeVel2NoSlipVel(   [muli*genswingrate_t( t, r_params{i} ); mulj*genswingrate_t( t, r_params{j} )],...
+            dpsiNow(  aa, ll, muli*x(1),  mulj*x(2)  )   ),...
+            t - t(1), alpha_0    );
+        r{i} = muli*temp(:, 1); r{i} = r{i}(:)'; 
+        r{j} = mulj*temp(:, 2); r{j} = r{j}(:)'; % ensure they are 1xt time-series in each cell and back to HAMR format
+        % get the projected shape velocities at each time-step
+        temp_dot = projShapeVel2NoSlipVel(   [muli*genswingrate_t( t, r_params{i} ); mulj*genswingrate_t( t, r_params{j} )],...
+            dpsiNow(  aa, ll, muli*r{i},  mulj*r{j}  )   );
+        r_dot{i} = muli*temp_dot(1, :); % back to HAMR format
+        r_dot{j} = mulj*temp_dot(2, :);
     end
-    r(1:2:end) = temp; r_dot(1:2:end) = temp_dot;
+
 
 end
-

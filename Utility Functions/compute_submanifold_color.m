@@ -76,5 +76,6 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin) % , tcirc
         end
 
     end
+    
 
 end
