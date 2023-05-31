@@ -366,10 +366,10 @@ classdef Path2 < RigidGeomQuad
         % % case 0: shape trajectories estimated from experiments
         % % case 1: pure sinusoidal swing with contact during backward swing
         % % case 2: case 1 but with phase offset to reduce slip between 
-        function b_hat = estimate_SE2_trajectory(in, hamr_params)
+        function b_hat = estimate_SE2_trajectory(in, robot_params)
 
             % Unpack
-            J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
+            pfaff_i = robot_params{1}; aa = robot_params{2}; ll = robot_params{3};
             bic = in{1}; t = in{2}; that = t - t(1);
 
             switch numel(in{3})
@@ -410,11 +410,11 @@ classdef Path2 < RigidGeomQuad
                 case 1
                     c = in{4};
                 case 3
-                    if numel(hamr_params) ~= 4
+                    if numel(robot_params) ~= 4
                         error(['ERROR! For recreating contact trajectory from leg_z trajectory, a threshold' ...
                             'value is needed as the 4th input in the second argument.'])
                     end
-                    c = expkin_contact_thresholding(in{4} ,hamr_params{4});
+                    c = expkin_contact_thresholding(in{4} ,robot_params{4});
             end
             r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % conversion to case 1 format
 
@@ -423,49 +423,10 @@ classdef Path2 < RigidGeomQuad
 
              % Compute the body velocity using ode45
             warning("off"); % switch off interpolation warnings and switch it back on after integrating the ode
-            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, that}), that, x0  ); % pass the time vector for interp1
+            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, pfaff_i, r, r_dot, that}), that, x0  ); % pass the time vector for interp1
             warning("on");
             b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it back to the HAMR Kinematics format
             b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
-
-            % % % % % % % % % % % % % % % % % % % % % % % % % LEGACY APPROACH
-            % % % % % Unpack the trajectory structure
-            % % % % exp_traj = traj.exp;
-            % % % % 
-            % % % % % unpack your experimental/estimated trajectory
-            % % % % J = hamr_params{1}; aa = hamr_params{2}; ll = hamr_params{3};
-            % % % % that = exp_traj.t - exp_traj.t(1); % zero the first time-step
-            % % % % if nargin < 3
-            % % % %     flag = 0;
-            % % % % end
-            % % % % switch flag
-            % % % %     case 0 % exp shapes
-            % % % %         r = exp_traj.r(1:2:end); r_dot = exp_traj.r_dot(1:2:end);
-            % % % %         if numel(hamr_params) == 3
-            % % % %             c = exp_traj.C_i;
-            % % % %         elseif numel(hamr_params) == 4
-            % % % %             c = expkin_contact_thresholding(exp_traj.ht3_e__i ,hamr_params{4});
-            % % % %         end
-            % % % %     case 1 % pure sinusoidal shapes with backswing contact
-            % % % %         [r, r_dot] = genSine_r_rdot(traj.est.r1_params, exp_traj.t); 
-            % % % %         r = r(1:2:end); r_dot = r_dot(1:2:end); 
-            % % % %         c = genBackSwingContact(r_dot);
-            % % % %     case 2 % pure sinusoidal shapes with backswing contact + phase between legs sharing a level-2 contact state
-            % % % %         r = traj.est.r2(1:2:end); r_dot = traj.est.r2_dot(1:2:end);  % (['r2', ijchar]) % (['r2', ijchar, '_dot'])
-            % % % %         c = genBackSwingContact(r_dot);
-            % % % % end
-            % % % % r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % conversion to the right format
-            % % % % 
-            % % % % % Initial condition for body trajectory
-            % % % % x0 = [-exp_traj.b{2}(1); exp_traj.b{1}(1); exp_traj.b{6}(1)]; % since it is an SE(2) slice, we only need x (-y when moving from HAMR's SE(3) to our 
-            % % % %                                                               % SE(2) convention), y (x), and yaw values.
-            % % % % 
-            % % % % % Compute the body velocity using ode45
-            % % % % warning("off"); % switch off interpolation warnings and switch it back on after integrating the ode
-            % % % % [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, J, r, r_dot, that}), that, x0  ); % pass the time vector for interp1
-            % % % % warning("on");
-            % % % % b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it to the HAMR Kinematics format
-            % % % % b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
             
         end
         

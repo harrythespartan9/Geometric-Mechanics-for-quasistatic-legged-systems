@@ -69,7 +69,9 @@ function plotSE2timeseries_snapshot(ax, t, in, in_str, col, legend_str)
             xticklabels('');
         otherwise
             xlabel('$$t$$', 'FontSize', fS, 'Interpreter', 'latex');
-            legend(ax, legend_str, 'Location', 'bestoutside', 'FontSize', fS);
+            if ~isempty(legend_str) % if the legend string is not empty
+                legend(ax, legend_str, 'Location', 'bestoutside', 'FontSize', fS);
+            end
     end
 
 end

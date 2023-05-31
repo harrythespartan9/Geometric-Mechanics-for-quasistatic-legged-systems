@@ -12,10 +12,11 @@ function f = plotSE2bodytrajectory(in)
     for i = 1:trace_num
         plot(ax, b{i}{1}, b{i}{2}, 'LineWidth', 2.0, 'Color', col(i, :));
         if i == 1
-            grid on; hold on; set(ax,'TickLabelInterpreter','latex'); axis equal square;
+            grid on; hold on; set(ax,'TickLabelInterpreter','latex'); axis equal padded;
         end
         quiver(ax, b{i}{1}, b{i}{2}, cos(b{i}{3}), sin(b{i}{3}),...
-            'LineWidth', 2.0, 'Color', col(i, :), 'AutoScaleFactor', 0.45); % x-axis corresponds to heading
+            'LineWidth', 0.5, 'Color', col(i, :), 'LineStyle', ':',...
+            'ShowArrowHead', 'off', 'AutoScaleFactor', 0.45); % x-axis corresponds to heading
     end
     ylabel('$$y$$', 'FontSize', fS, 'Interpreter', 'latex'); ax.FontSize = fS;
     xlabel('$$x$$', 'FontSize', fS, 'Interpreter', 'latex');
