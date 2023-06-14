@@ -45,7 +45,7 @@ function [tS, tcol] = compute_submanifold_color(C, delC, kin) % , tcirc
 
             otherwise
                 
-                % if no contact change happens
+                % if contact change happens
                 if delC(i-1) == 1
                     for j = 1:4
                         if C{j}(i) == 1
