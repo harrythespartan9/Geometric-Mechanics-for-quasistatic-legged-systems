@@ -1,24 +1,39 @@
 % This script extracts the SE(3) kinematic data from HAMR experiments and estimates the lift and swing values for each leg. If the output already exists, then
 % use that to append more information.
-% Inputs: 1) dataname char array to be called by the load function... 2) SE(3) kinematics of HAMR 6... 3) experiment number-- corresponds to the required
-% frequency (array start: lowest and array end: highest)
-function out = estHAMRtraj(char, kin, out)
+% Inputs: 1) dataname char array to be called by the load function... 2) SE(3) kinematics of HAMR 6... 3) type of gait needed 'char' array... 4) experiment 
+% number-- corresponds to the required frequency (array start: lowest and array end: highest)
+function out = estHAMRtraj(char, kin, gait_char, out)
 
     % Define constants/transforms
     m2mm = 1e3; bl = kin.params.bl;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % obtain the experiment of interest %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    if nargin ~= 3
+    if nargin ~= 4
         out = [];
         load(char);  % load the dataset based on the input character
         exp_num = []; f = [];
+
+        switch isfield(Metrics, 'TailConfig') % check if Tail is present and assign a flag -- defined before the loop, so efficient
+            case 0
+                flag = false;
+            case 1
+                flag = true;
+        end
+
         for i = 1:numel(Metrics)
-            if string(Metrics(i).Gait) == 'Trot' % only supports trot for now
+            switch flag
+                case false
+                    cond = string(Metrics(i).Gait) == gait_char;
+                case true
+                    cond = string(Metrics(i).Gait) == gait_char && ~Metrics(i).TailConfig;
+            end
+            if cond % supports 'Trot', 'Bound', 'Walk', and 'Jump' -- eliminates trials with tail in dataset_2
                 exp_num = [exp_num, i];
                 f = [f, Metrics(i).Frequency];
             end
         end
+
         [c, ~, ic] = unique(f);
         out.exp_num = {}; out.f = {};
         for i = 1:numel(c)
@@ -27,6 +42,12 @@ function out = estHAMRtraj(char, kin, out)
         end
         out.traj = cell(1, numel(out.f));
     end
+
+    if ~isfield(out, 'exp_num')
+        error('ERROR! The "exp_num" field cant be empty.');
+    end
+%     if ~isfield(out, 'f') % not required right now-- not doing anything frequency dependent
+%     end
 
     i_str = {'FR', 'FL', 'RL', 'RR'}; % correspondence between out leg frame naming and dataset
 
@@ -43,7 +64,7 @@ function out = estHAMRtraj(char, kin, out)
                 ht3_e__i_exp{j} = m2mm*traj.([i_str{j}, 'footXYZ']);    % foot location in rest frame
                 idx_c = ( ht3_e__i_exp{j}(3, :) < 0.01*bl );            % indices where the current foot is below the 1% of BL z-threshold        
                 C_i_exp{j} = idx_c;                                     % the indicies calculated earlier will determine the contact
-                ht3_e__i_exp{j}(3, idx_c) = 0;                          % zero-out the z-value at these indicies.
+%                 ht3_e__i_exp{j}(3, idx_c) = 0;                          % zero-out the z-value at these indicies-- not the best idea; better to have the raw z-data
                 temp = [temp; abs(diff(C_i_exp{j}))];
             end
             delC_i_exp = (sum(temp, 1) > 0);
