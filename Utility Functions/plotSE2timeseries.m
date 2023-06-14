@@ -12,8 +12,18 @@ function f = plotSE2timeseries(input)
     in_str = input{3};                          % all y-axis labels corresponding to the time series data in latex format
     legend_str = input{4};                      % strings corresponding to each time series trace under one cell
     trace_num = numel(input{2}{1, 1});          % get the number of traces in each time series
-    % col = [zeros(1, 3); turbo(trace_num - 1)];
-    col = turbo(trace_num);                     % get colors for each trace (first trace is the experimental result in black)
+    if numel(input) < 5
+        col = turbo(trace_num);                 % get colors for each trace (first trace is the experimental result in black)
+        sty = cell(trace_num, 1);               % initialize line style container and set all of them to be a solid trace, '-' by default 
+        lW = sty;                               % initialize line width container and set all of them to 2.0
+        for i = 1:trace_num
+            sty{i} = '-'; lW{i} = 2.0;
+        end
+    else
+        col = input{5}{1}; sty = input{5}{2};   % user specified colors and line styles
+        lW = input{5}{3};
+    end
+    trace_pack = {col, sty, lW};                % pass this to the trace plotter below
 
     % Setup
     f = figure('units','pixels','position',360*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w');
@@ -24,9 +34,9 @@ function f = plotSE2timeseries(input)
                 ax = nexttile(Tobj);
                 switch i == numel(in)
                     case 0
-                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, col);
+                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
                     case 1
-                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, col, legend_str);
+                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
                 end
             end
         otherwise
@@ -37,9 +47,9 @@ function f = plotSE2timeseries(input)
                     ax = nexttile(Tobj, tile_idx);
                     switch tile_idx == numel(in)
                         case 0
-                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, col);
+                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
                         case 1
-                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, col, legend_str);
+                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
                     end
                 end
             end
@@ -50,14 +60,17 @@ end
 
 %% HELPER FUNCTIONS
 
-function plotSE2timeseries_snapshot(ax, t, in, in_str, col, legend_str)
+function plotSE2timeseries_snapshot(ax, t, in, in_str, in_col_sty_lW, legend_str)
 %PLOTSE2TIMESERIES_SNAPSHOT this function plots a single cell of the time series data
 %   For instance, this cell could be the time series concerning the swing values of the FR leg for a bunch of estimates.
     
+    % unpack color and line style
+    col = in_col_sty_lW{1}; sty = in_col_sty_lW{2}; lW = in_col_sty_lW{3};
+
     % plot
     fS = 10;
     for i = 1:numel(in)
-        plot(ax, t, in{i}, 'LineWidth', 2.0, 'Color', col(i, :));
+        plot(ax, t, in{i}, sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
         if i == 1
             grid on; hold on; set(ax,'TickLabelInterpreter','latex')
         end

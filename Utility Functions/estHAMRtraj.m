@@ -33,14 +33,14 @@ function out = estHAMRtraj(char, kin, out)
     for expn = 1:numel(out.exp_num) % for each frequency
         for idx = 1:numel(out.exp_num{expn}) % for each experiment
             if idx ~= 1
-                clear traj_est; % clear the trajectory estimation from the previous section
+                clear traj_est; % clear the trajectory estimation from the previous run
             end
-            trot = Metrics(out.exp_num{expn}(idx));
-            b = {m2mm*trot.XYZCOM(1,:); m2mm*trot.XYZCOM(2,:); m2mm*trot.XYZCOM(3,:);...
-                (trot.Roll(:))'; trot.Pitch(:)'; trot.Yaw(:)'};
+            traj = Metrics(out.exp_num{expn}(idx));
+            b = {m2mm*traj.XYZCOM(1,:); m2mm*traj.XYZCOM(2,:); m2mm*traj.XYZCOM(3,:);...
+                (traj.Roll(:))'; traj.Pitch(:)'; traj.Yaw(:)'};
             ht3_e__i_exp = cell(4, 1); C_i_exp = ht3_e__i_exp; temp = [];
             for j = 1:4
-                ht3_e__i_exp{j} = m2mm*trot.([i_str{j}, 'footXYZ']);    % foot location in rest frame
+                ht3_e__i_exp{j} = m2mm*traj.([i_str{j}, 'footXYZ']);    % foot location in rest frame
                 idx_c = ( ht3_e__i_exp{j}(3, :) < 0.01*bl );            % indices where the current foot is below the 1% of BL z-threshold        
                 C_i_exp{j} = idx_c;                                     % the indicies calculated earlier will determine the contact
                 ht3_e__i_exp{j}(3, idx_c) = 0;                          % zero-out the z-value at these indicies.
@@ -49,13 +49,13 @@ function out = estHAMRtraj(char, kin, out)
             delC_i_exp = (sum(temp, 1) > 0);
             [S_exp, traj_col_exp] = compute_submanifold_color(C_i_exp, delC_i_exp, kin);
             r_trot = apprxSFBswingliftSE3(b, ht3_e__i_exp, kin);
-            t = trot.Time;
+            t = traj.Time;
             r = vecSE3traj(r_trot);
             traj_est = computeSE3trajectory(r, b, kin);
             traj_est.exp.t = t;
             traj_est.exp.r = r;
             traj_est.exp.b = b;
-            traj_est.exp.tnum = numel(trot.Time);
+            traj_est.exp.tnum = numel(traj.Time);
             traj_est.exp.ht3_e__i = ht3_e__i_exp;
             traj_est.exp.C_i = C_i_exp;
             traj_est.exp.delC_i = delC_i_exp;

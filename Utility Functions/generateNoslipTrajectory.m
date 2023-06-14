@@ -33,7 +33,8 @@ function [r, r_dot] = generateNoslipTrajectory(dpsi_ij, input, robot_params, gai
 
     % Unpack
     aa = robot_params{1}; ll = robot_params{2};
-    t = input{1}; r_params = input{2};
+    t = input{1}; t_0 = t(1); % starting point 
+    r_params = input{2};
 
     % Compute the no-slip trajectory for each two beat input gait from the current shape velocity trajectory
     r = cell(size(r_params)); r_dot = r;
@@ -43,11 +44,11 @@ function [r, r_dot] = generateNoslipTrajectory(dpsi_ij, input, robot_params, gai
         dpsiNow = dpsi_ij{i == S(:, 1) & j == S(:, 2)};
         alpha_0 = [muli*genswing_t(0, r_params{i});  mulj*genswing_t(0, r_params{j})];
         % compute the no-slip trajectory for alpjha_ij
-        [~, temp] = ode45(    @(t,x) projShapeVel2NoSlipVel(   [muli*genswingrate_t( t, r_params{i} ); mulj*genswingrate_t( t, r_params{j} )],...
-            dpsiNow(  aa, ll, muli*x(1),  mulj*x(2)  )   ),...
-            t - t(1), alpha_0    );
-        r{i} = muli*temp(:, 1); r{i} = r{i}(:)'; 
-        r{j} = mulj*temp(:, 2); r{j} = r{j}(:)'; % ensure they are 1xt time-series in each cell and back to HAMR format
+        [~, temp] = ode45(    @(t,x) projShapeVel2NoSlipVel(   [muli*genswingrate_t( (t+t_0), r_params{i} ); mulj*genswingrate_t( (t+t_0), r_params{j} )],...
+            dpsiNow(  aa, ll, x(1),  x(2)  )   ),...
+            t - t_0, alpha_0    ); % , odeset('RelTol',1e-5)
+        r{i} = muli*temp(:, 1); r{i} = r{i}(:)'; % multiplying again by the muli and mulj because it is a involution and we want them back in the HAMR format
+        r{j} = mulj*temp(:, 2); r{j} = r{j}(:)'; % also ensure they are 1xt time-series in each cell
         % get the projected shape velocities at each time-step
         temp_dot = projShapeVel2NoSlipVel(   [muli*genswingrate_t( t, r_params{i} ); mulj*genswingrate_t( t, r_params{j} )],...
             dpsiNow(  aa, ll, muli*r{i},  mulj*r{j}  )   );
