@@ -11,19 +11,12 @@ function swing_lim = findswinglimits(r)
             error('ERROR! Each component of the swing trajectory needs to be in a cell array.');
 
         case 1
-
+            
+            swing_lim = nan(numel(r), 2);
             for i = 1:numel(r)
-                switch i
-                    case 1
-                        swing_lim = max(abs([max(r{i}, [], 'all'), min(r{i}, [], 'all')]));
-                    otherwise
-                        temp_lim = max(abs([max(r{i}, [], 'all'), min(r{i}, [], 'all')]));
-                        if swing_lim > temp_lim
-                            swing_lim = temp_lim;
-                        end
-                end
+                swing_lim(i, :) = abs([min(r{i}, [], 'all'), max(r{i}, [], 'all')]);
             end
-        
+            swing_lim = max(swing_lim, [], 'all');
     end
 
 end

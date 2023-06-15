@@ -27,33 +27,33 @@ function f = plotSE2timeseries(input)
 
     % Setup
     f = figure('units','pixels','position',360*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w');
-    switch arr_size(2)
-        case 1
-            Tobj = tiledlayout('vertical', 'TileSpacing', 'tight', 'Padding', 'tight');
-            for i = 1:numel(in)
-                ax = nexttile(Tobj);
-                switch i == numel(in)
-                    case 0
-                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
-                    case 1
-                        plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
-                end
+%     switch arr_size(2)
+%         case 1
+%             Tobj = tiledlayout(f, arr_size(1), arr_size(2), 'TileSpacing', 'tight', 'Padding', 'tight');
+%             for i = 1:numel(in)
+%                 ax = nexttile(Tobj);
+%                 switch i == numel(in)
+%                     case 0
+%                         plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
+%                     case 1
+%                         plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
+%                 end
+%             end
+%         otherwise
+    Tobj = tiledlayout(f, arr_size(1), arr_size(2), 'TileSpacing', 'tight', 'Padding', 'tight');
+    for j = 1:arr_size(2)
+        for i = 1:arr_size(1)
+            tile_idx = i + (j-1)*arr_size(1);
+            ax = nexttile(Tobj, tile_idx);
+            switch tile_idx == numel(in)
+                case 0
+                    plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
+                case 1
+                    plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
             end
-        otherwise
-            Tobj = tiledlayout(arr_size(1), arr_size(2), 'TileSpacing', 'tight', 'Padding', 'tight');
-            for j = 1:arr_size(2)
-                for i = 1:arr_size(1)
-                    tile_idx = i + (j-1)*arr_size(1);
-                    ax = nexttile(Tobj, tile_idx);
-                    switch tile_idx == numel(in)
-                        case 0
-                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
-                        case 1
-                            plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
-                    end
-                end
-            end
+        end
     end
+%     end
 
 
 end

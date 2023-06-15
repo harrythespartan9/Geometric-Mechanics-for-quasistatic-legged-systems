@@ -44,7 +44,7 @@ function f = plotShapeTrajectoryWithKsqLevelSets(finp, input, robot_params, gait
     % skipIdx = (1:10:discNum); % plot only every 10th vector
 
     % iterate over the contact states and plot the shape-space trajectories
-    f = figure('units','pixels','position',360*[0 0 2 1],'Color','w');
+    f = figure('units','pixels','position',480*[0 0 2 1],'Color','w');
     tiledlayout(1, 2, 'TileSpacing', 'tight', 'Padding', 'tight');
     for iter = 1:size(C, 1)
         % compute
@@ -55,8 +55,9 @@ function f = plotShapeTrajectoryWithKsqLevelSets(finp, input, robot_params, gait
         % uS = reshape(temp(1, :), size(riS)); vS = reshape(temp(2, :), size(riS));
         % plot
         ax = nexttile;
-        contour(ax, riS, rjS, ksqS, 10, 'EdgeColor', [189, 189, 189]/255, 'LineStyle', '--');
-        hold on; axis equal tight; set(ax,'TickLabelInterpreter','latex');
+%         contour(ax, riS, rjS, ksqS, 10, 'EdgeColor', [189, 189, 189]/255, 'LineStyle', '--');
+        contourf(ax, riS, rjS, ksqS, 100, 'LineStyle', 'none', 'FaceAlpha', 0.65); colormap(ax, input{4}{4});
+        hold on; axis equal square; set(ax,'TickLabelInterpreter','latex');
         % quiver( ax, riS(skipIdx, skipIdx), rjS(skipIdx, skipIdx), uS(skipIdx, skipIdx), vS(skipIdx, skipIdx), 'Color', [189, 189, 189]/255 );
         plotShape2(ax, {muli, r{i}, r_dot{i}, mulj, r{j}, r_dot{j}}, {['$$\alpha_' num2str(i) '$$'], ['$$\alpha_' num2str(j) '$$']}, input{4}); % , input{3}
     end
@@ -69,14 +70,14 @@ function plotShape2(ax, in, in_str, in_col_sty_lW, ~) % legend_str
 %PLOTSE2TIMESERIES_SNAPSHOT this function plots a single shape space trajectory data
     
     % unpack
-    mulx = in{1}; x = in{2}; x_dot = in{3}; muly = in{4}; y = in{5};  y_dot = in{6}; % data
+    mulx = in{1}; x = in{2}; muly = in{4}; y = in{5}; % data % y_dot = in{6}; % x_dot = in{3}; 
     col = in_col_sty_lW{1}; sty = in_col_sty_lW{2}; lW = in_col_sty_lW{3}; % plotting style
 
     % plot
     fS = 10;
     for i = 1:numel(x)
         plot(ax, mulx*x{i}, muly*y{i}, sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
-        quiver(ax, mulx*x{i}, muly*y{i}, mulx*x_dot{i}, muly*y_dot{i}, 'LineStyle', sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
+%         quiver(ax, mulx*x{i}, muly*y{i}, mulx*x_dot{i}, muly*y_dot{i}, 'LineStyle', sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
     end
     xlabel(ax, in_str{1}, 'FontSize', fS, 'Interpreter', 'latex'); ax.FontSize = fS;
     ylabel(ax, in_str{2}, 'FontSize', fS, 'Interpreter', 'latex');
