@@ -26,7 +26,8 @@ function f = plotSE2timeseries(input)
     trace_pack = {col, sty, lW};                % pass this to the trace plotter below
 
     % Setup
-    f = figure('units','pixels','position',360*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w');
+    f = figure('units','pixels','position',360*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w'); 
+    set(f, 'Visible', 'on');
 %     switch arr_size(2)
 %         case 1
 %             Tobj = tiledlayout(f, arr_size(1), arr_size(2), 'TileSpacing', 'tight', 'Padding', 'tight');

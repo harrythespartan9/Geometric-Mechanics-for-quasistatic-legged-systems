@@ -21,7 +21,7 @@ function f = plotSE2bodytrajectory(in)
     idxQ = 1:round(skp_percent/100*num_traj)+1:num_traj;
     
     % Iterate and plot
-    f = figure('units','pixels','position',360*[0 0 1 1],'Color','w'); ax = gca;
+    f = figure('units','pixels','position',360*[0 0 1 1],'Color','w'); ax = gca; set(f, 'Visible', 'on');
     fS = 10;
     for i = 1:trace_num
         plot(ax, b{i}{1}, b{i}{2}, sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));

@@ -45,6 +45,7 @@ function f = plotShapeTrajectoryWithKsqLevelSets(finp, input, robot_params, gait
 
     % iterate over the contact states and plot the shape-space trajectories
     f = figure('units','pixels','position',480*[0 0 2 1],'Color','w');
+    set(f, 'Visible', 'on');
     tiledlayout(1, 2, 'TileSpacing', 'tight', 'Padding', 'tight');
     for iter = 1:size(C, 1)
         % compute
@@ -56,7 +57,7 @@ function f = plotShapeTrajectoryWithKsqLevelSets(finp, input, robot_params, gait
         % plot
         ax = nexttile;
 %         contour(ax, riS, rjS, ksqS, 10, 'EdgeColor', [189, 189, 189]/255, 'LineStyle', '--');
-        contourf(ax, riS, rjS, ksqS, 100, 'LineStyle', 'none', 'FaceAlpha', 0.65); colormap(ax, input{4}{4});
+        contour(ax, riS, rjS, ksqS, 100, 'LineWidth', 0.2, 'FaceAlpha', 0.25); colormap(ax, input{4}{4}); % , 'LineStyle', 'none'
         hold on; axis equal square; set(ax,'TickLabelInterpreter','latex');
         % quiver( ax, riS(skipIdx, skipIdx), rjS(skipIdx, skipIdx), uS(skipIdx, skipIdx), vS(skipIdx, skipIdx), 'Color', [189, 189, 189]/255 );
         plotShape2(ax, {muli, r{i}, r_dot{i}, mulj, r{j}, r_dot{j}}, {['$$\alpha_' num2str(i) '$$'], ['$$\alpha_' num2str(j) '$$']}, input{4}); % , input{3}
