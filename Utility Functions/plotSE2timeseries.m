@@ -1,6 +1,7 @@
-function f = plotSE2timeseries(input)
+function f = plotSE2timeseries(input, plotF)
 %PLOTSE2TIMESERIES This function plots the input cell array time series
-%   Given an input cell array of time series, this function plots them versus time in the same order as outlined in the cell array.
+%   Given an input cell array of time series and a plot-flag array, this function plots them versus time in the same order as outlined in the cell array. The
+%   plot-flag array contains if a specific element should be skipped or plotted.
     
     % Unpack
     t = input{1};
@@ -26,7 +27,7 @@ function f = plotSE2timeseries(input)
     trace_pack = {col, sty, lW};                % pass this to the trace plotter below
 
     % Setup
-    f = figure('units','pixels','position',360*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w'); 
+    f = figure('units','pixels','position',240*[0 0 arr_size(1) 1.5*arr_size(2)],'Color','w'); 
     set(f, 'Visible', 'on');
 %     switch arr_size(2)
 %         case 1
@@ -48,9 +49,9 @@ function f = plotSE2timeseries(input)
             ax = nexttile(Tobj, tile_idx);
             switch tile_idx == numel(in)
                 case 0
-                    plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack);
+                    plotSE2timeseries_snapshot(ax, t, plotF, in{i}, in_str{i}, trace_pack);
                 case 1
-                    plotSE2timeseries_snapshot(ax, t, in{i}, in_str{i}, trace_pack, legend_str);
+                    plotSE2timeseries_snapshot(ax, t, plotF, in{i}, in_str{i}, trace_pack, legend_str);
             end
         end
     end
@@ -61,7 +62,7 @@ end
 
 %% HELPER FUNCTIONS
 
-function plotSE2timeseries_snapshot(ax, t, in, in_str, in_col_sty_lW, legend_str)
+function plotSE2timeseries_snapshot(ax, t, plotF, in, in_str, in_col_sty_lW, legend_str)
 %PLOTSE2TIMESERIES_SNAPSHOT this function plots a single cell of the time series data
 %   For instance, this cell could be the time series concerning the swing values of the FR leg for a bunch of estimates.
     
@@ -71,15 +72,18 @@ function plotSE2timeseries_snapshot(ax, t, in, in_str, in_col_sty_lW, legend_str
     % plot
     fS = 10;
     for i = 1:numel(in)
-        plot(ax, t, in{i}, sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
+        if plotF{i} % if needed, plot the corresponding component
+            plot(ax, t, in{i}, sty{i}, 'LineWidth', lW{i}, 'Color', col(i, :));
+        end
         if i == 1
-            grid on; hold on; set(ax,'TickLabelInterpreter','latex')
+            grid on; hold on; set(ax,'TickLabelInterpreter','latex');
+            xlim([t(1) t(end)]);
         end
     end
     ylabel(in_str, 'FontSize', fS, 'Interpreter', 'latex'); ax.FontSize = fS;
     
     switch nargin
-        case 5
+        case 6
             xticklabels('');
         otherwise
             xlabel('$$t$$', 'FontSize', fS, 'Interpreter', 'latex');
