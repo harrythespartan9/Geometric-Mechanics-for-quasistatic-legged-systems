@@ -19,7 +19,7 @@ function cum_vector = seqSE2transformation(in_arr)
         cum_angle = cum_angle + in_arr(3,i);
 
         % update the transform
-        cum_transform = cum_transform*v2M_SE2(in_arr(:,i));
+        cum_transform = cum_transform *v2M_SE2( in_arr(:,i) );
 
     end
     

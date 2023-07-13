@@ -1,5 +1,6 @@
 % This function computes the adjoint and adjoint inverse transforms to map SE(2) twists between the frames involved. Takes an SE(2) transformation matrix as an
 % input and if you are inputting multiple transformations, it should be a cell array.
+% if f == 1, then it is adjoint, and if f == -1, then compute the adjoint inverse.
 function out = adj_adjinv_SE2(in, f)
 
     % Check if the input is a cell array ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
