@@ -73,8 +73,8 @@ function h = plotSE3snapshot(ax, traj, v, fno)
             c = 1;
             h{c} = quiver3(tframes(:,1), tframes(:,2), tframes(:,3), tframes(:,4), tframes(:,5), tframes(:,6),...
                 'LineWidth', 1.2, 'Color', gr_col, 'AutoScale', 'off'); c=c+1;                                           
-            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim); xlabel(ax, 'X'); ylabel(ax, 'Y'); 
-            zlabel(ax, 'Z'); xticklabels(ax, ''); yticklabels(ax, ''); zticklabels(ax, '');
+            hold(ax, 'on'); grid(ax, 'off'); axis(ax, 'square', 'equal', 'padded', plotlim); xlabel(ax, 'x'); ylabel(ax, 'y'); 
+            zlabel(ax, 'z'); xticklabels(ax, ''); yticklabels(ax, ''); zticklabels(ax, '');
             view(v);                                                                                                % set the camera angle
             h{c} = quiver3(tboxes(:,1), tboxes(:,2), tboxes(:,3), tboxes(:,4), tboxes(:,5), tboxes(:,6),...
                 'LineWidth', 3.0, 'Color', gr_col, 'AutoScale', 'off', 'ShowArrowHead', 'off'); c=c+1;
