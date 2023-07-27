@@ -43,8 +43,8 @@ plot_info.lW_Vector = (1.0/100)*skipV; % vector linewidth
 plot_info.lW_V = (1.0/100)*sV;
 plot_info.idxQ = 1:skipV:dnum; % indices to plot the connection vector field
 plot_info.iQ = 1:sV:dnum; % gait constraint vector fields
-plot_info.xtickval = -pi/3:pi/3:pi/3;
-plot_info.xticklab = {'$$-\frac{\pi}{3}$$','$$0$$','$$\frac{\pi}{3}$$'};
+plot_info.xtickval = -ank:ank:ank;
+plot_info.xticklab = {'$$-\frac{\pi}{6}$$','$$0$$','$$\frac{\pi}{6}$$'};
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xtickval = [-pi/2, 0, pi];
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xticklab = {'$$-\frac{\pi}{2}$$','$$0$$','$$\pi$$'};
 plot_info.ytickval = plot_info.xtickval;
@@ -554,7 +554,7 @@ set(groot,'defaultAxesTickLabelInterpreter','latex');
 set(groot,'defaulttextinterpreter','latex');
 set(groot,'defaultLegendInterpreter','latex');
 % -------------------------------------------------------------------------
-figure('units','pixels','position',[0 0 plot_info.m plot_info.n],...
+figure('units','pixels','position',[100 -200 plot_info.m plot_info.n],...
     'Color','w');
 set(gcf,'Visible','on'); % pop-out the current figure
 
