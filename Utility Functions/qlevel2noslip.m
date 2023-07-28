@@ -199,8 +199,8 @@ s_txt = [num2str(cs(1)) num2str(cs(2))];
 sgtitle_txt = ['$$S_{' s_txt '}$$'];
 savetitle_txt = ['S' s_txt];
 q_title_txt = '$$q$$'; 
-ksq_title_text = ['$$F^{' s_txt '}$$']; % ['$$k_{' s_txt '}^{2}$$'] % old notation
-dpsi_title_text = ['$$d\psi^{' s_txt '}$$'];
+ksq_title_text = ['$$F_{' s_txt '}$$']; % ['$$k_{' s_txt '}^{2}$$'] % old notation
+dpsi_title_text = ['$$(\Delta\alpha_F)_{' s_txt '}$$'];
 plot_info.cs1_shape_txt = cs1_shape_txt;
 plot_info.cs2_shape_txt = cs2_shape_txt;
 plot_info.x_label_txt = x_label_txt;
@@ -301,17 +301,17 @@ if aF
     A__y_2 = matlabFunction(kin.Ay_ij{i}{1,2},'Vars',symvarsij);
     A__theta_1 = matlabFunction(kin.Atheta_ij{i}{1,1},'Vars',symvarsij); 
     A__theta_2 = matlabFunction(kin.Atheta_ij{i}{1,2},'Vars',symvarsij);
-    A__x_1_sweep = A__x_1(aa, ll, ai, aj); A__x_1_sweep = conditiondatasweep(A__x_1_sweep,[dnum,dnum]); A__x_1_sweep(iV) = nan(size(A__x_1_sweep(iV)));
+    A__x_1_sweep = -A__x_1(aa, ll, ai, aj); A__x_1_sweep = conditiondatasweep(A__x_1_sweep,[dnum,dnum]); A__x_1_sweep(iV) = nan(size(A__x_1_sweep(iV)));
     plot_kin.A__x_1_sweep = A__x_1_sweep;
-    A__x_2_sweep = A__x_2(aa, ll, ai, aj); A__x_2_sweep = conditiondatasweep(A__x_2_sweep,[dnum,dnum]); A__x_2_sweep(iV) = nan(size(A__x_2_sweep(iV)));
+    A__x_2_sweep = -A__x_2(aa, ll, ai, aj); A__x_2_sweep = conditiondatasweep(A__x_2_sweep,[dnum,dnum]); A__x_2_sweep(iV) = nan(size(A__x_2_sweep(iV)));
     plot_kin.A__x_2_sweep = A__x_2_sweep;
-    A__y_1_sweep = A__y_1(aa, ll, ai, aj); A__y_1_sweep = conditiondatasweep(A__y_1_sweep,[dnum,dnum]); A__y_1_sweep(iV) = nan(size(A__y_1_sweep(iV)));
+    A__y_1_sweep = -A__y_1(aa, ll, ai, aj); A__y_1_sweep = conditiondatasweep(A__y_1_sweep,[dnum,dnum]); A__y_1_sweep(iV) = nan(size(A__y_1_sweep(iV)));
     plot_kin.A__y_1_sweep = A__y_1_sweep;
-    A__y_2_sweep = A__y_2(aa, ll, ai, aj); A__y_2_sweep = conditiondatasweep(A__y_2_sweep,[dnum,dnum]); A__y_2_sweep(iV) = nan(size(A__y_2_sweep(iV)));
+    A__y_2_sweep = -A__y_2(aa, ll, ai, aj); A__y_2_sweep = conditiondatasweep(A__y_2_sweep,[dnum,dnum]); A__y_2_sweep(iV) = nan(size(A__y_2_sweep(iV)));
     plot_kin.A__y_2_sweep = A__y_2_sweep;
-    A__theta_1_sweep = A__theta_1(aa, ll, ai, aj); A__theta_1_sweep = conditiondatasweep(A__theta_1_sweep,[dnum,dnum]); A__theta_1_sweep(iV) = nan(size(A__theta_1_sweep(iV)));
+    A__theta_1_sweep = -A__theta_1(aa, ll, ai, aj); A__theta_1_sweep = conditiondatasweep(A__theta_1_sweep,[dnum,dnum]); A__theta_1_sweep(iV) = nan(size(A__theta_1_sweep(iV)));
     plot_kin.A__theta_1_sweep = A__theta_1_sweep;
-    A__theta_2_sweep = A__theta_2(aa, ll, ai, aj); A__theta_2_sweep = conditiondatasweep(A__theta_2_sweep,[dnum,dnum]); A__theta_2_sweep(iV) = nan(size(A__theta_2_sweep(iV)));
+    A__theta_2_sweep = -A__theta_2(aa, ll, ai, aj); A__theta_2_sweep = conditiondatasweep(A__theta_2_sweep,[dnum,dnum]); A__theta_2_sweep(iV) = nan(size(A__theta_2_sweep(iV)));
     plot_kin.A__theta_2_sweep = A__theta_2_sweep;
     kin_info.A__x_1 = A__x_1;
     kin_info.A__x_2 = A__x_2;

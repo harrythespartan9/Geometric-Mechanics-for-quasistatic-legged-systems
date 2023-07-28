@@ -100,7 +100,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     C2.titletxt = {'$$z^{\theta}$$'};
 
     % Create the figure
-    figure('units','pixels','position',[0 0 m n],'Color','w');
+    figure('units','pixels','position',[100 -200 m n],'Color','w');
     set(gcf,'Visible','on'); % pop-out figure
     P = tiledlayout(P.grid(1),P.grid(2),'TileSpacing','tight','Padding','tight');
     

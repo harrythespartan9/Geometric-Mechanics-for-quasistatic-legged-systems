@@ -256,116 +256,82 @@ classdef Path2 < RigidGeomQuad
         end
 
         % Compute the open_trajectory-- sliding kind
-        function compute_slide_trajectory( thePath2, funcstr, dnum )
+        function compute_slide_trajectory( thePath2, funcstr, dnum, mul )
         
             % initialize the return container-- we shall return percentages of the slide from 100% to -100%
-            num_scale = 20;
+            num_scale = 21; % the middle gait is first computed and it is slid on both sides
             thePath2.open_trajectory = cell(1,num_scale);
             thePath2.path_length = cell(1,num_scale);
             
             aa = thePath2.get_a; 
             ll = thePath2.get_l;
             
-            % check if we want the integration condition
-            if numel(thePath2.int_time(thePath2.int_time == 0)) ~= 2                 % make sure some path is needed
-                if isempty(thePath2.int_time(thePath2.int_time == 0))                % if both paths are needed
+            if numel(thePath2.int_time(thePath2.int_time == 0)) ~= 2
+                if isempty(thePath2.int_time(thePath2.int_time == 0))
                     cond = 0;                                           
-                elseif find(thePath2.int_time == 0) == 1                             % if only the forward path is needed
+                elseif find(thePath2.int_time == 0) == 1
                     cond = 1;
-                elseif find(thePath2.int_time == 0) == 2                             % if only the backward path is needed
+                elseif find(thePath2.int_time == 0) == 2
                     cond = -1;
                 end
-            else                                                                     % error if the integration time for both fwd and backward paths are zero.
+            else
                 error('ERROR: The intergration time in both directions can''t be zero.');
             end
-            thePath2.int_cond = cond; % updated the integration property
+            thePath2.int_cond = cond;
             
-            % integrate the gait constraint ode to obtain the open-trajectory for the system.
-            ai0 = thePath2.point_of_interest(1);  % initial conditions
+            ai0 = thePath2.point_of_interest(1);
             aj0 = thePath2.point_of_interest(2);
-
-            % unpack the integration direction
+            
             dirn = thePath2.int_dirn;
             
-            % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
             eval(funcstr{1})
-            DPHI = matlabFunction(dirn*thePath2.dphi, 'Vars', eval(funcstr{2})); % dirn chooses whether it will be positive or negative
+            DPHI = matlabFunction(dirn*thePath2.dphi, 'Vars', eval(funcstr{2}));
             DQ = [cos(theta), -sin(theta),  0, 0, 0;
                   sin(theta), cos(theta),   0, 0, 0;
                   0,          0,            1, 0, 0;
                   0,          0,            0, 1, 0;
                   0,          0,            0, 0, 1]*[thePath2.dz; thePath2.dphi]*dirn;
-            DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));                   % configuration vector field
-
-            % integrate
+            DQ = matlabFunction(DQ, 'Vars', eval(funcstr{3}));
+            
             switch cond
             
-                case -1 % just backward path
+                case -1
             
-                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+                    t = linspace(0, mul(1)*thePath2.int_time(1), dnum);
                     [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] ); % forward to POF
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
                 
-                case 0 % both paths
+                case 0
             
-                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+                    t = linspace(0, mul(1)*thePath2.int_time(1), dnum);
                     [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
+                    t = linspace(0, sum(mul.*thePath2.int_time), dnum);
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
             
-                case 1 % just forward path
+                case 1
                     
-                    t = linspace(0, thePath2.int_time(2), dnum); % just go forward from POF
+                    t = linspace(0, mul(2)*thePath2.int_time(2), dnum);
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
             
             end
-            
-            % Here, we shall compute/interpolate and store the positive and negatively scaled gaits ------------------------------------------------------------
-
-            % store the open configuration trajectory slice q(s)_ij for the full path
-            thePath2.open_trajectory{20} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}'; % +100% path
-            thePath2.open_trajectory{1} = {tf(:)', fliplr((-qf(end,1) + qf(:,1))'), fliplr((-qf(end,2) + qf(:,2))'), fliplr((-qf(end,3) + qf(:,3))'),...
-                fliplr(qf(:,4)'), fliplr(qf(:,5)')}'; % -100% path
-            % {x, y, \theta, \alpha_i, \alpha_j}
-            % store the initial and final conditions of the path
-            thePath2.initial_condition{20} = [thePath2.open_trajectory{20}{5}(1) thePath2.open_trajectory{20}{6}(1)];
-            thePath2.final_condition{20} = [thePath2.open_trajectory{20}{5}(end) thePath2.open_trajectory{20}{6}(end)];
-            thePath2.initial_condition{1} = [thePath2.open_trajectory{1}{5}(1) thePath2.open_trajectory{1}{6}(1)];
-            thePath2.final_condition{1} = [thePath2.open_trajectory{1}{5}(end) thePath2.open_trajectory{1}{6}(end)];
-            % compute the net displacement
-            thePath2.net_displacement(:,20) = [thePath2.open_trajectory{20}{2}(end), thePath2.open_trajectory{20}{3}(end), thePath2.open_trajectory{20}{4}(end)]';
-            thePath2.net_displacement(:,1) = [thePath2.open_trajectory{1}{2}(end), thePath2.open_trajectory{1}{3}(end), thePath2.open_trajectory{1}{4}(end)]';
-            % store the closed trajectory
-            thePath2.closed_trajectory{20} = thePath2.close_trajectory(thePath2.open_trajectory{20}, thePath2.deadband_dutycycle);
-            thePath2.closed_trajectory{1} = thePath2.close_trajectory(thePath2.open_trajectory{1}, thePath2.deadband_dutycycle);
-            % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
-            thePath2.path_length{20} = thePath2.open_trajectory{20}{1}(end);
-            thePath2.path_length{1} = thePath2.open_trajectory{1}{1}(end);
-            
-            % compute multiples of 10% paths to add to the "open_trajectory" and "path_length" props
-            for i = 1:0.5*num_scale-1
-                
-                iP = 0.5*num_scale + i;     % indices for positively scaled paths
-                iN = 0.5*num_scale - i + 1; % indices for negatively scaled paths
-                
-                % compute interpolated positively scaled paths
-                thePath2.open_trajectory{iP} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{20}, i*0.1, cond, dnum); % compute the scaled path
-                thePath2.net_displacement(:,iP) = [thePath2.open_trajectory{iP}{2}(end), thePath2.open_trajectory{iP}{3}(end), thePath2.open_trajectory{iP}{4}(end)]';
-                thePath2.closed_trajectory{iP} = thePath2.close_trajectory(thePath2.open_trajectory{iP}, thePath2.deadband_dutycycle); % close it-- might not use this much
-                thePath2.path_length{iP} = thePath2.open_trajectory{iP}{1}(end); % get the path length
-                thePath2.initial_condition{iP} = [thePath2.open_trajectory{iP}{5}(1) thePath2.open_trajectory{iP}{6}(1)]; % path initial and final conditions
-                thePath2.final_condition{iP} = [thePath2.open_trajectory{iP}{5}(end) thePath2.open_trajectory{iP}{6}(end)];
-                
-                % compute interpolated negatively scaled paths
-                thePath2.open_trajectory{iN} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{1}, i*0.1, cond, dnum);
-                thePath2.net_displacement(:,iN) = [thePath2.open_trajectory{iN}{2}(end), thePath2.open_trajectory{iN}{3}(end), thePath2.open_trajectory{iN}{4}(end)]';
-                thePath2.closed_trajectory{iN} = thePath2.close_trajectory(thePath2.open_trajectory{iN}, thePath2.deadband_dutycycle);
-                thePath2.path_length{iN} = thePath2.open_trajectory{iN}{1}(end);
-                thePath2.initial_condition{iN} = [thePath2.open_trajectory{iN}{5}(1) thePath2.open_trajectory{iN}{6}(1)];
-                thePath2.final_condition{iN} = [thePath2.open_trajectory{iN}{5}(end) thePath2.open_trajectory{iN}{6}(end)];
+            Qfull = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}'; % the configuration path over the full slide range!!
+            idxNom = ceil(num_scale/2); t0 = (mul(1) - 1)*thePath2.int_time(1); tPi = t0 + sum(thePath2.int_time); tNom = linspace(t0, tPi, dnum);
+            thePath2.open_trajectory{idxNom} = configInterp(tNom, Qfull); % +0% slid path (nominal)
+            thePath2.initial_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(1) thePath2.open_trajectory{idxNom}{6}(1)];
+            thePath2.final_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(end) thePath2.open_trajectory{idxNom}{6}(end)];
+            thePath2.net_displacement(:,idxNom) = [thePath2.open_trajectory{idxNom}{2}(end), thePath2.open_trajectory{idxNom}{3}(end), thePath2.open_trajectory{idxNom}{4}(end)]';
+            thePath2.closed_trajectory{idxNom} = thePath2.close_trajectory(thePath2.open_trajectory{idxNom}, thePath2.deadband_dutycycle);
+            thePath2.path_length{idxNom} = thePath2.open_trajectory{idxNom}{1}(end);
+            slide_perct = linspace(-1, 1, num_scale);
+            for i = [1:idxNom-1, idxNom+1:num_scale]
+                    t0Now = (1- slide_perct(i))*(mul(1) - 1)*thePath2.int_time(1); tPiNow = t0Now + sum(thePath2.int_time); tNow = linspace(t0Now, tPiNow, dnum);
+                    thePath2.open_trajectory{i} = configInterp(tNow, Qfull);
+                    thePath2.initial_condition{i} = [thePath2.open_trajectory{i}{5}(1) thePath2.open_trajectory{i}{6}(1)];
+                    thePath2.final_condition{i} = [thePath2.open_trajectory{i}{5}(end) thePath2.open_trajectory{i}{6}(end)];
+                    thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
+                    thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle);
+                    thePath2.path_length{i} = thePath2.open_trajectory{i}{1}(end);
             end
-
-            % store the path discretization
             thePath2.path_discretization = dnum;
         
         end
@@ -409,11 +375,11 @@ classdef Path2 < RigidGeomQuad
 
             % interpolate to a desired discretization
             T = linspace(t_temp(1), t_temp(end), dnum);
-            X = interp1(t_temp, x_temp, T, 'spline');
-            Y = interp1(t_temp, y_temp, T, 'spline');
-            THETA = interp1(t_temp, theta_temp, T, 'spline');
-            AI = interp1(t_temp, ai_temp, T, 'spline');
-            AJ = interp1(t_temp, aj_temp, T, 'spline');
+            X = interp1(t_temp, x_temp, T, 'pchip');
+            Y = interp1(t_temp, y_temp, T, 'pchip');
+            THETA = interp1(t_temp, theta_temp, T, 'pchip');
+            AI = interp1(t_temp, ai_temp, T, 'pchip');
+            AJ = interp1(t_temp, aj_temp, T, 'pchip');
 
             % return the solution
             q_interp = {T(:)', X(:)', Y(:)', THETA(:)', AI(:)', AJ(:)'}';
@@ -442,10 +408,11 @@ classdef Path2 < RigidGeomQuad
             x_d = [x, x(end)*ones(1, dnum_dead)];
             y_d = [y, y(end)*ones(1, dnum_dead)];
             theta_d = [theta, theta(end)*ones(1, dnum_dead)];
+            % 
             % temp_i = linspace(ai(end), ai(1), dnum_dead + 2); temp_i = temp_i(2:end-1); ai_d = [ai, temp_i]; % linearly interpolated swing phase
-            ai_d = [ai, fliplr(ai(2:end-1))]; % flipped swing phase
             % temp_j = linspace(aj(end), aj(1), dnum_dead + 2); temp_j = temp_j(2:end-1); aj_d = [aj, temp_j];
-            aj_d = [aj, fliplr(ai(2:end-1))];
+            % 
+            ai_d = [ai, fliplr(ai(2:end-1))]; aj_d = [aj, fliplr(aj(2:end-1))];                                % flipped swing phase
 
             % create the closed configuration trajectory slice q(phi)_ij
             closedTraj = {[t, t_d]; [x, x_d]; [y, y_d]; [theta, theta_d]; [ai, ai_d]; [aj, aj_d]};

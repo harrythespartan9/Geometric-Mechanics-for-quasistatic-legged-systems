@@ -33,38 +33,38 @@ switch flag %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         F = false; DF = false;
         if strcmp('-A',field)
-            txt = '$-\mathbf{A}';
+            txt = '$$-\mathbf{A}';
         elseif strcmp('-dA',field)
-            txt = '$-d\mathbf{A}';
+            txt = '$$-d\mathbf{A}';
         elseif strcmp('[A_1,A_2]',field)
-            txt = '$[\mathbf{A}_{1},\mathbf{A}_{2}]';
+            txt = '$$[\mathbf{A}_{1},\mathbf{A}_{2}]';
         elseif strcmp('D(-A)',field)
             DF = true;
-            txt = '$D(-\mathbf{A}';
+            txt = '$$D(-\mathbf{A}';
         elseif strcmp('dz',field)
             F = true;
-            txt = '$dz_{\psi}';
+            txt = '$$dz_{\phi}';
         end
         
         if DF % if generalized curl is needed
             if strcmp('x',comp)
-                txt = [txt, '^{x})$'];
+                txt = [txt, '^{x})$$'];
             elseif strcmp('y',comp)
-                txt = [txt, '^{y})$'];
+                txt = [txt, '^{y})$$'];
             elseif strcmp('theta',comp)
-                txt = [txt, '^{\theta})$'];
+                txt = [txt, '^{\theta})$$'];
             end
         else % if it is everything else
             if strcmp('x',comp)
                 if F
-                    txt = [txt, '^{x} = \mathbf{A}^{x} d\psi$'];
+                    txt = [txt, '^{x} = -\mathbf{A}^{x} \Delta\alpha_F$$'];
                 else
-                    txt = [txt, '^{x}$'];
+                    txt = [txt, '^{x}$$'];
                 end
             elseif strcmp('y',comp)
-                txt = [txt, '^{y}$'];
+                txt = [txt, '^{y}$$'];
             elseif strcmp('theta',comp)
-                txt = [txt, '^{\theta}$'];
+                txt = [txt, '^{\theta}$$'];
             end
         end
 

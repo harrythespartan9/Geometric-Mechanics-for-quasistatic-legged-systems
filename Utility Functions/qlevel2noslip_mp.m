@@ -195,7 +195,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
     end
 
     % Create the figure
-    f = figure('units','pixels','position',[0 0 m n],'Color','w');
+    f = figure('units','pixels','position',[100 -200 m n],'Color','w');
     set(gcf,'Visible','on'); % pop-out figure
     P = tiledlayout(P.grid(1),P.grid(2),'TileSpacing','tight','Padding','tight');
     
@@ -304,8 +304,17 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % get the integration direction
             dirn_i = path_i.int_dirn;
 
-            % path scaling vector (the main path is scaled)
-            pscale = 10*([-fliplr(1:10) 1:10]);
+            % path vector (the main path is "scaled" or "slid") % "slid" added on 07/27/2023
+            if isfield(datai{1}, "mode")
+                switch datai{1}.mode
+                    case "scale"
+                        pscale = 10*([-fliplr(1:10) 1:10]);
+                    case "slide"
+                        pscale = 10*([-fliplr(1:10) 0 1:10]);
+                end
+            else
+                pscale = 10*([-fliplr(1:10) 1:10]);
+            end
 
             % initialize the tiled layouts
             C3.Layout_Obj = tiledlayout(P,C3.grid(1),C3.grid(2),'TileSpacing','tight','Padding','tight'); 
@@ -323,7 +332,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % Video stuff
             if vidF_i
                 video = VideoWriter(['data_animation','.mp4'],'MPEG-4');
-                video.FrameRate = 60;
+                video.FrameRate = 120; %  60
                 video.Quality = 100;
                 open(video);
             end
@@ -422,7 +431,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         delete(h1_s{j});
                     end
                     h1{j} = plot(C1.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
-                    h1b{j} = plot(C1.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
+                    % h1b{j} = plot(C1.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
                     h1_A{j} = plotpatharrow(C1.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
 
@@ -434,7 +443,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                         delete(h2_s{j}); % delete(h2{j});
                     end
                     h2{j} = plot(C2.axes{j}, a1_i, a2_i, 'LineWidth', lW_s_i, 'Color', gc_col_i);
-                    h2b{j} = plot(C2.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
+                    % h2b{j} = plot(C2.axes{j}, [a1_i(1) a1_i(end)], [a2_i(1) a2_i(end)], '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
                     h2_A{j} = plotpatharrow(C2.axes{j}, a1_i, a2_i, arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
 
@@ -927,22 +936,22 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 % Plot the shape-space trajectory in the respective shape-space slices
                 for j = 1:C1.num
                     h1_A{j} = plot(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i); % plot the active path for i
-                    h1_N{j} = plot(C1.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:)); % plot the inactive path for i
+                    % h1_N{j} = plot(C1.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:)); % plot the inactive path for i
                     h1_arr{j} = plotpatharrow(C1.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i); % plot the arrow in the middle of the active path
                 end
                 for j = 1:C2.num
                     h2_A{j} = plot(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), 'LineWidth', lW_s_i, 'Color', gc_col_i);
-                    h2_N{j} = plot(C2.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
+                    % h2_N{j} = plot(C2.axes{j}, a1_i(idxiC), a2_i(idxiC), '--', 'LineWidth', lW_s_i, 'Color', col_i(7,:));
                     h2_arr{j} = plotpatharrow(C2.axes{j}, a1_i(idxiA), a2_i(idxiA), arrSize*t_int_i/2, arrAngle, lW_s_i, gc_col_i);
                 end
                 for j = 1:C3.num
                     h3_A{j} = plot(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
-                    h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                    % h3_N{j} = plot(C3.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
                     h3_arr{j} = plotpatharrow(C3.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
                 for j = 1:C4.num
                     h4_A{j} = plot(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), 'LineWidth', lW_s_j, 'Color', gc_col_j);
-                    h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
+                    % h4_N{j} = plot(C4.axes{j}, a1_j(idxjC), a2_j(idxjC), '--', 'LineWidth', lW_s_j, 'Color', col_j(7,:));
                     h4_arr{j} = plotpatharrow(C4.axes{j}, a1_j(idxjA), a2_j(idxjA), arrSize*t_int_j/2, arrAngle, lW_s_j, gc_col_j);
                 end
                 
@@ -977,8 +986,8 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 temp = [x; y; theta]; b = temp;
                 for j = 2:gaitC_num % iterate and extend
                     % compute next
-                    xyztemp = ztemp + adginv(ztemp(3))*temp;   % update trajectory
-                    ztemp= ztemp + adginv(ztemp(3))*z;  % update net displacement
+                    xyztemp = ztemp + rot_SE2(ztemp(3))*temp;   % update trajectory
+                    ztemp= ztemp + rot_SE2(ztemp(3))*z;  % update net displacement
                     temp_t = tf+temp_t;
                     % update current
                     t = [t, temp_t];
