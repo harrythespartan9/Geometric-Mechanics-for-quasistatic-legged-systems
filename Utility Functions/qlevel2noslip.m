@@ -43,8 +43,8 @@ plot_info.lW_Vector = (1.0/100)*skipV; % vector linewidth
 plot_info.lW_V = (1.0/100)*sV;
 plot_info.idxQ = 1:skipV:dnum; % indices to plot the connection vector field
 plot_info.iQ = 1:sV:dnum; % gait constraint vector fields
-plot_info.xtickval = -ank:ank:ank;
-plot_info.xticklab = {'$$-\frac{\pi}{6}$$','$$0$$','$$\frac{\pi}{6}$$'};
+plot_info.xtickval = -pi/3:pi/3:pi/3;
+plot_info.xticklab = {'$$-\frac{\pi}{3}$$','$$0$$','$$\frac{\pi}{3}$$'};
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xtickval = [-pi/2, 0, pi];
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % plot_info.xticklab = {'$$-\frac{\pi}{2}$$','$$0$$','$$\pi$$'};
 plot_info.ytickval = plot_info.xtickval;
@@ -161,7 +161,7 @@ syms a l real positive
 assume(a<=1);
 bl = kin_info.bl;
 if isa(bl, 'sym')
-    bl = subs(bl, [a, l], [aa, ll]);
+    bl = double(subs(bl, [a, l], [aa, ll]));
 end
 % plotting related stuff --------------------------------------------------
 limX = [-bl*0.25, 2*bl]; limY = [-bl*0.25, 2*bl];
@@ -262,7 +262,7 @@ ksq = kin.ksq_ij{i};
 ksq_sweep = ksq(aa, ll, ai, aj);
 %%%%%%%%%%%%%%% compute the contracting singularity location for the current Sij and get the indices within the premittable shape space limits
 perct = 10; % what percentage of body length you want to stop at-- a heuristic ksq lower bound around the contracting singularity
-if isa(bl, 'sym')
+if isa(kin_info.bl, 'sym')
     lb = double(subs((kin_info.bl/perct)^2, l, ll));
 else
     lb = (kin_info.bl/perct)^2;

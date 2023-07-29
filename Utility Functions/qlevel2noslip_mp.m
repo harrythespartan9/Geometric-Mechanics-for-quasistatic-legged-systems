@@ -13,7 +13,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
         case 2
             dataij = []; 
             dataij.vidF = false; % just return the complete gait trajectory information
-            dataij.gaitC_num = 10;
+            dataij.gaitC_num = 25;
             cond = 3;
         case 3
             cond = 3;
@@ -877,7 +877,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             % Setup the video and start animation layout -------------------------------------------------------------------------------------------------------
             if dataij.vidF
                 video = VideoWriter(['data_animation','.mp4'],'MPEG-4');
-                video.FrameRate = 20;
+                video.FrameRate = 30; % 20
                 video.Quality = 100;
                 open(video);
             end
