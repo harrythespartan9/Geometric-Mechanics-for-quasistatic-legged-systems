@@ -38,6 +38,8 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     u_j = dataij.u_j;
     u_i_S = dataij.u_i_S;       % 2D arrays/sweeps
     u_j_S = dataij.u_j_S;
+    idxLoc = (u_i_S == u_i_stpt) & (u_j_S == u_j_stpt); % index location of the current setpoint
+    kappa_S = dataij.kappa_S;
     gaits = dataij.gaits;       % ui, uj swept gaits
     
     % get the axis limits
@@ -149,6 +151,8 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     end
     C2.axes = ax;
     C2.colorB = colorbar(C2.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_i); C2.colorB.Layout.Tile = 'South'; % plot the rotation colorbar
-    
+
+    % Display the curvature of the current gait in console
+    disp(kappa_S(idxLoc));
 
 end

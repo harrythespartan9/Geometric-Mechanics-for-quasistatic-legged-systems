@@ -8,11 +8,25 @@ function dataij = noslip2bgaits(pi, pj, dataij)
     csi_idx = pi.active_state; csj_idx = pj.active_state; % contact states numbers; ordering-- [12, 23, 34, 41, 13, 24]
 
     % the percentage scaling in both directions (as a proper decimal)
-    u_i = [ fliplr(-10*(1:numel(pi.open_trajectory)/2)), 10*(1:numel(pi.open_trajectory)/2) ]/100;
-    u_j = [ fliplr(-10*(1:numel(pj.open_trajectory)/2)), 10*(1:numel(pj.open_trajectory)/2) ]/100;
+    switch numel(pi.open_trajectory)/2 == floor(numel(pi.open_trajectory)/2) % checking if it is even or odd
+        case 1
+            u_i = [ fliplr(-10*(1:numel(pi.open_trajectory)/2)), 10*(1:numel(pi.open_trajectory)/2) ]/100;
+        case 0
+            u_i = [ fliplr(-10*(1:numel(pi.open_trajectory)/2)), 0, 10*(1:numel(pi.open_trajectory)/2) ]/100;
+    end
+    switch numel(pj.open_trajectory)/2 == floor(numel(pj.open_trajectory)/2)
+        case 1
+            u_j = [ fliplr(-10*(1:numel(pj.open_trajectory)/2)), 10*(1:numel(pj.open_trajectory)/2) ]/100;
+        case 0
+            u_j = [ fliplr(-10*(1:numel(pj.open_trajectory)/2)), 0, 10*(1:numel(pj.open_trajectory)/2) ]/100;
+    end
     ni = numel(u_i);
     nj = numel(u_j);
     [u_i_S, u_j_S] = meshgrid(u_i, u_j);
+
+    % get the net path curvature as a function of the inputs
+    [kappa_i_S, kappa_j_S] = meshgrid( cell2mat(pi.path_net_curvature), cell2mat(pj.path_net_curvature) );
+    kappa_S = kappa_i_S + kappa_j_S;
     
     % create an cell array to scale and hold both positive and negatively scaled paths
     gaits = cell( ni, nj );
@@ -155,6 +169,7 @@ function dataij = noslip2bgaits(pi, pj, dataij)
     dataij.u_j = u_j;
     dataij.u_i_S = u_i_S; % sweep
     dataij.u_j_S = u_j_S;
+    dataij.kappa_S = kappa_S;
     dataij.gaits = gaits; % ui, uj swept gaits and associated periods
     dataij.tau = phi_tau; % time periods
 
