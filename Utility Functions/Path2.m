@@ -211,17 +211,20 @@ classdef Path2 < RigidGeomQuad
             
             % Here, we shall compute/interpolate and store the positive and negatively scaled gaits ------------------------------------------------------------
 
-            % Get the path velocity
-            Qdot = DQ(  tf(:)', aa, ll, 0, 0, 0, qf(:,4)', qf(:,5)'  ); % local configuration velocity
-
-            % store the open configuration trajectory slice q(s)_ij for the full path
+            % Get the path velocity & store the open configuration trajectory slice q(s)_ij for the full path
             thePath2.open_trajectory{20} = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}'; % +100% path
             thePath2.open_trajectory{1} = {tf(:)', fliplr((-qf(end,1) + qf(:,1))'), fliplr((-qf(end,2) + qf(:,2))'), fliplr((-qf(end,3) + qf(:,3))'),...
                 fliplr(qf(:,4)'), fliplr(qf(:,5)')}'; % -100% path
             % {x, y, \theta, \alpha_i, \alpha_j}
+            Qdot20 = DQ(  thePath2.open_trajectory{20}{1}, aa, ll,...
+                thePath2.open_trajectory{20}{2}, thePath2.open_trajectory{20}{3}, thePath2.open_trajectory{20}{4},...
+                thePath2.open_trajectory{20}{5}, thePath2.open_trajectory{20}{6}  ); % local configuration velocity
+            Qdot1 = DQ(  thePath2.open_trajectory{1}{1}, aa, ll,...
+                thePath2.open_trajectory{1}{2}, thePath2.open_trajectory{1}{3}, thePath2.open_trajectory{1}{4},...
+                thePath2.open_trajectory{1}{5}, thePath2.open_trajectory{1}{6}  );
             % get the path curvature information
-            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}] = extractPathCurvFromQ(Qdot);
-            thePath2.path_curvature_traj{1} = fliplr(thePath2.path_curvature_traj{20}); thePath2.path_net_curvature{1} = thePath2.path_net_curvature{20};
+            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}] = extractPathCurvFromQ(Qdot20);
+            [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}] = extractPathCurvFromQ(Qdot1);
             % store the initial and final conditions of the path
             thePath2.initial_condition{20} = [thePath2.open_trajectory{20}{5}(1) thePath2.open_trajectory{20}{6}(1)];
             thePath2.final_condition{20} = [thePath2.open_trajectory{20}{5}(end) thePath2.open_trajectory{20}{6}(end)];
@@ -329,7 +332,9 @@ classdef Path2 < RigidGeomQuad
             
             end
             Qfull = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}'; % the configuration path over the full slide range!!
-            Qdotfull = DQ(  Qfull{1}, aa, ll, 0, 0, 0, Qfull{5}, Qfull{6}  );
+            Qdotfull = DQ(  Qfull{1}, aa, ll,...
+                Qfull{2}, Qfull{3}, Qfull{4},...
+                Qfull{5}, Qfull{6}  );
             idxNom = ceil(num_scale/2); t0 = (mul(1) - 1)*thePath2.int_time(1); tPi = t0 + sum(thePath2.int_time); tNom = linspace(t0, tPi, dnum);
             thePath2.open_trajectory{idxNom} = configInterp(tNom, Qfull); % +0% slid path (nominal)
             [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}] = extractPathCurvFromQ(Qdotfull); % curvature for the path above
@@ -342,7 +347,9 @@ classdef Path2 < RigidGeomQuad
             for i = [1:idxNom-1, idxNom+1:num_scale]
                     t0Now = (1- slide_perct(i))*(mul(1) - 1)*thePath2.int_time(1); tPiNow = t0Now + sum(thePath2.int_time); tNow = linspace(t0Now, tPiNow, dnum);
                     thePath2.open_trajectory{i} = configInterp(tNow, Qfull);
-                    QdotNow = DQ(  thePath2.open_trajectory{i}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{i}{5}, thePath2.open_trajectory{i}{6}  );
+                    QdotNow = DQ(  thePath2.open_trajectory{i}{1}, aa, ll,...
+                        thePath2.open_trajectory{i}{2}, thePath2.open_trajectory{i}{3}, thePath2.open_trajectory{i}{4},...
+                        thePath2.open_trajectory{i}{5}, thePath2.open_trajectory{i}{6}  );
                     [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}] = extractPathCurvFromQ(QdotNow);
                     thePath2.initial_condition{i} = [thePath2.open_trajectory{i}{5}(1) thePath2.open_trajectory{i}{6}(1)];
                     thePath2.final_condition{i} = [thePath2.open_trajectory{i}{5}(end) thePath2.open_trajectory{i}{6}(end)];

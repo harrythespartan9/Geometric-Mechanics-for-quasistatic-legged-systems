@@ -26,7 +26,7 @@ function dataij = noslip2bgaits(pi, pj, dataij)
 
     % get the net path curvature as a function of the inputs
     [kappa_i_S, kappa_j_S] = meshgrid( cell2mat(pi.path_net_curvature), cell2mat(pj.path_net_curvature) );
-    kappa_S = kappa_i_S + kappa_j_S;
+    kappa_S = 0.5*(kappa_i_S' + kappa_j_S');
     
     % create an cell array to scale and hold both positive and negatively scaled paths
     gaits = cell( ni, nj );

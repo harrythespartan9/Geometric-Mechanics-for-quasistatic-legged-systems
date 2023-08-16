@@ -152,7 +152,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     C2.axes = ax;
     C2.colorB = colorbar(C2.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_i); C2.colorB.Layout.Tile = 'South'; % plot the rotation colorbar
 
-    % Display the curvature of the current gait in console
-    disp(kappa_S(idxLoc));
+    % % Display the curvature of the current gait in console
+    % disp(kappa_S(idxLoc));
 
 end
