@@ -133,7 +133,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             cs_i = datai{3}.cs;
             cs_j = dataj{3}.cs;
         
-            % Compute the limits on the data-- helps with countour plotting
+            % Compute the limits on the data-- helps with countour plotting of stratified panels
             [C3_lim,C4_lim] = se2limits(dz__x_sweep_j,dz__y_sweep_j,dz__theta_sweep_j);
 
             % child 3-- jth dz_translation
@@ -1003,7 +1003,7 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
                 a_n(cs_j(1), :) = a1_j;
                 a_n(cs_j(2), :) = a2_j;
                 
-                % compute the animation limitsksqij
+                % compute the animation limits
                 bl = 4*l_j;
                 thresh = 1.25;
                 anim_lim = [min(x, [], 'all')-thresh*bl, max(x, [], 'all')+thresh*bl, min(y, [], 'all')-thresh*bl, max(y, [], 'all')+thresh*bl];
