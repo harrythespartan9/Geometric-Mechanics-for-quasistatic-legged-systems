@@ -6,15 +6,14 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
 %   Output: pltTraj-- plotting trajectory needed to plot the system snapshot
 
     % unpack everything
-    x = traj{1}(1, :); 
-    y = traj{1}(2, :); 
-    theta = traj{1}(3, :);  % SE(2) traj
-    alpha = cell(4, 1);
-    for i = 1:4
-        alpha{i} = traj{2}(i, :); % shape trajectory
-    end
-    dnum = traj{3};
-    a = params{1}; l = params{2}; bl = params{3};
+    x = traj{1}{1}; 
+    y = traj{1}{2}; 
+    theta = traj{1}{3};                                 % SE(2) trajectories
+    alpha = traj{2};                                    % shape trajectory
+    col_t = traj{3};                                    % color trajectory
+    phi_tau = traj{4};                                  % submanifold trajectory
+    dnum = traj{5};                                     % trajectory discretization number
+    a = params{1}; l = params{2}; bl = params{3};       % body params
 
     % level-2 submanifold ordering
     S = [1, 2;
@@ -40,11 +39,13 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
         legtip__x{i} = pltkin.(['leg' num2str(i) '_x'])(a, l, alpha{i}, x, y, theta);
         legtip__y{i} = pltkin.(['leg' num2str(i) '_y'])(a, l, alpha{i}, x, y, theta);
         % leg origin pose (helps visualize the current leg angle)
-        O_leg__x{i} = pltkin.(['legbase' num2str(i) '_leg' num2str(i) '_x'])(a, l, zeros(size(alpha{i})), x, y, theta);
-        O_leg__y{i} = pltkin.(['legbase' num2str(i) '_leg' num2str(i) '_y'])(a, l, zeros(size(alpha{i})), x, y, theta);
+        O_leg__x{i} = pltkin.(['legbase' num2str(i) '_leg' num2str(i) '_x'])(a, l, zeros([1 dnum]), x, y, theta);
+                            O_leg__x{i} = [O_leg__x{i}(1:dnum); O_leg__x{i}(dnum+1:end)];
+        O_leg__y{i} = pltkin.(['legbase' num2str(i) '_leg' num2str(i) '_y'])(a, l, zeros([1 dnum]), x, y, theta);
+                            O_leg__y{i} = [O_leg__y{i}(1:dnum); O_leg__y{i}(dnum+1:end)];
         % body links
-        body_link__x{i} = pltkin.([bodyLinkStr{i} '_x'])(l, x, y, theta); body_link__x{i} = [body_link__x{i}(1:dnum); body_link__x{i}(dnum+1:end)];
-        body_link__y{i} = pltkin.([bodyLinkStr{i} '_y'])(l, x, y, theta); body_link__y{i} = [body_link__y{i}(1:dnum); body_link__y{i}(dnum+1:end)];
+        body_link__x{i} = pltkin.([bodyLinkStr{i} 'x'])(l, x, y, theta); body_link__x{i} = [body_link__x{i}(1:dnum); body_link__x{i}(dnum+1:end)];
+        body_link__y{i} = pltkin.([bodyLinkStr{i} 'y'])(l, x, y, theta); body_link__y{i} = [body_link__y{i}(1:dnum); body_link__y{i}(dnum+1:end)];
     end
 
     % body frame location and frame quivers
@@ -53,11 +54,12 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
     bodyf__x = pltkin.bodyf_x(x, y, theta); 
     bodyf__y = pltkin.bodyf_y(x, y, theta);
 
-    % find the squared inter-leg distance vectors-- for each level-2 submanifold
+    % initialize and find the squared inter-leg distance vectors-- for each level-2 submanifold
+    ksq__x = cell(6, 1); ksq__y = ksq__x;
     for i = 1:size(S, 1)
-        ksq__x{i} = pltkin.(['k_leg' S(i, 1) '_leg' S(i, 2) '_x'])(a, l, alpha{S(i, 1)}, alpha{S(i, 2)}, x, y, theta); 
+        ksq__x{i} = pltkin.(['k_leg' num2str(S(i, 1)) '_leg' num2str(S(i, 2)) '_x'])(a, l, alpha{S(i, 1)}, alpha{S(i, 2)}, x, y, theta); 
                             ksq__x{i} = [ksq__x{i}(1:dnum); ksq__x{i}(dnum+1:end)];
-        ksq__y{i} = pltkin.(['k_leg' S(i, 1) '_leg' S(i, 2) '_x'])(a, l, alpha{S(i, 1)}, alpha{S(i, 2)}, x, y, theta); 
+        ksq__y{i} = pltkin.(['k_leg' num2str(S(i, 1)) '_leg' num2str(S(i, 2)) '_y'])(a, l, alpha{S(i, 1)}, alpha{S(i, 2)}, x, y, theta); 
                             ksq__y{i} = [ksq__y{i}(1:dnum); ksq__y{i}(dnum+1:end)];
     end
 
@@ -67,6 +69,7 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
 
     % pack everything and send it back
     pltTraj = [];
+    pltTraj.dnum = dnum;
     pltTraj.anim_lim = anim_lim;
     pltTraj.leg__x = leg__x;
     pltTraj.leg__y = leg__y;
@@ -82,6 +85,11 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
     pltTraj.bodyf__y = bodyf__y;
     pltTraj.ksq__x = ksq__x;
     pltTraj.ksq__y = ksq__y;
+    pltTraj.x = x;
+    pltTraj.y = y; % append the translational trajectory
+    pltTraj.col_t = col_t; % append the color trajectory
+    pltTraj.phi_tau = phi_tau; % append the submanifold trajectory
+    pltTraj.S = S; % append the submanifold trajectory
 
 end
 

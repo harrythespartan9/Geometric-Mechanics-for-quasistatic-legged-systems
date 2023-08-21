@@ -1,4 +1,4 @@
-function [plot_info, traj] = stitchQuadSE2gaits(in)
+function [pltTraj, traj] = stitchQuadSE2gaits(in)
 %STITCHQUADSE2GAITS given a cell array of gaits, flow inputs, and repetitions for each gait this function stitches everything together into a single trajectory
 %   The gait structure to obtained by running "qlevel2noslip_mp.m". Check "se2_GenericQuad_trot.mlx" notebook for more details on setting up the requirements
 %   for this function.
@@ -13,10 +13,12 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
     if numel(in{1}) ~= numel(in{2})
         error('ERROR! All three input cells need to have the same number of elements.');
     elseif numel(in{2}) ~= numel(in{3})
-        error('ERROR! All three input cells need to have the same number of elements.');
+        error('ERROR! Inputs and number of repetition cells need to have the same number of elements.');
+    elseif numel(in{3}) ~= numel(in{4})
+        error('ERROR! All 4 input cells need to have the same number of elements.');
     end
-    for i = 1:numel(in{1})
-        if numel(in{2}{i}) ~= numel(in{3}{i})
+    for i = 1:numel(in{3})
+        if numel(in{3}{i}) ~= numel(in{4}{i})
             error('ERROR! The number of inputs and number of repetiion elements corresponding to a gait struct should be equal.');
         end
     end
@@ -129,27 +131,33 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
             % Create the leg colors and reorder both leg trajectory and colors
             temp_alpha = [temp_a1_i; temp_a2_i; temp_a1_j; temp_a2_j];
 
-            temp_b_col = repmat(col(7, :), 3, size(temp_alpha, 2)); % color for the robot body
+            temp_b_col = repmat(col(7, :)', 1, size(temp_alpha, 2)); % color for the robot body
 
-            temp_c_i_col = nan(3, size(temp_alpha, 2)); % color for the k-line between active feet
-            temp_c_i_col(:, temp_phi_tau == cs_idx_i) = repmat(c_i(:), 1, sum(temp_phi_tau == cs_idx_i));
-            temp_c_j_col = nan(3, size(temp_alpha, 2));
-            temp_c_j_col(:, temp_phi_tau == cs_idx_i) = repmat(c_j(:), 1, sum(temp_phi_tau == cs_idx_i));
+            temp_c_col = nan(3, size(temp_alpha, 2)); % color for the k-line between active feet
+            temp_c_col(:, temp_phi_tau == cs_idx_i) = repmat(c_i(:), 1, sum(temp_phi_tau == cs_idx_i));
+            temp_c_col(:, temp_phi_tau == cs_idx_j) = repmat(c_j(:), 1, sum(temp_phi_tau == cs_idx_j));
 
             temp_ai_col = temp_b_col; % color for ith contact state
-            temp_ai_col(:, temp_phi_tau == cs_idx_i) = repmat(gc_col_i(:), 1, sum(temp_phi_tau == cs_idx_i)); 
-            temp_ai_col = mat2cell(temp_ai_col, 3, ones(1, size(temp_ai_col, 2)));
+            temp_ai_col(:, temp_phi_tau == cs_idx_i) = repmat(gc_col_i(:), 1, sum(temp_phi_tau == cs_idx_i));
             temp_aj_col = temp_b_col; % color for jth contact state
-            temp_aj_col(:, temp_phi_tau == cs_idx_j) = gc_col_j(:); 
-            temp_aj_col = mat2cell(temp_aj_col, 3, ones(1, size(temp_ai_col, 2)));
+            temp_aj_col(:, temp_phi_tau == cs_idx_j) = repmat(gc_col_j(:), 1, sum(temp_phi_tau == cs_idx_j)); 
             temp_a_col = {temp_ai_col; temp_ai_col; temp_aj_col; temp_aj_col};
 
-            temp_alpha = temp_alpha(a_ord, :);
+            temp_alpha = temp_alpha(a_ord, :); % reordered shape trajectory with 1->4
             temp_a_col = temp_a_col(a_ord); % reordered the colors
+            temp_a_col = cell2mat(temp_a_col);
 
-            temp_col_t = {temp_a_col; temp_b_col; temp_c_i_col; temp_c_j_col}; % color trajectory-- {1}       -- 4x1 leg color trajectory
-                                                                                                  % {2}       -- 1x1 robot body color trajectory
-                                                                                                  % {3} & {4} -- interleg color for ith and jth contact states
+            temp_t_col = temp_b_col; % trajectory color
+            temp_t_col(:, temp_phi_tau == cs_idx_i) = repmat(gc_col_i(:), 1, sum(temp_phi_tau == cs_idx_i));
+            temp_t_col(:, temp_phi_tau == cs_idx_j) = repmat(gc_col_j(:), 1, sum(temp_phi_tau == cs_idx_j));
+
+            temp_col_t = [temp_a_col; 
+                temp_b_col; 
+                temp_c_col; 
+                temp_t_col];                                       % color trajectory-- {1}       -- 12xt leg color trajectory
+                                                                                      % {2}       -- 3xt robot body color trajectory
+                                                                                      % {3}       -- 3xt interleg color for the current contact state
+                                                                                      % {4}       -- 3xt current cs color on the SE(2) trajectory
             
             % update the configuration trajectory
             switch i == 1 && j == 1
@@ -163,7 +171,7 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
                     z       = [temp_zx; temp_zy; temp_ztheta];
                     alpha   = temp_alpha;
                     col_t   = temp_col_t;
-                    pbq     = [zeros(numel(temp_pbq)-1) 1]; % just set the last entry as 1 to have the config plotted after every input cycle
+                    pbq     = [zeros(1, numel(temp_pbq)-1) 1]; % just set the last entry as 1 to have the config plotted after every input cycle
                     phi_tau = temp_phi_tau;
                     dnum    = numel(t);
 
@@ -174,8 +182,8 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
                     g       = [   g, z + rot_SE2(z(3))*[temp_x; temp_y; temp_theta]   ];
                     z       = z + rot_SE2(z(3))*[temp_zx; temp_zy; temp_ztheta];
                     alpha   = [ alpha, temp_alpha ];
-                    col_t   = {col_t, temp_col_t};
-                    pbq     = [pbq, [zeros(numel(temp_pbq)-1) 1]];
+                    col_t   = [col_t, temp_col_t];
+                    pbq     = [pbq, [zeros(1, numel(temp_pbq)-1) 1]];
                     phi_tau = [phi_tau, temp_phi_tau];
                     dnum    = dnum + numel(temp_t);
 
@@ -185,7 +193,12 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
     end
 
     % condition the color trajectory correctly
-    col_t = cell2mat(col_t); col_t = mat2cell(col_t, [3*ones(1, 4), 1, 3*ones(1, 2)], size(col_t, 2));
+    col_t       = mat2cell(  col_t, 3*ones(1, 7), dnum  ); % color trajectory-- 7x1 cell array (first 4 shape trajectory colors)
+
+    % condition the vector trajectories into cell arrays for each component
+    alpha       = mat2cell(  alpha, ones(1, 4), dnum  );
+    g           = mat2cell(  g, ones(1, 3), dnum  );
+
 
     % Pack the trajectory and return it
     traj.t          = t;
@@ -198,7 +211,8 @@ function [plot_info, traj] = stitchQuadSE2gaits(in)
     traj.phi_tau    = phi_tau;
 
     % compute the plotting trajectory
-    pltTraj = compute_pltTraj(    data_i{4},   {g, alpha, dnum},   {a, l, bl}   );
+    pltTraj = compute_pltTraj(    data_i{4},   {g, alpha, col_t, phi_tau, dnum},   {a, l, bl}   );  % get the trajectories
+    pltTraj.plot_info = plot_info; % append plotting fields
 
 end
 
