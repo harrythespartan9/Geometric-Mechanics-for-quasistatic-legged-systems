@@ -171,9 +171,10 @@ function [pltTraj, traj] = stitchQuadSE2gaits(in)
                     z       = [temp_zx; temp_zy; temp_ztheta];
                     alpha   = temp_alpha;
                     col_t   = temp_col_t;
-                    pbq     = [zeros(1, numel(temp_pbq)-1) 1]; % just set the last entry as 1 to have the config plotted after every input cycle
+                    pbq     = [1 zeros(1, numel(temp_pbq)-2) 1]; % just set the last entry as 1 to have the config plotted after every input cycle (1 @ begin to plot IC)
                     phi_tau = temp_phi_tau;
                     dnum    = numel(t);
+                    gcVec   = reps{i}{j};
 
                 case 0 % NOT first stitch
 
@@ -186,6 +187,7 @@ function [pltTraj, traj] = stitchQuadSE2gaits(in)
                     pbq     = [pbq, [zeros(1, numel(temp_pbq)-1) 1]];
                     phi_tau = [phi_tau, temp_phi_tau];
                     dnum    = dnum + numel(temp_t);
+                    gcVec   = [gcVec, reps{i}{j}];
 
             end
 
@@ -201,6 +203,8 @@ function [pltTraj, traj] = stitchQuadSE2gaits(in)
 
 
     % Pack the trajectory and return it
+    traj.dnum       = dnum;
+    traj.gcVec      = gcVec;
     traj.t          = t;
     traj.tf         = tf;
     traj.g          = g;
@@ -211,7 +215,7 @@ function [pltTraj, traj] = stitchQuadSE2gaits(in)
     traj.phi_tau    = phi_tau;
 
     % compute the plotting trajectory
-    pltTraj = compute_pltTraj(    data_i{4},   {g, alpha, col_t, phi_tau, dnum},   {a, l, bl}   );  % get the trajectories
+    pltTraj = compute_pltTraj(    data_i{4},   {g, alpha, col_t, phi_tau, pbq, dnum},   {a, l, bl}   );  % get the trajectories
     pltTraj.plot_info = plot_info; % append plotting fields
 
 end

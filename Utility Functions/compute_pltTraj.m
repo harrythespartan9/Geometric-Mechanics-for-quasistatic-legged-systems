@@ -12,7 +12,8 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
     alpha = traj{2};                                    % shape trajectory
     col_t = traj{3};                                    % color trajectory
     phi_tau = traj{4};                                  % submanifold trajectory
-    dnum = traj{5};                                     % trajectory discretization number
+    pbq = traj{5};                                      % body configuration snapshot points
+    dnum = traj{6};                                     % trajectory discretization number
     a = params{1}; l = params{2}; bl = params{3};       % body params
 
     % level-2 submanifold ordering
@@ -85,6 +86,7 @@ function pltTraj = compute_pltTraj(pltkin, traj, params)
     pltTraj.bodyf__y = bodyf__y;
     pltTraj.ksq__x = ksq__x;
     pltTraj.ksq__y = ksq__y;
+    pltTraj.pbq = pbq; % append the body configuration points
     pltTraj.x = x;
     pltTraj.y = y; % append the translational trajectory
     pltTraj.col_t = col_t; % append the color trajectory
