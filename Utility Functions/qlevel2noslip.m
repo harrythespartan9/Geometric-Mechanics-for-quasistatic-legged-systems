@@ -213,6 +213,7 @@ plot_info.dpsi_title_text = dpsi_title_text;
 plot_info.savetitle_txt = savetitle_txt;
 
 eval(['syms ' cs1_shape_txt ' ' cs2_shape_txt ' real']);
+B = eval(['[' cs1_shape_txt '; ' cs2_shape_txt ']']); % create a 
 
 % compute everything we need based on the input submanifold ---------------
 a1 = 0; a2 = 0;
@@ -277,7 +278,7 @@ plot_info.ksq_lim = [min(ksq_sweep,[],'all') max(ksq_sweep,[],'all')];
 kin_info.ksq = ksq;
 % dpsi (always computed)
 % dpsi_x = kin.dpsi_ij_s{i,1}; dpsi_y = kin.dpsi_ij_s{i,2}; % scaled version
-dpsi = simplify(kin.dpsi_ij{i}/norm(kin.dpsi_ij{i}),'Steps',10); 
+dpsi = simplify(kin.dpsi_ij{i}/norm(kin.dpsi_ij{i}),'Steps',10);
 dpsi_x = matlabFunction(dpsi(1),'Vars',symvarsij); 
 dpsi_y = matlabFunction(dpsi(2),'Vars',symvarsij); % normalized version
 dpsi_x_sweep = dpsi_x(aa, ll, ai, aj); dpsi_x_sweep = conditiondatasweep(dpsi_x_sweep,[dnum,dnum]); dpsi_x_sweep(iV) = nan(size(dpsi_x_sweep(iV))); 
@@ -287,6 +288,7 @@ plot_kin.dpsi_y_sweep = dpsi_y_sweep;
 kin_info.dpsi_x = dpsi_x;
 kin_info.dpsi_y = dpsi_y;
 kin_info.dpsi = dpsi;
+kin_info.ddpsi = simplify(jacobian(dpsi, B), "Steps", 10); % compute the accln and store it
 %%%%%%%%%%%%%%% % let's compute the gradient directions too to shown the full velocity basis (grey for slipping directions)
 dpsi_sweep = [dpsi_x_sweep(:)'; dpsi_y_sweep(:)'];
 ndpsi_sweep = round(rot_in_ij(pi/2))*dpsi_sweep;

@@ -17,6 +17,8 @@ classdef Path2 < RigidGeomQuad
 
         dphi                 % Gait constraint vector field dphi_ij-- \Vec{dphi}_{ij}
 
+        ddphi                % Shape(directional)-derivative of the gait constraint vector field-- \Nabla_\alpha \Vec{dphi}_{ij}
+
         point_of_interest    % starting point to compute the path
 
         int_dirn             % direction to integrate the path along: +phi or -phi with scaling
@@ -58,7 +60,7 @@ classdef Path2 < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, strpt, t, dc, c, si, dirn )
+        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, ddphiij, strpt, t, dc, c, si, dirn )
 
             % Setup the requirements for the arguments
             arguments
@@ -72,6 +74,8 @@ classdef Path2 < RigidGeomQuad
                 dzij    (3, 1) sym    {mustBeA(dzij, 'sym')}
 
                 dphiij  (2, 1) sym    {mustBeA(dphiij, 'sym')}
+
+                ddphiij (2, 2) sym    {mustBeA(ddphiij, 'sym')}
 
                 strpt   (1, 2) double {mustBeNumeric}
 
@@ -88,14 +92,14 @@ classdef Path2 < RigidGeomQuad
             end
 
             % Get the arguments for a superclass constuctor
-            if nargin == 11
+            if nargin == 12
                 quadArgs = [ank, a, l];
-            elseif nargin == 9
+            elseif nargin == 10
                 quadArgs = ank;
-            elseif nargin == 8
+            elseif nargin == 9
                 quadArgs = [];
             else
-                error('Error: Need 10, 8, or 7 arguments to create an object.');
+                error('Error: Need 12, 10, or 9 arguments to create an object.');
             end
 
             % call the RigidGeometricQuadruped class' constructor
@@ -104,6 +108,7 @@ classdef Path2 < RigidGeomQuad
             % assign the props
             thisPath2.dz = dzij;
             thisPath2.dphi = dphiij;
+            thisPath2.ddphi = ddphiij;
             thisPath2.point_of_interest = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
