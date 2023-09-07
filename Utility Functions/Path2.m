@@ -19,6 +19,10 @@ classdef Path2 < RigidGeomQuad
 
         ddphi                % Shape(directional)-derivative of the gait constraint vector field-- \Nabla_\alpha \Vec{dphi}_{ij}
 
+        A                    % Local connection vector field-- \boldsymbol{A}_{ij}
+
+        Adot                 % Shape(directional)-derivative of the local connection vector field-- \Nabla_\alpha \boldsymbol{A}_{ij}
+
         point_of_interest    % starting point to compute the path
 
         int_dirn             % direction to integrate the path along: +phi or -phi with scaling
@@ -60,7 +64,7 @@ classdef Path2 < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, ddphiij, strpt, t, dc, c, si, dirn )
+        function [thisPath2] = Path2( ank, a, l, dzij, dphiij, ddphiij, Aij, Adotij, strpt, t, dc, c, si, dirn )
 
             % Setup the requirements for the arguments
             arguments
@@ -77,6 +81,10 @@ classdef Path2 < RigidGeomQuad
 
                 ddphiij (2, 2) sym    {mustBeA(ddphiij, 'sym')}
 
+                Aij     (3, 2) sym    {mustBeA(Aij, 'sym')}
+
+                Adotij  (1, 2) cell   {mustBeA(Adotij, 'cell')}
+
                 strpt   (1, 2) double {mustBeNumeric}
 
                 t       (1, 2) double {mustBeNonnegative}
@@ -92,14 +100,14 @@ classdef Path2 < RigidGeomQuad
             end
 
             % Get the arguments for a superclass constuctor
-            if nargin == 12
+            if nargin == 14
                 quadArgs = [ank, a, l];
-            elseif nargin == 10
+            elseif nargin == 12
                 quadArgs = ank;
-            elseif nargin == 9
+            elseif nargin == 11
                 quadArgs = [];
             else
-                error('Error: Need 12, 10, or 9 arguments to create an object.');
+                error('Error: Need 14, 12, or 11 arguments to create an object.');
             end
 
             % call the RigidGeometricQuadruped class' constructor
@@ -109,6 +117,8 @@ classdef Path2 < RigidGeomQuad
             thisPath2.dz = dzij;
             thisPath2.dphi = dphiij;
             thisPath2.ddphi = ddphiij;
+            thisPath2.A = Aij;
+            thisPath2.Adot = Adotij;
             thisPath2.point_of_interest = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
@@ -182,7 +192,7 @@ classdef Path2 < RigidGeomQuad
             dirn = thePath2.int_dirn;
             
             % get the functions needed to integrate-- 'symbolic' datatype to 'matlabFunction' format
-            eval(funcstr{1})
+            eval(funcstr{1}) % initialize the symbolic variables
             DPHI = matlabFunction(dirn*thePath2.dphi, 'Vars', eval(funcstr{2})); % dirn chooses whether it will be positive or negative
             DQ = [cos(theta), -sin(theta),  0, 0, 0;
                   sin(theta), cos(theta),   0, 0, 0;
@@ -213,6 +223,12 @@ classdef Path2 < RigidGeomQuad
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
             
             end
+
+            % Some more functions for identifying the path curvature
+            A     =  matlabFunction(A, 'Vars', eval(funcstr{2})); % local connection
+            ADOTi = matlabFunction(thePath2.Adot{1}, 'Vars', eval(funcstr{2})); % the directional derivatives of the local connection
+            ADOTj = matlabFunction(thePath2.Adot{2}, 'Vars', eval(funcstr{2}));
+            DDPSI = matlabFunction(dirn*thePath2.ddphi, 'Vars', eval(funcstr{2})); % the directional derivative of the path constraint
             
             % Here, we shall compute/interpolate and store the positive and negatively scaled gaits ------------------------------------------------------------
 
@@ -228,8 +244,8 @@ classdef Path2 < RigidGeomQuad
                 thePath2.open_trajectory{1}{2}, thePath2.open_trajectory{1}{3}, thePath2.open_trajectory{1}{4},...
                 thePath2.open_trajectory{1}{5}, thePath2.open_trajectory{1}{6}  );
             % get the path curvature information
-            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}] = extractPathCurvFromQ(Qdot20);
-            [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}] = extractPathCurvFromQ(Qdot1);
+            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}] = extractPathCurvFromQ(thePath2.open_trajectory{20}, Qdot20, DDPSI, A, {ADOTi, ADOTj});
+            [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}] = extractPathCurvFromQ(thePath2.open_trajectory{1}, Qdot1, DDPSI, A, {ADOTi, ADOTj});
             % store the initial and final conditions of the path
             thePath2.initial_condition{20} = [thePath2.open_trajectory{20}{5}(1) thePath2.open_trajectory{20}{6}(1)];
             thePath2.final_condition{20} = [thePath2.open_trajectory{20}{5}(end) thePath2.open_trajectory{20}{6}(end)];
@@ -254,7 +270,7 @@ classdef Path2 < RigidGeomQuad
                 % compute interpolated positively scaled paths
                 thePath2.open_trajectory{iP} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{20}, i*0.1, cond, dnum); % compute the scaled path
                 QdotP = DQ(  thePath2.open_trajectory{iP}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iP}{5}, thePath2.open_trajectory{iP}{6}  );
-                [thePath2.path_net_curvature{iP}, thePath2.path_curvature_traj{iP}] = extractPathCurvFromQ(QdotP);
+                [thePath2.path_net_curvature{iP}, thePath2.path_curvature_traj{iP}] = extractPathCurvFromQ(thePath2.open_trajectory{iP}, QdotP, DDPSI, A, {ADOTi, ADOTj});
                 thePath2.net_displacement(:,iP) = [thePath2.open_trajectory{iP}{2}(end), thePath2.open_trajectory{iP}{3}(end), thePath2.open_trajectory{iP}{4}(end)]';
                 thePath2.closed_trajectory{iP} = thePath2.close_trajectory(thePath2.open_trajectory{iP}, thePath2.deadband_dutycycle); % close it-- might not use this much
                 thePath2.path_length{iP} = thePath2.open_trajectory{iP}{1}(end); % get the path length
@@ -264,7 +280,7 @@ classdef Path2 < RigidGeomQuad
                 % compute interpolated negatively scaled paths
                 thePath2.open_trajectory{iN} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{1}, i*0.1, cond, dnum);
                 QdotN = DQ(  thePath2.open_trajectory{iN}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iN}{5}, thePath2.open_trajectory{iN}{6}  );
-                [thePath2.path_net_curvature{iN}, thePath2.path_curvature_traj{iN}] = extractPathCurvFromQ(QdotN);
+                [thePath2.path_net_curvature{iN}, thePath2.path_curvature_traj{iN}] = extractPathCurvFromQ(thePath2.open_trajectory{iN}, QdotN, DDPSI, A, {ADOTi, ADOTj});
                 thePath2.net_displacement(:,iN) = [thePath2.open_trajectory{iN}{2}(end), thePath2.open_trajectory{iN}{3}(end), thePath2.open_trajectory{iN}{4}(end)]';
                 thePath2.closed_trajectory{iN} = thePath2.close_trajectory(thePath2.open_trajectory{iN}, thePath2.deadband_dutycycle);
                 thePath2.path_length{iN} = thePath2.open_trajectory{iN}{1}(end);
@@ -336,13 +352,19 @@ classdef Path2 < RigidGeomQuad
                     [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
             
             end
+            
+            A     =  matlabFunction(A, 'Vars', eval(funcstr{2}));
+            ADOTi = matlabFunction(thePath2.Adot{1}, 'Vars', eval(funcstr{2}));
+            ADOTj = matlabFunction(thePath2.Adot{2}, 'Vars', eval(funcstr{2}));
+            DDPSI = matlabFunction(dirn*thePath2.ddphi, 'Vars', eval(funcstr{2}));
+
             Qfull = {tf(:)', qf(:,1)', qf(:,2)', qf(:,3)', qf(:,4)', qf(:,5)'}'; % the configuration path over the full slide range!!
             Qdotfull = DQ(  Qfull{1}, aa, ll,...
                 Qfull{2}, Qfull{3}, Qfull{4},...
                 Qfull{5}, Qfull{6}  );
             idxNom = ceil(num_scale/2); t0 = (mul(1) - 1)*thePath2.int_time(1); tPi = t0 + sum(thePath2.int_time); tNom = linspace(t0, tPi, dnum);
             thePath2.open_trajectory{idxNom} = configInterp(tNom, Qfull); % +0% slid path (nominal)
-            [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}] = extractPathCurvFromQ(Qdotfull); % curvature for the path above
+            [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}] = extractPathCurvFromQ(Qfull, Qdotfull, DDPSI, A, {ADOTi, ADOTj}); % curvature for the path above
             thePath2.initial_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(1) thePath2.open_trajectory{idxNom}{6}(1)];
             thePath2.final_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(end) thePath2.open_trajectory{idxNom}{6}(end)];
             thePath2.net_displacement(:,idxNom) = [thePath2.open_trajectory{idxNom}{2}(end), thePath2.open_trajectory{idxNom}{3}(end), thePath2.open_trajectory{idxNom}{4}(end)]';
@@ -355,7 +377,7 @@ classdef Path2 < RigidGeomQuad
                     QdotNow = DQ(  thePath2.open_trajectory{i}{1}, aa, ll,...
                         thePath2.open_trajectory{i}{2}, thePath2.open_trajectory{i}{3}, thePath2.open_trajectory{i}{4},...
                         thePath2.open_trajectory{i}{5}, thePath2.open_trajectory{i}{6}  );
-                    [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}] = extractPathCurvFromQ(QdotNow);
+                    [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}] = extractPathCurvFromQ(thePath2.open_trajectory{i}, QdotNow, DDPSI, A, {ADOTi, ADOTj});
                     thePath2.initial_condition{i} = [thePath2.open_trajectory{i}{5}(1) thePath2.open_trajectory{i}{6}(1)];
                     thePath2.final_condition{i} = [thePath2.open_trajectory{i}{5}(end) thePath2.open_trajectory{i}{6}(end)];
                     thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';

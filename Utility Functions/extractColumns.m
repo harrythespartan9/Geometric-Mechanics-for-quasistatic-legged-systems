@@ -16,8 +16,9 @@ function Mprime = extractColumns(M, cols)
         case 0 % single matrix
             
             % Ensure that the inputs are numeric
-            if ~isnumeric(M) || ~isnumeric(cols)
-                error('ERROR! Both inputs need to numeric datatypes.');
+            if ~(isnumeric(M) || isa(M, "sym")) || ~isnumeric(cols)
+                error(['ERROR! Both inputs need to have compatible datatypes-- ' ...
+                    '1) M has to be numeric or symbolic and 2) cols has to be numeric.']);
             end
         
             % Ensure that the entries in cols are well conditioned
@@ -39,8 +40,9 @@ function Mprime = extractColumns(M, cols)
                 error('ERROR! The column entries need to be positive integers.');
             end
             for i = 1:numel(M)
-                if ~isnumeric(M{i}) || ~isnumeric(cols)
-                    error(['ERROR! Both inputs-- ' num2str(i) 'th matrix cell and columns need to numeric datatypes.']);
+                if ~(isnumeric(M{i}) || isa(M{i}, "sym")) || ~isnumeric(cols)
+                    error(['ERROR! Both inputs need to have compatible datatypes-- ' ...
+                        '1) ' num2str(i) 'th matrix cell has to be numeric or symbolic and 2) cols has to be numeric.']);
                 end
                 if max(cols) > size(M{i}, 2)
                     error('ERROR! The max column to be appended can not be greater than the number of columns in M.');
