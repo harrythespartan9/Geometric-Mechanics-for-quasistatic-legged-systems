@@ -51,6 +51,22 @@ classdef Path2 < RigidGeomQuad
 
         closed_trajectory    % configuration trajectory for the whole path
 
+        open_SE2_vel         % SE(2) velocity of the open SE(2) trajectory from the forward path
+
+        closed_SE2_vel       % SE(2) velocity of the SE(2) trajectory from the closed subgait
+
+        open_SE2_accln       % SE(2) acceleration of the open SE(2) trajectory from the forward path
+
+        closed_SE2_accln     % SE(2) acceleration of the SE(2) trajectory from the closed subgait
+
+        open_shape_vel       % velocity of the open shape trajectory
+
+        closed_shape_vel     % velocity of the closed shape trajectory
+
+        opne_shape_accln     % acceleration of the open shape trajectory
+
+        closed_shape_accln   % acceleration of the closed shape trajectory
+
         path_length          % length of the path
 
         path_active_color    % color of the trajectory based on the gait constraint color map
@@ -460,10 +476,6 @@ classdef Path2 < RigidGeomQuad
             x_d = [x, x(end)*ones(1, dnum_dead)];
             y_d = [y, y(end)*ones(1, dnum_dead)];
             theta_d = [theta, theta(end)*ones(1, dnum_dead)];
-            % 
-            % temp_i = linspace(ai(end), ai(1), dnum_dead + 2); temp_i = temp_i(2:end-1); ai_d = [ai, temp_i]; % linearly interpolated swing phase
-            % temp_j = linspace(aj(end), aj(1), dnum_dead + 2); temp_j = temp_j(2:end-1); aj_d = [aj, temp_j];
-            % 
             ai_d = [ai, fliplr(ai(2:end-1))]; aj_d = [aj, fliplr(aj(2:end-1))];                                % flipped swing phase
 
             % create the closed configuration trajectory slice q(phi)_ij
