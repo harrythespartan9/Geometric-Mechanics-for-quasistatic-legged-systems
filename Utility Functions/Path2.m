@@ -49,23 +49,15 @@ classdef Path2 < RigidGeomQuad
 
         path_net_curvature   % the net curvature of the path (\kappa) (1/ radius of curvature)
 
-        closed_trajectory    % configuration trajectory for the whole path
+        closed_trajectory    % configuration trajectory for the whole subgait (both forward and backward paths)
 
-        open_SE2_vel         % SE(2) velocity of the open SE(2) trajectory from the forward path
+        open_trajectory_vel  % configuration velocity from the forward path
 
-        closed_SE2_vel       % SE(2) velocity of the SE(2) trajectory from the closed subgait
+        closed_trajectory_vel% configuration velocity from the whole subgait
 
-        open_SE2_accln       % SE(2) acceleration of the open SE(2) trajectory from the forward path
+        open_trajectory_acc  % configuration acceleration from the forward path
 
-        closed_SE2_accln     % SE(2) acceleration of the SE(2) trajectory from the closed subgait
-
-        open_shape_vel       % velocity of the open shape trajectory
-
-        closed_shape_vel     % velocity of the closed shape trajectory
-
-        opne_shape_accln     % acceleration of the open shape trajectory
-
-        closed_shape_accln   % acceleration of the closed shape trajectory
+        closed_trajectory_acc% configuration acceleration from the whole subgait
 
         path_length          % length of the path
 
@@ -241,7 +233,7 @@ classdef Path2 < RigidGeomQuad
             end
 
             % Some more functions for identifying the path curvature
-            A     =  matlabFunction(A, 'Vars', eval(funcstr{2})); % local connection
+            A     =  matlabFunction(thePath2.A, 'Vars', eval(funcstr{2})); % local connection
             ADOTi = matlabFunction(thePath2.Adot{1}, 'Vars', eval(funcstr{2})); % the directional derivatives of the local connection
             ADOTj = matlabFunction(thePath2.Adot{2}, 'Vars', eval(funcstr{2}));
             DDPSI = matlabFunction(dirn*thePath2.ddphi, 'Vars', eval(funcstr{2})); % the directional derivative of the path constraint
@@ -259,9 +251,13 @@ classdef Path2 < RigidGeomQuad
             Qdot1 = DQ(  thePath2.open_trajectory{1}{1}, aa, ll,...
                 thePath2.open_trajectory{1}{2}, thePath2.open_trajectory{1}{3}, thePath2.open_trajectory{1}{4},...
                 thePath2.open_trajectory{1}{5}, thePath2.open_trajectory{1}{6}  );
-            % get the path curvature information
-            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}] = extractPathCurvFromQ(thePath2.open_trajectory{20}, Qdot20, DDPSI, A, {ADOTi, ADOTj});
-            [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}] = extractPathCurvFromQ(thePath2.open_trajectory{1}, Qdot1, DDPSI, A, {ADOTi, ADOTj});
+            % get the path vel, accln, and curvature information
+            [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}, ...
+                thePath2.open_trajectory_vel{20}, thePath2.open_trajectory_acc{20}] = ...
+                extractPathCurvFromQ(thePath2.open_trajectory{20}, Qdot20, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+            [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}, ...
+                thePath2.open_trajectory_vel{1}, thePath2.open_trajectory_acc{1}] = ...
+                extractPathCurvFromQ(thePath2.open_trajectory{1}, Qdot1, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
             % store the initial and final conditions of the path
             thePath2.initial_condition{20} = [thePath2.open_trajectory{20}{5}(1) thePath2.open_trajectory{20}{6}(1)];
             thePath2.final_condition{20} = [thePath2.open_trajectory{20}{5}(end) thePath2.open_trajectory{20}{6}(end)];
@@ -271,8 +267,13 @@ classdef Path2 < RigidGeomQuad
             thePath2.net_displacement(:,20) = [thePath2.open_trajectory{20}{2}(end), thePath2.open_trajectory{20}{3}(end), thePath2.open_trajectory{20}{4}(end)]';
             thePath2.net_displacement(:,1) = [thePath2.open_trajectory{1}{2}(end), thePath2.open_trajectory{1}{3}(end), thePath2.open_trajectory{1}{4}(end)]';
             % store the closed trajectory
-            thePath2.closed_trajectory{20} = thePath2.close_trajectory(thePath2.open_trajectory{20}, thePath2.deadband_dutycycle);
-            thePath2.closed_trajectory{1} = thePath2.close_trajectory(thePath2.open_trajectory{1}, thePath2.deadband_dutycycle);
+            [thePath2.closed_trajectory{20}, ...
+                thePath2.closed_trajectory_vel{20}, thePath2.closed_trajectory_acc{20}] = ...
+                thePath2.close_trajectory(thePath2.open_trajectory{20}, thePath2.deadband_dutycycle);
+            [thePath2.closed_trajectory{1}, ...
+                thePath2.closed_trajectory_vel{1}, thePath2.closed_trajectory_acc{1}] = ...
+                thePath2.close_trajectory(thePath2.open_trajectory{1},...
+                thePath2.open_trajectory_vel{1}, thePath2.open_trajectory_acc{1}, thePath2.deadband_dutycycle);
             % since the gait-constraint vector field has unit magnitude, the path length is just the final time of the path
             thePath2.path_length{20} = thePath2.open_trajectory{20}{1}(end);
             thePath2.path_length{1} = thePath2.open_trajectory{1}{1}(end);
@@ -286,9 +287,14 @@ classdef Path2 < RigidGeomQuad
                 % compute interpolated positively scaled paths
                 thePath2.open_trajectory{iP} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{20}, i*0.1, cond, dnum); % compute the scaled path
                 QdotP = DQ(  thePath2.open_trajectory{iP}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iP}{5}, thePath2.open_trajectory{iP}{6}  );
-                [thePath2.path_net_curvature{iP}, thePath2.path_curvature_traj{iP}] = extractPathCurvFromQ(thePath2.open_trajectory{iP}, QdotP, DDPSI, A, {ADOTi, ADOTj});
+                [thePath2.path_net_curvature{iP}, thePath2.path_curvature_traj{iP},...
+                    thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}] = ...
+                    extractPathCurvFromQ(thePath2.open_trajectory{iP}, QdotP, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                 thePath2.net_displacement(:,iP) = [thePath2.open_trajectory{iP}{2}(end), thePath2.open_trajectory{iP}{3}(end), thePath2.open_trajectory{iP}{4}(end)]';
-                thePath2.closed_trajectory{iP} = thePath2.close_trajectory(thePath2.open_trajectory{iP}, thePath2.deadband_dutycycle); % close it-- might not use this much
+                [thePath2.closed_trajectory{iP}, ...
+                thePath2.closed_trajectory_vel{iP}, thePath2.closed_trajectory_acc{iP}] = ...
+                thePath2.close_trajectory(thePath2.open_trajectory{iP},...
+                thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle);
                 thePath2.path_length{iP} = thePath2.open_trajectory{iP}{1}(end); % get the path length
                 thePath2.initial_condition{iP} = [thePath2.open_trajectory{iP}{5}(1) thePath2.open_trajectory{iP}{6}(1)]; % path initial and final conditions
                 thePath2.final_condition{iP} = [thePath2.open_trajectory{iP}{5}(end) thePath2.open_trajectory{iP}{6}(end)];
@@ -296,9 +302,14 @@ classdef Path2 < RigidGeomQuad
                 % compute interpolated negatively scaled paths
                 thePath2.open_trajectory{iN} = thePath2.interpolated_open_trajectory(thePath2.open_trajectory{1}, i*0.1, cond, dnum);
                 QdotN = DQ(  thePath2.open_trajectory{iN}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iN}{5}, thePath2.open_trajectory{iN}{6}  );
-                [thePath2.path_net_curvature{iN}, thePath2.path_curvature_traj{iN}] = extractPathCurvFromQ(thePath2.open_trajectory{iN}, QdotN, DDPSI, A, {ADOTi, ADOTj});
+                [thePath2.path_net_curvature{iN}, thePath2.path_curvature_traj{iN},...
+                    thePath2.open_trajectory_vel{iN}, thePath2.open_trajectory_acc{iN}] = ...
+                    extractPathCurvFromQ(thePath2.open_trajectory{iN}, QdotN, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                 thePath2.net_displacement(:,iN) = [thePath2.open_trajectory{iN}{2}(end), thePath2.open_trajectory{iN}{3}(end), thePath2.open_trajectory{iN}{4}(end)]';
-                thePath2.closed_trajectory{iN} = thePath2.close_trajectory(thePath2.open_trajectory{iN}, thePath2.deadband_dutycycle);
+                [thePath2.closed_trajectory{iN}, ...
+                thePath2.closed_trajectory_vel{iN}, thePath2.closed_trajectory_acc{iN}] = ...
+                thePath2.close_trajectory(thePath2.open_trajectory{iN},...
+                thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle); 
                 thePath2.path_length{iN} = thePath2.open_trajectory{iN}{1}(end);
                 thePath2.initial_condition{iN} = [thePath2.open_trajectory{iN}{5}(1) thePath2.open_trajectory{iN}{6}(1)];
                 thePath2.final_condition{iN} = [thePath2.open_trajectory{iN}{5}(end) thePath2.open_trajectory{iN}{6}(end)];
@@ -369,7 +380,7 @@ classdef Path2 < RigidGeomQuad
             
             end
             
-            A     =  matlabFunction(A, 'Vars', eval(funcstr{2}));
+            A     =  matlabFunction(thePath2.A, 'Vars', eval(funcstr{2}));
             ADOTi = matlabFunction(thePath2.Adot{1}, 'Vars', eval(funcstr{2}));
             ADOTj = matlabFunction(thePath2.Adot{2}, 'Vars', eval(funcstr{2}));
             DDPSI = matlabFunction(dirn*thePath2.ddphi, 'Vars', eval(funcstr{2}));
@@ -380,11 +391,16 @@ classdef Path2 < RigidGeomQuad
                 Qfull{5}, Qfull{6}  );
             idxNom = ceil(num_scale/2); t0 = (mul(1) - 1)*thePath2.int_time(1); tPi = t0 + sum(thePath2.int_time); tNom = linspace(t0, tPi, dnum);
             thePath2.open_trajectory{idxNom} = configInterp(tNom, Qfull); % +0% slid path (nominal)
-            [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}] = extractPathCurvFromQ(Qfull, Qdotfull, DDPSI, A, {ADOTi, ADOTj}); % curvature for the path above
+            [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}, ...
+                thePath2.open_trajectory_vel{idxNom}, thePath2.open_trajectory_acc{idxNom}] = ...
+                extractPathCurvFromQ(Qfull, Qdotfull, DDPSI, A, {ADOTi, ADOTj}, {aa, ll}); % curvature, vel, and accln for the path above
             thePath2.initial_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(1) thePath2.open_trajectory{idxNom}{6}(1)];
             thePath2.final_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(end) thePath2.open_trajectory{idxNom}{6}(end)];
             thePath2.net_displacement(:,idxNom) = [thePath2.open_trajectory{idxNom}{2}(end), thePath2.open_trajectory{idxNom}{3}(end), thePath2.open_trajectory{idxNom}{4}(end)]';
-            thePath2.closed_trajectory{idxNom} = thePath2.close_trajectory(thePath2.open_trajectory{idxNom}, thePath2.deadband_dutycycle);
+            [thePath2.closed_trajectory{idxNom}, ...
+                thePath2.closed_trajectory_vel{idxNom}, thePath2.closed_trajectory_acc{idxNom}] = ...
+                thePath2.close_trajectory(thePath2.open_trajectory{idxNom},...
+                thePath2.open_trajectory_vel{idxNom}, thePath2.open_trajectory_acc{idxNom}, thePath2.deadband_dutycycle);
             thePath2.path_length{idxNom} = thePath2.open_trajectory{idxNom}{1}(end);
             slide_perct = linspace(-1, 1, num_scale);
             for i = [1:idxNom-1, idxNom+1:num_scale]
@@ -393,11 +409,16 @@ classdef Path2 < RigidGeomQuad
                     QdotNow = DQ(  thePath2.open_trajectory{i}{1}, aa, ll,...
                         thePath2.open_trajectory{i}{2}, thePath2.open_trajectory{i}{3}, thePath2.open_trajectory{i}{4},...
                         thePath2.open_trajectory{i}{5}, thePath2.open_trajectory{i}{6}  );
-                    [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}] = extractPathCurvFromQ(thePath2.open_trajectory{i}, QdotNow, DDPSI, A, {ADOTi, ADOTj});
+                    [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}, ...
+                        thePath2.open_trajectory_vel{i}, thePath2.open_trajectory_acc{i}] = ...
+                        extractPathCurvFromQ(thePath2.open_trajectory{i}, QdotNow, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                     thePath2.initial_condition{i} = [thePath2.open_trajectory{i}{5}(1) thePath2.open_trajectory{i}{6}(1)];
                     thePath2.final_condition{i} = [thePath2.open_trajectory{i}{5}(end) thePath2.open_trajectory{i}{6}(end)];
                     thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';
-                    thePath2.closed_trajectory{i} = thePath2.close_trajectory(thePath2.open_trajectory{i}, thePath2.deadband_dutycycle);
+                    [thePath2.closed_trajectory{i}, ...
+                        thePath2.closed_trajectory_vel{i}, thePath2.closed_trajectory_acc{i}] = ...
+                        thePath2.close_trajectory(thePath2.open_trajectory{i},...
+                thePath2.open_trajectory_vel{i}, thePath2.open_trajectory_acc{i}, thePath2.deadband_dutycycle);
                     thePath2.path_length{i} = thePath2.open_trajectory{i}{1}(end);
             end
             thePath2.path_discretization = dnum;
@@ -455,15 +476,15 @@ classdef Path2 < RigidGeomQuad
         end
 
         % given a trajectory close it in the null-space of the shape-space slice
-        function closedTraj = close_trajectory(openTraj, dc)
+        function [gaitTraj, gaitTraj_vel, gaitTraj_acc] = close_trajectory(openTraj, openTraj_vel, openTraj_acc, dc)
             
             % unpack your open_trajectory
-            t = openTraj{1};
-            x = openTraj{2};
-            y = openTraj{3};
-            theta = openTraj{4};
-            ai = openTraj{5};
-            aj = openTraj{6};
+            t       = openTraj{1};        t_dot         = openTraj_vel{1};        t_ddot         = openTraj_acc{1};
+            x       = openTraj{2};        x_dot         = openTraj_vel{2};        x_ddot         = openTraj_acc{2};
+            y       = openTraj{3};        y_dot         = openTraj_vel{3};        y_ddot         = openTraj_acc{3};
+            theta   = openTraj{4};        theta_dot     = openTraj_vel{4};        theta_ddot     = openTraj_acc{4};
+            ai      = openTraj{5};        ai_dot        = openTraj_vel{5};        ai_ddot        = openTraj_acc{5};
+            aj      = openTraj{6};        aj_dot        = openTraj_vel{6};        aj_ddot        = openTraj_acc{6};
 
             % get the length of the computed open trajectory
             dnum_active = numel(t);
@@ -472,14 +493,17 @@ classdef Path2 < RigidGeomQuad
             dnum_dead = round(dc*dnum_active);
 
             % get the deadband configuration trajectories q_d
-            t_d = [t, t(end) + t(end)/(dnum_active - 1)*(1:dnum_dead)];
-            x_d = [x, x(end)*ones(1, dnum_dead)];
-            y_d = [y, y(end)*ones(1, dnum_dead)];
-            theta_d = [theta, theta(end)*ones(1, dnum_dead)];
-            ai_d = [ai, fliplr(ai(2:end-1))]; aj_d = [aj, fliplr(aj(2:end-1))];                                % flipped swing phase
+            t_d = [t, t(end) + t(end)/(dnum_active - 1)*(1:dnum_dead)]; t_dot_d = ones(1, dnum_dead); t_ddot_d = zeros(1, dnum_dead);
+            x_d = [x, x(end)*ones(1, dnum_dead)]; x_dot_d = [x_dot, zeros(1, dnum_dead)]; x_ddot_d = [x_ddot, zeros(1, dnum_dead)]; 
+            y_d = [y, y(end)*ones(1, dnum_dead)]; y_dot_d = [y_dot, zeros(1, dnum_dead)]; y_ddot_d = [y_ddot, zeros(1, dnum_dead)];
+            theta_d = [theta, theta(end)*ones(1, dnum_dead)]; theta_dot_d = [theta_dot, zeros(1, dnum_dead)]; theta_ddot_d = [theta_ddot, zeros(1, dnum_dead)];
+            ai_d = [ai, fliplr(ai(2:end-1))]; ai_dot_d = [ai_dot, fliplr(ai_dot(2:end-1))]; ai_ddot_d = [ai_ddot, fliplr(ai_ddot(2:end-1))];
+            aj_d = [aj, fliplr(aj(2:end-1))]; aj_dot_d = [aj_dot, fliplr(aj_dot(2:end-1))]; aj_ddot_d = [aj_ddot, fliplr(aj_ddot(2:end-1))];      
 
-            % create the closed configuration trajectory slice q(phi)_ij
-            closedTraj = {[t, t_d]; [x, x_d]; [y, y_d]; [theta, theta_d]; [ai, ai_d]; [aj, aj_d]};
+            % create the closed configuration trajectories
+            gaitTraj    = {[t, t_d];            [x, x_d];           [y, y_d];           [theta, theta_d];           [ai, ai_d];           [aj, aj_d]};
+            gaitTraj_vel= {[t_dot, t_dot_d];    [x_dot, x_dot_d];   [y_dot, y_dot_d];   [theta_dot, theta_dot_d];   [ai_dot, ai_dot_d];   [aj_dot, aj_dot_d]};
+            gaitTraj_acc= {[t_ddot, t_ddot_d];  [x_ddot, x_ddot_d]; [y_ddot, y_ddot_d]; [theta_ddot, theta_ddot_d]; [ai_ddot, ai_ddot_d]; [aj_ddot, aj_ddot_d]};
 
         end
         
