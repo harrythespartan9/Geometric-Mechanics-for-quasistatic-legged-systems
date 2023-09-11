@@ -292,7 +292,7 @@ kin_info.ddpsi = simplify(jacobian(dpsi, B), "Steps", 10); % compute the accln a
 %%%%%%%%%%%%%%%
 kin_info.A = kin.A_ij{i};
 %%%%%%%%%%%%%%%
-kin_info.Adot = kin.Adot_ij{i}{:};
+kin_info.Adot = kin.Adot_ij{i};
 %%%%%%%%%%%%%%% % let's compute the gradient directions too to shown the full velocity basis (grey for slipping directions)
 dpsi_sweep = [dpsi_x_sweep(:)'; dpsi_y_sweep(:)'];
 ndpsi_sweep = round(rot_in_ij(pi/2))*dpsi_sweep;

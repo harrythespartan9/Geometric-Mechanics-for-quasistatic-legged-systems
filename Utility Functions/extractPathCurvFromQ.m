@@ -13,7 +13,7 @@ function [netCurve, CurveTraj, Q_dot, Q_ddot] = extractPathCurvFromQ(Q, Qdot, dd
     aj      = Q{6};     aj_dot      = Qdot(5, :);
 
     % Define a SE(2) translational choosing matrix
-    Cxy = [ones(2, 2), zeros(2, 1)];
+    Cxy = [eye(2, 2), zeros(2, 1)];
 
     % Initialize, iterate, and compute the SE(2) acceleration over each cycle
     t_ddot = zeros(size(t_dot));
@@ -31,7 +31,8 @@ function [netCurve, CurveTraj, Q_dot, Q_ddot] = extractPathCurvFromQ(Q, Qdot, dd
 
         % Compute each term in the acceleration formulation
         a_ddot = ddpsi(tNow, aa, ll, aiNow, ajNow)*a_dotNow; % shape acceleration
-        term_1 = -theta_dotNow*rot_deriv_SE2(thetaNow)*A(tNow, aa, ll, aiNow, ajNow); % g_ddot contribution from frame rotation
+        term_1 = -theta_dotNow*rot_deriv_SE2(thetaNow)*...
+            A(tNow, aa, ll, aiNow, ajNow)*a_dotNow;                                   % g_ddot contribution from frame rotation
         term_2 = -rot_SE2(thetaNow)*...
            [Adot{1}(tNow, aa, ll, aiNow, ajNow)*a_dotNow, ...
             Adot{2}(tNow, aa, ll, aiNow, ajNow)*a_dotNow]*a_dotNow;                   % g_ddot contribution from local connection derivative
@@ -48,8 +49,8 @@ function [netCurve, CurveTraj, Q_dot, Q_ddot] = extractPathCurvFromQ(Q, Qdot, dd
     netCurve = mean(CurveTraj);
 
     % Pack up the configuration velocity and acceleration as well
-    Q_dot  = mat2cell(  [t_dot(:)'; Qdot]                     , ones(size(Qdot, 1)+1), size(Qdot, 2)  );
-    Q_ddot = mat2cell(  [t_ddot(:)'; g_ddot; ai_ddot; aj_ddot], ones(size(Qdot, 1)+1), size(Qdot, 2)  ); 
+    Q_dot  = mat2cell(  [t_dot(:)'; Qdot]                     , ones(size(Qdot, 1)+1, 1), size(Qdot, 2)  );
+    Q_ddot = mat2cell(  [t_ddot(:)'; g_ddot; ai_ddot; aj_ddot], ones(size(Qdot, 1)+1, 1), size(Qdot, 2)  ); 
 
 end
 

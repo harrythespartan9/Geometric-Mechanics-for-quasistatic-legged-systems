@@ -38,7 +38,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     u_j = dataij.u_j;
     u_i_S = dataij.u_i_S;       % 2D arrays/sweeps
     u_j_S = dataij.u_j_S;
-    idxLoc = (u_i_S == u_i_stpt) & (u_j_S == u_j_stpt); % index location of the current setpoint
+    idxLoc = (fliplr(u_i_S) == u_i_stpt) & (flipud(u_j_S) == u_j_stpt); % index location of the current setpoint
     kappa_S = dataij.kappa_S;
     gaits = dataij.gaits;       % ui, uj swept gaits
     
@@ -152,7 +152,32 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     C2.axes = ax;
     C2.colorB = colorbar(C2.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_i); C2.colorB.Layout.Tile = 'South'; % plot the rotation colorbar
 
-    % % Display the curvature of the current gait in console
-    % disp(kappa_S(idxLoc));
+    % Display the NET SE(2) PATH CURVATURE of the current gait in console and compute everything needed to plot the heatmap
+    disp(kappa_S(idxLoc));
+    kmin = min(kappa_S, [], 'all'); kmax = max(kappa_S, [], 'all'); krange = kmax - kmin; 
+    prct = 5; % a 5% outer threshold for color limits
+    kminus = kmin-prct/100*krange; kplus = kmax+prct/100*krange;
+    if abs(kminus) < 1e-4 % our zero threshold
+        kminus = -1e-4;
+    end
+    if abs(kplus) < 1e-4 % our zero threshold
+        kplus = 1e-4;
+    end
+    klim = [kminus, kplus];
+
+    % Plot the NET SE(2) PATH CURVATURE as a separate heatmap
+    f = figure('units','pixels','position',[100 -200 m n/3],'Color','w');
+    set(gcf,'Visible','on'); ax = gca; % f.CurrentAxes
+    contourf(ax,u_j_S,u_i_S,kappa_S,cfLvl_i,'LineWidth',lW_c_i,'LineStyle','none'); % ,'FaceAlpha',fA_i
+    axis equal tight; hold on; view(2);
+    scatter(ax, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
+    colormap(ax,CUB_i); clim(ax, klim);
+    set(get(ax,'YLabel'),'rotation',0,'VerticalAlignment','middle');
+    title(ax,'$$\bar{k}$$','Color','k',FontSize=titleFS_i);
+    ax.XAxis.FontSize = tickFS_i; ax.YAxis.FontSize = tickFS_i;
+    xticks(ax, -1:1:1); yticks(ax, -1:1:1); set(ax,'XColor',gc_col_i); set(ax,'YColor',gc_col_j);
+    set(ax,'Color',col_backg_i);
+    xlim(ui_lim); ylim(uj_lim);
+    colorbar(ax,'TickLabelInterpreter','latex','FontSize',cbarFS_i,'Location','southoutside'); % plot the rotation colorbar
 
 end

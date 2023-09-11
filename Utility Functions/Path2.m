@@ -91,7 +91,7 @@ classdef Path2 < RigidGeomQuad
 
                 Aij     (3, 2) sym    {mustBeA(Aij, 'sym')}
 
-                Adotij  (1, 2) cell   {mustBeA(Adotij, 'cell')}
+                Adotij  (1, 2) cell   {mustBeA(Adotij, 'cell')} % each cell contains a (3,2) symbolic array
 
                 strpt   (1, 2) double {mustBeNumeric}
 
@@ -214,21 +214,21 @@ classdef Path2 < RigidGeomQuad
             
                 case -1 % just backward path
             
-                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
-                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] ); % forward to POF
+                    tt = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), tt, [ai0; aj0] );
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); qb(end,1); qb(end,2)] ); % forward to POF
                 
                 case 0 % both paths
             
-                    t = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
-                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    t = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+                    tt = linspace(0, thePath2.int_time(1), dnum); % backward-- get the start point of path
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), tt, [ai0; aj0] );
+                    tt = linspace(0, sum(thePath2.int_time), dnum); % forward-- integrate the configuration
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); qb(end,1); qb(end,2)] );
             
                 case 1 % just forward path
                     
-                    t = linspace(0, thePath2.int_time(2), dnum); % just go forward from POF
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
+                    tt = linspace(0, thePath2.int_time(2), dnum); % just go forward from POF
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); ai0; aj0] );
             
             end
 
@@ -269,7 +269,8 @@ classdef Path2 < RigidGeomQuad
             % store the closed trajectory
             [thePath2.closed_trajectory{20}, ...
                 thePath2.closed_trajectory_vel{20}, thePath2.closed_trajectory_acc{20}] = ...
-                thePath2.close_trajectory(thePath2.open_trajectory{20}, thePath2.deadband_dutycycle);
+                thePath2.close_trajectory(thePath2.open_trajectory{20},...
+                thePath2.open_trajectory_vel{20}, thePath2.open_trajectory_acc{20}, thePath2.deadband_dutycycle);
             [thePath2.closed_trajectory{1}, ...
                 thePath2.closed_trajectory_vel{1}, thePath2.closed_trajectory_acc{1}] = ...
                 thePath2.close_trajectory(thePath2.open_trajectory{1},...
@@ -293,8 +294,8 @@ classdef Path2 < RigidGeomQuad
                 thePath2.net_displacement(:,iP) = [thePath2.open_trajectory{iP}{2}(end), thePath2.open_trajectory{iP}{3}(end), thePath2.open_trajectory{iP}{4}(end)]';
                 [thePath2.closed_trajectory{iP}, ...
                 thePath2.closed_trajectory_vel{iP}, thePath2.closed_trajectory_acc{iP}] = ...
-                thePath2.close_trajectory(thePath2.open_trajectory{iP},...
-                thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle);
+                            thePath2.close_trajectory(thePath2.open_trajectory{iP},...
+                            thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle);
                 thePath2.path_length{iP} = thePath2.open_trajectory{iP}{1}(end); % get the path length
                 thePath2.initial_condition{iP} = [thePath2.open_trajectory{iP}{5}(1) thePath2.open_trajectory{iP}{6}(1)]; % path initial and final conditions
                 thePath2.final_condition{iP} = [thePath2.open_trajectory{iP}{5}(end) thePath2.open_trajectory{iP}{6}(end)];
@@ -308,8 +309,8 @@ classdef Path2 < RigidGeomQuad
                 thePath2.net_displacement(:,iN) = [thePath2.open_trajectory{iN}{2}(end), thePath2.open_trajectory{iN}{3}(end), thePath2.open_trajectory{iN}{4}(end)]';
                 [thePath2.closed_trajectory{iN}, ...
                 thePath2.closed_trajectory_vel{iN}, thePath2.closed_trajectory_acc{iN}] = ...
-                thePath2.close_trajectory(thePath2.open_trajectory{iN},...
-                thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle); 
+                            thePath2.close_trajectory(thePath2.open_trajectory{iN},...
+                            thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}, thePath2.deadband_dutycycle); 
                 thePath2.path_length{iN} = thePath2.open_trajectory{iN}{1}(end);
                 thePath2.initial_condition{iN} = [thePath2.open_trajectory{iN}{5}(1) thePath2.open_trajectory{iN}{6}(1)];
                 thePath2.final_condition{iN} = [thePath2.open_trajectory{iN}{5}(end) thePath2.open_trajectory{iN}{6}(end)];
@@ -362,21 +363,21 @@ classdef Path2 < RigidGeomQuad
             
                 case -1
             
-                    t = linspace(0, mul(1)*thePath2.int_time(1), dnum);
-                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+                    tt = linspace(0, mul(1)*thePath2.int_time(1), dnum);
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), tt, [ai0; aj0] );
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); qb(end,1); qb(end,2)] );
                 
                 case 0
             
-                    t = linspace(0, mul(1)*thePath2.int_time(1), dnum);
-                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), t, [ai0; aj0] );
-                    t = linspace(0, sum(mul.*thePath2.int_time), dnum);
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); qb(end,1); qb(end,2)] );
+                    tt = linspace(0, mul(1)*thePath2.int_time(1), dnum);
+                    [~,qb] = ode45( @(t,y) -DPHI(t, aa, ll, y(1), y(2)), tt, [ai0; aj0] );
+                    tt = linspace(0, sum(mul.*thePath2.int_time), dnum);
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); qb(end,1); qb(end,2)] );
             
                 case 1
                     
-                    t = linspace(0, mul(2)*thePath2.int_time(2), dnum);
-                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), t, [zeros(3,1); ai0; aj0] );
+                    tt = linspace(0, mul(2)*thePath2.int_time(2), dnum);
+                    [tf,qf] = ode45( @(t,y) DQ(t, aa, ll, y(1), y(2), y(3), y(4), y(5)), tt, [zeros(3,1); ai0; aj0] );
             
             end
             
@@ -501,9 +502,9 @@ classdef Path2 < RigidGeomQuad
             aj_d = [aj, fliplr(aj(2:end-1))]; aj_dot_d = [aj_dot, fliplr(aj_dot(2:end-1))]; aj_ddot_d = [aj_ddot, fliplr(aj_ddot(2:end-1))];      
 
             % create the closed configuration trajectories
-            gaitTraj    = {[t, t_d];            [x, x_d];           [y, y_d];           [theta, theta_d];           [ai, ai_d];           [aj, aj_d]};
-            gaitTraj_vel= {[t_dot, t_dot_d];    [x_dot, x_dot_d];   [y_dot, y_dot_d];   [theta_dot, theta_dot_d];   [ai_dot, ai_dot_d];   [aj_dot, aj_dot_d]};
-            gaitTraj_acc= {[t_ddot, t_ddot_d];  [x_ddot, x_ddot_d]; [y_ddot, y_ddot_d]; [theta_ddot, theta_ddot_d]; [ai_ddot, ai_ddot_d]; [aj_ddot, aj_ddot_d]};
+            gaitTraj    = {     t_d;       x_d;      y_d;      theta_d;      ai_d;      aj_d};
+            gaitTraj_vel= { t_dot_d;   x_dot_d;  y_dot_d;  theta_dot_d;  ai_dot_d;  aj_dot_d};
+            gaitTraj_acc= {t_ddot_d;  x_ddot_d; y_ddot_d; theta_ddot_d; ai_ddot_d; aj_ddot_d};
 
         end
         
