@@ -11,6 +11,10 @@ function out = SE2_mat2vec(in)
             out = M2v_SE2(in);
         case 1
 
+            % set a 'symFlag' to see if each entry is a symbol or numeric matrix
+            symFlag = false;
+
+            % iterate and compute
             out = cell(size(in));
             for i = 1:numel(in)
                 if sum(size(in{i}) == [3,3]) ~= 2
@@ -18,10 +22,20 @@ function out = SE2_mat2vec(in)
                         ' of the input, there should be atleast one dimension with size 3.']);
                 end
                 out{i} = M2v_SE2(in{i});
+                if ~symFlag
+                    if isa(out{i}, 'sym')
+                        symFlag = true;
+                    end
+                end
             end
 
             % convert the output back to the 3x1 cell, numeric trajectory format
-            out = mat2cell(cell2mat(out), ones(numel(out{1}), 1), numel(out));
+            switch symFlag
+                case 1
+                    out = mat2cell(cell2sym(out), ones(numel(out{1}), 1), numel(out));
+                case 0
+                    out = mat2cell(cell2mat(out), ones(numel(out{1}), 1), numel(out));
+            end
 
     end
 
