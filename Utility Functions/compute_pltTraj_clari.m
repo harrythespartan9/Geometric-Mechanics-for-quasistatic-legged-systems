@@ -28,9 +28,9 @@ function pltTraj = compute_pltTraj_clari(kin, traj)
 
     % initialize and compute the plotting trajectory
     body_outline_x_t = kin.functions.body_outline_x_f(a, l, x, y, theta, alpha_b);
-    body_outline_y_t = kin.functions.body_outline_x_f(a, l, x, y, theta, alpha_b);
+    body_outline_y_t = kin.functions.body_outline_y_f(a, l, x, y, theta, alpha_b);
     shape_outline_x_t = kin.functions.shape_outline_x_f(a, l, x, y, theta, alpha_b);
-    shape_outline_y_t = kin.functions.shape_outline_x_f(a, l, x, y, theta, alpha_b);
+    shape_outline_y_t = kin.functions.shape_outline_y_f(a, l, x, y, theta, alpha_b);
     frame_x_t = kin.functions.frame_x_f(a, l, x, y, theta);
     frame_y_t = kin.functions.frame_y_f(a, l, x, y, theta);
     frame_u_t = kin.functions.frame_u_f(a, l, x, y, theta);
@@ -47,6 +47,14 @@ function pltTraj = compute_pltTraj_clari(kin, traj)
                                                            alpha_1, alpha_2, alpha_3, alpha_4);
     legsQ_v_t = kin.functions.legsQ_v_f(a, l, x, y, theta, alpha_b, ...
                                                            alpha_1, alpha_2, alpha_3, alpha_4);
+    legsQ0_x_t = kin.functions.legsQ_x_f(a, l, x, y, theta, alpha_b, ...
+                                                           zeros(size(alpha_1)), zeros(size(alpha_2)), zeros(size(alpha_3)), zeros(size(alpha_4)));
+    legsQ0_y_t = kin.functions.legsQ_y_f(a, l, x, y, theta, alpha_b, ...
+                                                           zeros(size(alpha_1)), zeros(size(alpha_2)), zeros(size(alpha_3)), zeros(size(alpha_4)));
+    legsQ0_u_t = kin.functions.legsQ_u_f(a, l, x, y, theta, alpha_b, ...
+                                                           zeros(size(alpha_1)), zeros(size(alpha_2)), zeros(size(alpha_3)), zeros(size(alpha_4)));
+    legsQ0_v_t = kin.functions.legsQ_v_f(a, l, x, y, theta, alpha_b, ...
+                                                           zeros(size(alpha_1)), zeros(size(alpha_2)), zeros(size(alpha_3)), zeros(size(alpha_4)));
 
     % initialize and find the squared inter-leg distance vectors-- for each level-2 submanifold
     k_x_t = cell(6, 1); k_y_t = k_x_t;
@@ -77,7 +85,11 @@ function pltTraj = compute_pltTraj_clari(kin, traj)
     pltTraj.legsQ_x_t = legsQ_x_t;
     pltTraj.legsQ_y_t = legsQ_y_t;
     pltTraj.legsQ_u_t = legsQ_u_t;
-    pltTraj.legsQ_v_t = legsQ_v_t;
+    pltTraj.legsQ_v_t = legsQ_v_t;          % current leg position in quiver format
+    pltTraj.legsQ0_x_t = legsQ0_x_t;        % leg origin position in quiver format
+    pltTraj.legsQ0_y_t = legsQ0_y_t;
+    pltTraj.legsQ0_u_t = legsQ0_u_t;
+    pltTraj.legsQ0_v_t = legsQ0_v_t;
     pltTraj.alpha_body_nom = kin.params.ab0; % the nominal (rest) body sprawl angle
     pltTraj.alpha_body_t = alpha_b; % add the body sprawl trajectory for plotting the body trajectory
     pltTraj.k_x_t = k_x_t;
