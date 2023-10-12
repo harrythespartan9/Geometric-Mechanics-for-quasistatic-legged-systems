@@ -78,6 +78,8 @@ function pltTraj = compute_pltTraj_clari(kin, traj)
     pltTraj.legsQ_y_t = legsQ_y_t;
     pltTraj.legsQ_u_t = legsQ_u_t;
     pltTraj.legsQ_v_t = legsQ_v_t;
+    pltTraj.alpha_body_nom = kin.params.ab0; % the nominal (rest) body sprawl angle
+    pltTraj.alpha_body_t = alpha_b; % add the body sprawl trajectory for plotting the body trajectory
     pltTraj.k_x_t = k_x_t;
     pltTraj.k_y_t = k_y_t;
     pltTraj.pbq = pbq; % append the body configuration plot points (binary trajectory-- 1 => plot config)
