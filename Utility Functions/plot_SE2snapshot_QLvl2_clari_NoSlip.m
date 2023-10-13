@@ -64,7 +64,7 @@ function hA = plot_SE2snapshot_QLvl2_clari_NoSlip(ax, pltTraj, F)
             case 0 % not final frame-- just plot the shape outline
 
                 % plot the shape outline
-                plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), '--', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW);
+                plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), ':', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW);
                 % plot the body axis frames
                 quiver(ax, frame_x_t(:,k), frame_y_t(:,k), frame_scale*frame_u_t(:,k), frame_scale*frame_v_t(:,k), 'LineWidth', 0.25*lW_qf,...
                     'Color', col_t{5}(:,k),'LineStyle', '-',...
@@ -74,9 +74,9 @@ function hA = plot_SE2snapshot_QLvl2_clari_NoSlip(ax, pltTraj, F)
                 
                 % plot the body and shape outlines
                 if pbq(fNo) == 1
-                    plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), '--', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW);           % ~deleted outline
+                    plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), ':', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW);           % ~deleted outline
                 end
-                hA{m}  = plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), '--', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW); m = m + 1;
+                hA{m}  = plot(ax, shape_outline_x_t(:,k), shape_outline_y_t(:,k), ':', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW); m = m + 1;
                 hA{m}  = plot(ax, body_outline_x_t(:,k), body_outline_y_t(:,k), '-', 'Color', col_t{5}(:,k), 'LineWidth', 0.25*lW); m = m + 1;      % outlines
                 set(ax, 'xticklabel', []); set(ax, 'yticklabel', []); box("off");
                 xline(ax, 0, ':', 'LineWidth', 0.5, 'Color', 'k');
@@ -87,7 +87,7 @@ function hA = plot_SE2snapshot_QLvl2_clari_NoSlip(ax, pltTraj, F)
                     % if ith limb is in the current contact state
                     if i == S(phi_tau(k), 1) || i == S(phi_tau(k), 2)
                         hA{m}  = quiver(ax, legsQ0_x_t(i,k), legsQ0_y_t(i,k), legsQ0_u_t(i,k), legsQ0_v_t(i,k), 'Color', col_t{i}(:,k), 'LineWidth', lW_r, ...
-                        'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;                                         % leg i origin
+                        'LineStyle', '--', 'AutoScale', 'off', 'ShowArrowHead', 'off'); m = m + 1;                                         % leg i origin
                         hA{m}  = scatter(ax, legs_x_t(i,k), legs_y_t(i,k), circS, col_t{i}(:,k)', 'filled'); m = m + 1; % legtip i scatter
                     end
                 end
