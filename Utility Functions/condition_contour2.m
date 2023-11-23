@@ -1,9 +1,17 @@
-function tempp = condition_contour2(temp)
+function tempp = condition_contour2(temp, iter_old)
 %CONDITION_CONTOUR conditions an input contour matrix
 %   Sometimes the contour matrices generated for a single level splits it up over sub-arrays-- the goal is to number each contour result.
     
-    % Initialize the return array, a counter, and a point count container
-    tempp = []; count = size(temp, 2); N = 0; iter = 0;
+    % Initialize the return array, a counter, and a point count container (based on an input or fresh start)
+    tempp = []; count = size(temp, 2); N = 0;
+    switch nargin
+        case 2
+            iter = iter_old;
+        case 1
+            iter = 0;
+        otherwise
+            error('ERROR! This function can only have two inputs.');
+    end
     
     % update the number of entries and the z-value
     z = temp(1,1);
