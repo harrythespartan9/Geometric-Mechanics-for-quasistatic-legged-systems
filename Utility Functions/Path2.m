@@ -2,7 +2,7 @@
 % submanifolds for a rigid quadrupedal robot. It takes the initial 
 % condition for the shape-space slice (2 dim), gait constraint vector field
 % (2 dim), and integration time for the path to construct a Path2 object. 
-% A subclass of "Gait2" is passed as a property.
+% It inherits properties from the abstract class "RigidGeomQuad".
 
 classdef Path2 < RigidGeomQuad
 
@@ -254,10 +254,10 @@ classdef Path2 < RigidGeomQuad
             % get the path vel, accln, and curvature information
             [thePath2.path_net_curvature{20}, thePath2.path_curvature_traj{20}, ...
                 thePath2.open_trajectory_vel{20}, thePath2.open_trajectory_acc{20}] = ...
-                extractPathCurvFromQ(thePath2.open_trajectory{20}, Qdot20, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+                extractPathCurvFromQ2(thePath2.open_trajectory{20}, Qdot20, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
             [thePath2.path_net_curvature{1}, thePath2.path_curvature_traj{1}, ...
                 thePath2.open_trajectory_vel{1}, thePath2.open_trajectory_acc{1}] = ...
-                extractPathCurvFromQ(thePath2.open_trajectory{1}, Qdot1, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+                extractPathCurvFromQ2(thePath2.open_trajectory{1}, Qdot1, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
             % store the initial and final conditions of the path
             thePath2.initial_condition{20} = [thePath2.open_trajectory{20}{5}(1) thePath2.open_trajectory{20}{6}(1)];
             thePath2.final_condition{20} = [thePath2.open_trajectory{20}{5}(end) thePath2.open_trajectory{20}{6}(end)];
@@ -290,7 +290,7 @@ classdef Path2 < RigidGeomQuad
                 QdotP = DQ(  thePath2.open_trajectory{iP}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iP}{5}, thePath2.open_trajectory{iP}{6}  );
                 [thePath2.path_net_curvature{iP}, thePath2.path_curvature_traj{iP},...
                     thePath2.open_trajectory_vel{iP}, thePath2.open_trajectory_acc{iP}] = ...
-                    extractPathCurvFromQ(thePath2.open_trajectory{iP}, QdotP, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+                    extractPathCurvFromQ2(thePath2.open_trajectory{iP}, QdotP, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                 thePath2.net_displacement(:,iP) = [thePath2.open_trajectory{iP}{2}(end), thePath2.open_trajectory{iP}{3}(end), thePath2.open_trajectory{iP}{4}(end)]';
                 [thePath2.closed_trajectory{iP}, ...
                 thePath2.closed_trajectory_vel{iP}, thePath2.closed_trajectory_acc{iP}] = ...
@@ -305,7 +305,7 @@ classdef Path2 < RigidGeomQuad
                 QdotN = DQ(  thePath2.open_trajectory{iN}{1}, aa, ll, 0, 0, 0, thePath2.open_trajectory{iN}{5}, thePath2.open_trajectory{iN}{6}  );
                 [thePath2.path_net_curvature{iN}, thePath2.path_curvature_traj{iN},...
                     thePath2.open_trajectory_vel{iN}, thePath2.open_trajectory_acc{iN}] = ...
-                    extractPathCurvFromQ(thePath2.open_trajectory{iN}, QdotN, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+                    extractPathCurvFromQ2(thePath2.open_trajectory{iN}, QdotN, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                 thePath2.net_displacement(:,iN) = [thePath2.open_trajectory{iN}{2}(end), thePath2.open_trajectory{iN}{3}(end), thePath2.open_trajectory{iN}{4}(end)]';
                 [thePath2.closed_trajectory{iN}, ...
                 thePath2.closed_trajectory_vel{iN}, thePath2.closed_trajectory_acc{iN}] = ...
@@ -394,7 +394,7 @@ classdef Path2 < RigidGeomQuad
             thePath2.open_trajectory{idxNom} = configInterp(tNom, Qfull); % +0% slid path (nominal)
             [thePath2.path_net_curvature{idxNom}, thePath2.path_curvature_traj{idxNom}, ...
                 thePath2.open_trajectory_vel{idxNom}, thePath2.open_trajectory_acc{idxNom}] = ...
-                extractPathCurvFromQ(Qfull, Qdotfull, DDPSI, A, {ADOTi, ADOTj}, {aa, ll}); % curvature, vel, and accln for the path above
+                extractPathCurvFromQ2(Qfull, Qdotfull, DDPSI, A, {ADOTi, ADOTj}, {aa, ll}); % curvature, vel, and accln for the path above
             thePath2.initial_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(1) thePath2.open_trajectory{idxNom}{6}(1)];
             thePath2.final_condition{idxNom} = [thePath2.open_trajectory{idxNom}{5}(end) thePath2.open_trajectory{idxNom}{6}(end)];
             thePath2.net_displacement(:,idxNom) = [thePath2.open_trajectory{idxNom}{2}(end), thePath2.open_trajectory{idxNom}{3}(end), thePath2.open_trajectory{idxNom}{4}(end)]';
@@ -412,7 +412,7 @@ classdef Path2 < RigidGeomQuad
                         thePath2.open_trajectory{i}{5}, thePath2.open_trajectory{i}{6}  );
                     [thePath2.path_net_curvature{i}, thePath2.path_curvature_traj{i}, ...
                         thePath2.open_trajectory_vel{i}, thePath2.open_trajectory_acc{i}] = ...
-                        extractPathCurvFromQ(thePath2.open_trajectory{i}, QdotNow, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
+                        extractPathCurvFromQ2(thePath2.open_trajectory{i}, QdotNow, DDPSI, A, {ADOTi, ADOTj}, {aa, ll});
                     thePath2.initial_condition{i} = [thePath2.open_trajectory{i}{5}(1) thePath2.open_trajectory{i}{6}(1)];
                     thePath2.final_condition{i} = [thePath2.open_trajectory{i}{5}(end) thePath2.open_trajectory{i}{6}(end)];
                     thePath2.net_displacement(:,i) = [thePath2.open_trajectory{i}{2}(end), thePath2.open_trajectory{i}{3}(end), thePath2.open_trajectory{i}{4}(end)]';

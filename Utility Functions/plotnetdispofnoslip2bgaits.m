@@ -38,7 +38,8 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     u_j = dataij.u_j;
     u_i_S = dataij.u_i_S;       % 2D arrays/sweeps
     u_j_S = dataij.u_j_S;
-    idxLoc = (fliplr(u_i_S) == u_i_stpt) & (flipud(u_j_S) == u_j_stpt); % index location of the current setpoint
+    % idxLoc = (fliplr(u_i_S) == u_i_stpt) & (flipud(u_j_S) == u_j_stpt); % index location of the current setpoint
+    idxLoc = (u_i_S == u_i_stpt) & (u_j_S == u_j_stpt);
     kappa_S = dataij.kappa_S;
     gaits = dataij.gaits;       % ui, uj swept gaits
     

@@ -24,12 +24,12 @@ function dataij = noslip2bgaits(pi, pj, dataij)
     nj = numel(u_j);
     [u_i_S, u_j_S] = meshgrid(u_i, u_j);
 
-    % get the net path curvature as a function of the inputs
-    [kappa_i_S, kappa_j_S] = meshgrid( cell2mat(pi.path_net_curvature), cell2mat(pj.path_net_curvature) );
-    kappa_S = 0.5*(kappa_i_S + kappa_j_S); % removide the transpose from the two terms
+    % % get the net path curvature as a function of the inputs (OLD)
+    % [kappa_i_S, kappa_j_S] = meshgrid( cell2mat(pi.path_net_curvature), cell2mat(pj.path_net_curvature) );
+    % kappa_S = 0.5*(kappa_i_S + kappa_j_S); % take the mean value
     
     % create an cell array to scale and hold both positive and negatively scaled paths
-    gaits = cell( ni, nj );
+    gaits = cell( ni, nj ); kappa_S = nan( ni, nj );
     
     % Iterate over each path scaling in each contact state
     for i = 1:ni
@@ -158,6 +158,13 @@ function dataij = noslip2bgaits(pi, pj, dataij)
                                                                                     xj, yj, thetaj,...
                                                                                     zxj, zyj, zthetaj,...
                                                                                     a1_j, a2_j);
+
+            % get the net path curvature as a function of the inputs using the net displacement achieved by the gait cycle
+            z = [gaits{i, j}.trajectory{15}; 
+                 gaits{i, j}.trajectory{16}; 
+                 gaits{i, j}.trajectory{17}];
+            kappa_S( i, j ) = norm( [eye(2,2), zeros(2,1)]*z, 2 )/( 2*sin(z(3)/2) );
+            % the selection matrix inside the 'norm' selects the translational components
 
         end
     end
