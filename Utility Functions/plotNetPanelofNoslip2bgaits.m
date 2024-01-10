@@ -82,22 +82,24 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     velj = [Qdotj{idxj}{2}; 
             Qdotj{idxj}{3};
             Qdotj{idxj}{4}]; % stance paths and body velocity along those paths
-    fullStrat = veli - velj; % compute the panels as just the difference
+    fullStrat = veli - fliplr(velj); % compute the panels as just the difference between the flipped velocities
 
     xlimits = datai{1}.xlimits; ylimits = datai{1}.ylimits; zlimits = [-0.1, 1.1]; % limits for the plotting box
 
     surfSi = cell(1, 3); surfSj = surfSi;
-    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum_i); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum_i); surfSi{3} = zeros(size(surfSi{2}));
-    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum_j); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum_j); surfSj{3} = ones(size(surfSj{2}));
+    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum_i); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum_i); surfSi{3} = zeros(size(surfSi{2})); % ith cs at 0
+    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum_j); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum_j); surfSj{3} = ones(size(surfSj{2})); % jth cs at 1
     [surfSi{1}, surfSi{2}, surfSi{3}] = meshgrid(surfSi{1}, surfSi{2}, surfSi{3});
-    [surfSj{1}, surfSj{2}, surfSj{3}] = meshgrid(surfSj{1}, surfSj{2}, surfSj{3}); % surfaces at each corresponding contact state reduced shape space
-    
+    [surfSj{1}, surfSj{2}, surfSj{3}] = meshgrid(surfSj{1}, surfSj{2}, surfSj{3}); % surfaces at {B_13, S_13} and {B_24, S_24} (2d redu. spaces at each 2-beat stance phase)
 
     % compute the total panels and related stuff
     [cIxy,cIth] = se2limits(datai{2}.dz__x_sweep, datai{2}.dz__y_sweep, datai{2}.dz__theta_sweep);
     [cJxy,cJth] = se2limits(dataj{2}.dz__x_sweep, dataj{2}.dz__y_sweep, dataj{2}.dz__theta_sweep);
     C1_lim = cIxy + cJxy;
-    C2_lim = cIth + cJth; % limits for the axes
+    C2_lim = cIth + cJth; % color limits for the axes
+
+    % compute the full stratified panel surface function for plot call
+    fullSurf = fullStratSurfcompute(stance_i, stance_j, fullStrat, {{C1_lim, C2_lim}, CUB_i});
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -119,16 +121,16 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     C1.start = [1, 1];
     C1.grid = [2, 1]; C1.num = prod(C1.grid); C1.span_grid = C1.grid; % the tiles in the child layout matches the parent
     C1.tile_start = (C1.start(1)-1)*P.grid(2) + C1.start(2);
-    C1.sweeptxt = {'zxu', 'zyu'};
-    C1.titletxt = {'$$z^{x}$$', '$$z^{y}$$'};
+    C1.sweeptxt = {'x', 'y'};
+    C1.titletxt = {'$$dz^{x}$$', '$$dz^{y}$$'};
 
     % child 2-- ith dz_theta
     C2 = []; C2.limits = C2_lim;
     C2.start = [3, 1];
     C2.grid = [1, 1]; C2.num = prod(C2.grid); C2.span_grid = C2.grid;
     C2.tile_start = (C2.start(1)-1)*P.grid(2) + C2.start(2);
-    C2.sweeptxt = {'zthetau'};
-    C2.titletxt = {'$$z^{\theta}$$'};
+    C2.sweeptxt = {'theta'};
+    C2.titletxt = {'$$dz^{\theta}$$'};
 
     % Create the figure
     figure('units','pixels','position',[100 -200 m n],'Color','w');
