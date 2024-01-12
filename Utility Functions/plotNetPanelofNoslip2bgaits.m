@@ -85,16 +85,16 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     velj = [Qdotj{idxj}{2}; 
             Qdotj{idxj}{3};
             Qdotj{idxj}{4}]; % stance paths and body velocity along those paths
-    fullStrat = veli - fliplr(velj); % compute the panels as just the difference between the flipped velocities
+    fullStrat = veli + fliplr(velj); % compute the panels as the sum of the individual panels
     
     xlimits = datai{1}.xlimits; ylimits = datai{1}.ylimits; zlimits = [-0.1, 1.1]; % limits for the plotting box
     
     % surfaces at {B_ij, S_ij} for each cs (2d redu. spaces at each 2-beat stance phase)
     surfSi = cell(1, 4); surfSj = surfSi;
-    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum_i); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum_i); surfSi{3} = zeros(size(surfSi{2})); % ijth cs at 0
-    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum_j); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum_j); surfSj{3} = ones(size(surfSj{2})); % klth cs at 1
-    [surfSi{1}, surfSi{2}, surfSi{3}] = meshgrid(surfSi{1}, surfSi{2}, surfSi{3});
-    [surfSj{1}, surfSj{2}, surfSj{3}] = meshgrid(surfSj{1}, surfSj{2}, surfSj{3}); % the surfaces
+    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum_i); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum_i); 
+    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum_j); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum_j); 
+    [surfSi{1}, surfSi{2}] = meshgrid(surfSi{1}, surfSi{2}); surfSi{3} = zeros(size(surfSi{2})); % the surfaces @ijth cs at 0
+    [surfSj{1}, surfSj{2}] = meshgrid(surfSj{1}, surfSj{2}); surfSj{3} = ones(size(surfSj{2})); %              @klth cs at 1
     surfSi{4} = repmat( reshape(gc_col_i, [1, 1, 3]), size(surfSi{1}) );
     surfSj{4} = repmat( reshape(gc_col_j, [1, 1, 3]), size(surfSj{1}) ); % colors for each surface
 
@@ -105,7 +105,7 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     C2_lim = cIth + cJth; % color limits for the axes
 
     % compute the full stratified panel surface function for plot call
-    fullSurf = fullStratSurfcompute(stance_i, stance_j, fullStrat, {{C1_lim, C2_lim}, CUB_i});
+    fullSurf = fullStratSurfcompute(stancei, stancej, fullStrat, {{C1_lim, C2_lim}, CUB_i});
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -120,7 +120,7 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     
     % get the figure dimensions
     m = 2200*(P.grid(2))/5; % scaled figure x-resolution
-    n = 1800; % fixed figure y-resolution
+    n = 1500; % fixed figure y-resolution % 1800 (previously)
 
     % child 1-- ith dz_translation
     C1 = []; C1.limits = C1_lim; % previously defined color limits
@@ -154,22 +154,22 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     for i = 1:C1.num
         ax{i} = nexttile(C1.Layout_Obj, i); % dz^x & dz^y
         surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
-        axis equal tight; hold on; view(-45, 30);
-        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors; % surfs at each level
+        axis equal tight; hold on; view(-45, 10);
+        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors; % surfs at each level
+        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); freezeColors; % full stratified panel surface
+        colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim);
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i);
         plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i); % stance paths
         scatter3(ax{i}, stancei(1,end), stancei(2,end), 0, circS_i, gc_col_i, 'filled');
         scatter3(ax{i}, stancej(1,end), stancej(2,end), 1, circS_i, gc_col_j, 'filled'); % stance scatters at the end
-        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none','FaceAlpha', 0.1); % full stratified panel surface
-        colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim); freezeColors; 
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C1.titletxt{i},'Color','k',FontSize=titleFS_i);
-        if i == 1
-            xlabel(ax{i},'$$\alpha_{i}$$','Color','k',FontSize=labelFS_i); 
-            ylabel(ax{i},'$$\alpha_{j}$$','Color','k',FontSize=labelFS_i);
-        end
+        % if i == 1
+        %     xlabel(ax{i},'$$\alpha_{i}$$','Color','k',FontSize=labelFS_i); 
+        %     ylabel(ax{i},'$$\alpha_{j}$$','Color','k',FontSize=labelFS_i);
+        % end
         set(ax{i}, 'XTick', []); set(ax{i}, 'YTick', []); set(ax{i}, 'ZTick', []); set(ax{i},'Color',col_backg_i);
-        xlim(xlimits); ylim(ylimits); zlim([-0.2, 1.2]);
+        xlim(xlimits); ylim(ylimits); zlim(zlimits);
         count_idx = count_idx + 1;
     end
     C1.axes = ax;
@@ -180,18 +180,18 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     for i = 1:C2.num
         ax{i} = nexttile(C2.Layout_Obj,i); % just z__\theta
         surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
-        axis equal tight; hold on; view(-45, 30);
-        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
+        axis equal tight; hold on; view(-45, 10);
+        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
+        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); freezeColors;
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i);
         plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i);
         scatter3(ax{i}, stancei(1,end), stancei(2,end), 0, circS_i, gc_col_i, 'filled');
         scatter3(ax{i}, stancej(1,end), stancej(2,end), 1, circS_i, gc_col_j, 'filled');
-        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none','FaceAlpha', 0.1);
-        colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim); freezeColors; 
+        colormap(ax{i}, CUB_i); clim(ax{i}, C2_lim);  
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C2.titletxt{i},'Color','k',FontSize=titleFS_i);
         set(ax{i}, 'XTick', []); set(ax{i}, 'YTick', []); set(ax{i}, 'ZTick', []); set(ax{i},'Color',col_backg_i);
-        xlim(xlimits); ylim(ylimits); zlim([-0.2, 1.2]);
+        xlim(xlimits); ylim(ylimits); zlim(zlimits);
         count_idx = count_idx + 1;
     end
     C2.axes = ax;
