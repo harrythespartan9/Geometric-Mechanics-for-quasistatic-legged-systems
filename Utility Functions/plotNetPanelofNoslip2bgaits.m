@@ -153,10 +153,10 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     ax = cell(1, C1.num); count_idx = 1;
     for i = 1:C1.num
         ax{i} = nexttile(C1.Layout_Obj, i); % dz^x & dz^y
-        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
+        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1);
         axis equal tight; hold on; view(-45, 10);
-        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors; % surfs at each level
-        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); freezeColors; % full stratified panel surface
+        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1); % surfs at each level
+        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); % full stratified panel surface
         colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim);
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i);
         plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i); % stance paths
@@ -179,10 +179,10 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     ax = cell(1, C2.num);
     for i = 1:C2.num
         ax{i} = nexttile(C2.Layout_Obj,i); % just z__\theta
-        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
+        surf(ax{i}, surfSi{1}, surfSi{2}, surfSi{3}, surfSi{4}, 'LineStyle', 'none','FaceAlpha', 0.1);
         axis equal tight; hold on; view(-45, 10);
-        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1); freezeColors;
-        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); freezeColors;
+        surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1);
+        surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none');
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i);
         plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i);
         scatter3(ax{i}, stancei(1,end), stancei(2,end), 0, circS_i, gc_col_i, 'filled');
