@@ -106,6 +106,19 @@ function dataij = qlevel2noslip_mp(datai, dataj, dataij)
             P = [];
             P.grid = [3 5];
 
+            % create a colormap for displacement heatmaps as a function of the gain space
+            CUB_alt = [178,24,43;
+                    214,96,77;
+                    244,165,130;
+                    253,219,199;
+                    247,247,247;
+                    209,229,240;
+                    146,197,222;
+                    67,147,195;
+                    33,102,172]/255; % base
+            CUB_alt = interp1(linspace(0,100,size(CUB_alt,1)), CUB_alt, linspace(0,100,size(jet,1)), "spline"); CUB_alt(CUB_alt > 1) = 1; % interpolate to expand
+            dataij.CUB_alt = CUB_alt;
+
             % Unpack plotting information for ith contact state
         %     lW_V_i = datai{1}.lW_V; iQ_i = datai{1}.iQ;
             lW_c_j = dataj{1}.lW_contour; fA_j = dataj{1}.fA; 

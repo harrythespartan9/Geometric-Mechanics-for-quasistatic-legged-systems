@@ -7,7 +7,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     lW_c_i = datai{1}.lW_contour; fA_i = datai{1}.fA; 
     cfLvl_i = datai{1}.cfLvl; cLvl_i = datai{1}.cLvl;
     gc_col_i = datai{1}.gc_col; gc_col_j = dataj{1}.gc_col; col_backg_i = datai{1}.col_backg;
-    col_i = datai{1}.col; CUB_i = datai{1}.CUB;
+    col_i = datai{1}.col; CUB_i = datai{1}.CUB; CUB_alt = dataij.CUB_alt;
     titleFS_i = datai{1}.titleFS; tickFS_i = datai{1}.tickFS; cbarFS_i = datai{1}.cbarFS;
     labelFS_i = datai{1}.labelFS; sgtitleFS_i = datai{1}.sgtitleFS;
     vidF_i = datai{6};
@@ -71,7 +71,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     
     % get the figure dimensions
     m = 2200*(P.grid(2))/5; % scaled figure x-resolution
-    n = 1800; % fixed figure y-resolution
+    n = 1900; % fixed figure y-resolution
 
     % limits for the axes
     [C1_lim,C2_lim] = se2limits(zxu,zyu,zthetau);
@@ -120,7 +120,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
         contourf(ax{i},u_j_S,u_i_S,z.(C1.sweeptxt{i}),cfLvl_i,'LineWidth',lW_c_i,'LineStyle','none');  % ,'FaceAlpha',fA_i
         axis equal tight; hold on; view(2);
         scatter(ax{i}, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
-        colormap(ax{i},CUB_i); clim(ax{i},C1_lim);
+        colormap(ax{i},CUB_alt); clim(ax{i},C1_lim);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C1.titletxt{i},'Color','k',FontSize=titleFS_i);
         if i == 1
@@ -142,7 +142,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
         contourf(ax{i},u_j_S,u_i_S,z.(C2.sweeptxt{i}),cfLvl_i,'LineWidth',lW_c_i,'LineStyle','none'); % ,'FaceAlpha',fA_i
         axis equal tight; hold on; view(2);
         scatter(ax{i}, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
-        colormap(ax{i},CUB_i); clim(ax{i},C2_lim);
+        colormap(ax{i},CUB_alt); clim(ax{i},C2_lim);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C2.titletxt{i},'Color','k',FontSize=titleFS_i);
         ax{i}.XAxis.FontSize = tickFS_i; ax{i}.YAxis.FontSize = tickFS_i;
@@ -172,7 +172,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     contourf(ax,u_j_S,u_i_S,kappa_S,cfLvl_i,'LineWidth',lW_c_i,'LineStyle','none'); % ,'FaceAlpha',fA_i
     axis equal tight; hold on; view(2);
     scatter(ax, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
-    colormap(ax,CUB_i); clim(ax, klim);
+    colormap(ax,CUB_alt); clim(ax, klim);
     set(get(ax,'YLabel'),'rotation',0,'VerticalAlignment','middle');
     title(ax,'$$\bar{k}$$','Color','k',FontSize=titleFS_i);
     ax.XAxis.FontSize = tickFS_i; ax.YAxis.FontSize = tickFS_i;
