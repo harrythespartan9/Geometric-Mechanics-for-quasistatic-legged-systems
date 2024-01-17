@@ -65,14 +65,14 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % gait requirements and other vars
-    dnum_i = datai{1}.dnum;
-    dnum_j = dataj{1}.dnum;
+    dnum = 5;
     idxi = dataij.u_i == dataij.u(1);
     idxj = dataij.u_j == dataij.u(2);
     Qi   = path_i.open_trajectory;
     Qdoti= path_i.open_trajectory_vel;
     Qj   = path_j.open_trajectory;
     Qdotj= path_j.open_trajectory_vel;
+    topSurfLvl = 1;                      % set the level of the top surface here
 
     % compute the full strat panel and stance paths
     stancei = [Qi{idxi}{5}; 
@@ -87,14 +87,14 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
             Qdotj{idxj}{4}]; % stance paths and body velocity along those paths
     fullStrat = veli + fliplr(velj); % compute the panels as the sum of the individual panels
     
-    xlimits = datai{1}.xlimits; ylimits = datai{1}.ylimits; zlimits = [-0.1, 1.1]; % limits for the plotting box
+    xlimits = datai{1}.xlimits; ylimits = datai{1}.ylimits; zlimits = [-0.1, topSurfLvl+0.1]; % limits for the plotting box
     
     % surfaces at {B_ij, S_ij} for each cs (2d redu. spaces at each 2-beat stance phase)
     surfSi = cell(1, 4); surfSj = surfSi;
-    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum_i); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum_i); 
-    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum_j); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum_j); 
+    surfSi{1} = linspace(xlimits(1), xlimits(2), dnum); surfSi{2} = linspace(ylimits(1), ylimits(2), dnum); 
+    surfSj{1} = linspace(xlimits(1), xlimits(2), dnum); surfSj{2} = linspace(ylimits(1), ylimits(2), dnum); 
     [surfSi{1}, surfSi{2}] = meshgrid(surfSi{1}, surfSi{2}); surfSi{3} = zeros(size(surfSi{2})); % the surfaces @ijth cs at 0
-    [surfSj{1}, surfSj{2}] = meshgrid(surfSj{1}, surfSj{2}); surfSj{3} = ones(size(surfSj{2})); %              @klth cs at 1
+    [surfSj{1}, surfSj{2}] = meshgrid(surfSj{1}, surfSj{2}); surfSj{3} = topSurfLvl*ones(size(surfSj{2})); %              @klth cs at 1
     surfSi{4} = repmat( reshape(gc_col_i, [1, 1, 3]), size(surfSi{1}) );
     surfSj{4} = repmat( reshape(gc_col_j, [1, 1, 3]), size(surfSj{1}) ); % colors for each surface
 
@@ -105,13 +105,14 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     C2_lim = cIth + cJth; % color limits for the axes
 
     % compute the full stratified panel surface function for plot call
-    fullSurf = fullStratSurfcompute(stancei, stancej, fullStrat, {{C1_lim, C2_lim}, CUB_i});
+    fullSurf = fullStratSurfcompute(stancei, stancej, fullStrat, {{C1_lim, C2_lim}, CUB_i}, topSurfLvl);
 
     % compute the azimuthal and elevation angles of "view" based on the surface normal
-    [Nx, Ny, Nz] = surfnorm(fullSurf.X, fullSurf.Y, fullSurf.Z);
-    az = mean(  pi/2 - atan2d(Ny, Nx), "all"  ); 
-    el = mean(  -atan2d(Nz, sqrt(Nx'*Nx + Ny'*Ny)), "all"  ) + 10; % a slightly elevated view
-    
+    [Nx, Ny, Nz] = surfnorm(fullSurf.X, fullSurf.Y, fullSurf.Z); 
+    % az = mean(  90 - atan2d(Ny, Nx), "all"  );    % "mean surface normal" view
+    az = mean(  atan2d(Ny, Nx), "all"  ) - 9;           % "curvature" view
+    el = mean(  -atan2d(Nz, real(sqrt(Nx'*Nx + Ny'*Ny))), "all"  ) + 15; % a slightly elevated view % 10 (mine) % 15 (Kaushik's)
+
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % setting latex as the default interpreter
@@ -124,8 +125,8 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     P.grid = [3 1];
     
     % get the figure dimensions
-    m = 2200*(P.grid(2))/5; % scaled figure x-resolution
-    n = 1500; % fixed figure y-resolution % 1800 (previously)
+    m = 2200*(P.grid(2))/5; % scaled figure x-resolution % 2200 % 1800
+    n = 1500; % fixed figure y-resolution % 1800 (previously) % 1500 % 900
 
     % child 1-- ith dz_translation
     C1 = []; C1.limits = C1_lim; % previously defined color limits
@@ -147,13 +148,13 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     figure('units','pixels','position',[100 -200 m n],'Color','w');
     set(gcf,'Visible','on'); % pop-out figure
     P = tiledlayout(P.grid(1),P.grid(2),'TileSpacing','tight','Padding','tight');
-    
+
     % Initialize the child layouts
     C1.Layout_Obj = tiledlayout(P,C1.grid(1),C1.grid(2),'TileSpacing','tight','Padding','tight'); 
     C1.Layout_Obj.Layout.Tile = C1.tile_start; C1.Layout_Obj.Layout.TileSpan = C1.span_grid;
     C2.Layout_Obj = tiledlayout(P,C2.grid(1),C2.grid(2),'TileSpacing','tight','Padding','tight'); 
     C2.Layout_Obj.Layout.Tile = C2.tile_start; C2.Layout_Obj.Layout.TileSpan = C2.span_grid;
-    
+
     % Child 1
     ax = cell(1, C1.num); count_idx = 1;
     for i = 1:C1.num
@@ -164,9 +165,9 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
         surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none'); % full stratified panel surface
         colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim);
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i+1);
-        plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i+1); % stance paths
+        plot3(ax{i}, stancej(1,:), stancej(2,:), topSurfLvl*ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i+1); % stance paths
         scatter3(ax{i}, stancei(1,end), stancei(2,end), 0, circS_i, gc_col_i, 'filled');
-        scatter3(ax{i}, stancej(1,end), stancej(2,end), 1, circS_i, gc_col_j, 'filled'); % stance scatters at the end
+        scatter3(ax{i}, stancej(1,end), stancej(2,end), topSurfLvl, circS_i, gc_col_j, 'filled'); % stance scatters at the end
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C1.titletxt{i},'Color','k',FontSize=titleFS_i);
         % if i == 1
@@ -179,7 +180,7 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     end
     C1.axes = ax;
     C1.colorB = colorbar(C1.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_i); C1.colorB.Layout.Tile = 'South'; % plot the translation colorbar
-    
+
     % Child 2
     ax = cell(1, C2.num);
     for i = 1:C2.num
@@ -188,10 +189,11 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
         axis equal tight; hold on; view(az, el);
         surf(ax{i}, surfSj{1}, surfSj{2}, surfSj{3}, surfSj{4}, 'LineStyle', 'none','FaceAlpha', 0.1);
         surf(ax{i}, fullSurf.X, fullSurf.Y, fullSurf.Z, fullSurf.C{count_idx}, 'LineStyle', 'none');
+        colormap(ax{i}, CUB_i); clim(ax{i}, C1_lim);
         plot3(ax{i}, stancei(1,:), stancei(2,:), zeros(size(stancei, 2)), '-', 'Color', gc_col_i, 'LineWidth', lW_c_i+1);
-        plot3(ax{i}, stancej(1,:), stancej(2,:), ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i+1);
+        plot3(ax{i}, stancej(1,:), stancej(2,:), topSurfLvl*ones(size(stancej, 2)), '-', 'Color', gc_col_j, 'LineWidth', lW_c_i+1);
         scatter3(ax{i}, stancei(1,end), stancei(2,end), 0, circS_i, gc_col_i, 'filled');
-        scatter3(ax{i}, stancej(1,end), stancej(2,end), 1, circS_i, gc_col_j, 'filled');
+        scatter3(ax{i}, stancej(1,end), stancej(2,end), topSurfLvl, circS_i, gc_col_j, 'filled');
         colormap(ax{i}, CUB_i); clim(ax{i}, C2_lim);  
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C2.titletxt{i},'Color','k',FontSize=titleFS_i);
@@ -201,5 +203,22 @@ function plotNetPanelofNoslip2bgaits(datai, dataj, dataij)
     end
     C2.axes = ax;
     C2.colorB = colorbar(C2.axes{i},'TickLabelInterpreter','latex','FontSize',cbarFS_i); C2.colorB.Layout.Tile = 'South'; % plot the rotation colorbar
+
+    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % % Create the figure
+    % figure('units','pixels','position',[100 -200 m n],'Color','w');
+    % set(gcf,'Visible','on'); % pop-out figure
+    % tiledlayout(3, 1,'TileSpacing','tight','Padding','tight');
+    % 
+    % for count_idx = 1:3
+    % 
+    %     axs = nexttile();
+    %     contourf(repmat(fullStrat(count_idx, :), [size(fullStrat, 2) 1]), size(fullStrat, 2), 'LineStyle', 'none');
+    %     axis square equal; colormap(axs, CUB_i); clim(axs, C1_lim);
+    %     set(axs, 'XTick', []); set(axs, 'YTick', []);
+    % 
+    % end
+
 
 end

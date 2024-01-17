@@ -1,4 +1,4 @@
-function fullSurf = fullStratSurfcompute(stancei, stancej, fullStratij, colorRelated)
+function fullSurf = fullStratSurfcompute(stancei, stancej, fullStratij, colorRelated, topSurfLvl)
 %FULLSTRATSURFCOMPUTE compute the full stratified panel as a surface between the two stance phase paths
 %   Given two stance phase paths in their reduced shape space {B_{13}, S_{13}} and the full stratified panel at each corresponding point, this function computes
 %   the same panel as a surface defined by an `X', `Y', `Z', and `C' matrices. The `C' matrix defines the color of the surface. These four quantities are
@@ -26,7 +26,7 @@ function fullSurf = fullStratSurfcompute(stancei, stancej, fullStratij, colorRel
     end
 
     % compute the z-vals along the infinitesimal gait cycle
-    fullSurf.Z = repmat( linspace(0, 1, dnum)',  [1 dnum] );
+    fullSurf.Z = repmat( linspace(0, topSurfLvl, dnum)',  [1 dnum] );
 
     % compute the color matrix (Size = dnum X dnum X 3)
     for idxPos = 1:numel(fullSurf.C)
