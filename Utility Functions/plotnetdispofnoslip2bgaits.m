@@ -89,6 +89,7 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
 
         % scale p2 norm req
         p2V = linspace(1, 0.2, 3);
+        p2V/sqrt(2)
 
         % compute the ellipsoid for each case
         for iter = 1:numIter
