@@ -58,66 +58,66 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     end
     z.zxu = zxu; z.zyu = zyu; z.zthetau = zthetau;
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    % if this is a scaling subspace, then compute and plot the ellipsoid ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    if strcmp(datai{1}.mode, "scale") && strcmp(dataj{1}.mode, "scale")
-
-        % set the anisotropy ellipsoid flag
-        flagE = true;
-
-        % let's define 3 colors for the 3 cases we have right now
-        colE = [77,175,74;
-                255,127,0;
-                247,129,191;
-                37,37,37;
-                82,82,82;
-                130,130,130]/255;
-        p2Cidx = 5;
-        ccCidx = 6;
-
-        % number of norm cases to explore (fixed as of now)
-        numIter = 3;
-
-        % plot related params
-        dispNames = {'Inf', 'p2', 'p1'};
-        linSty = {'-', '--', ':'};
-
-        % initialize containers and discretization params
-        dnum = 100; % keep this even and a multiple of 4 for now
-        uiQ = cell(1, 3); ujQ = uiQ; zxQ = ujQ; zyQ = ujQ;
-
-        % scale p2 norm req
-        p2V = linspace(1, 0.2, 3);
-        p2V/sqrt(2)
-
-        % compute the ellipsoid for each case
-        for iter = 1:numIter
-
-            % % identify the inputs along the required ellipsoid
-            % switch iter
-            %     case 1 % scaling inputs' infinity norm is 1
-            %         tempi = [ ones(1, dnum/4),         linspace(1, -1, dnum/4), -1*ones(1, dnum/4),      linspace(-1, 1, dnum/4) ]; tempi(end+1) = tempi(1);
-            %         tempj = [ linspace(-1, 1, dnum/4), ones(1, dnum/4),         linspace(1, -1, dnum/4), -1*ones(1, dnum/4)      ]; tempi(end+1) = tempi(1);
-            %     case 2 % scaling inputs' 2-norm is 1
-            %         th = linspace(0, 2*pi, dnum);
-            %         uiQ{iter} = cos(th); ujQ{iter} = sin(th);  % ui.^2 + uj.^2 = 1
-            %     case 3 % scaling inputs' 1-norm is 1
-            %         th = linspace(0, 2*pi, dnum);
-            %         uiQ{iter} = cos(th); ujQ{iter} = 1 - uiQ{iter}; % ui + uj = 1
-            % end
-
-            % get the 2-norm conserved scaling inputs
-            th = linspace(0, 2*pi, dnum);
-            uiQ{iter} = p2V(iter)*cos(th); ujQ{iter} = p2V(iter)*sin(th);  % ui.^2 + uj.^2 = p2V(iter) % conservation law
-
-            % compute the translational displacements
-            zxQ{iter}    = interp2(u_i_S, u_j_S, z.zxu, uiQ{iter}, ujQ{iter}, "spline", nan);
-            zyQ{iter}    = interp2(u_i_S, u_j_S, z.zyu, uiQ{iter}, ujQ{iter}, "spline", nan);
-
-        end
-
-    end
+    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % 
+    % % if this is a scaling subspace, then compute and plot the ellipsoid ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    % if strcmp(datai{1}.mode, "scale") && strcmp(dataj{1}.mode, "scale")
+    % 
+    %     % set the anisotropy ellipsoid flag
+    %     flagE = true;
+    % 
+    %     % let's define 3 colors for the 3 cases we have right now
+    %     colE = [77,175,74;
+    %             255,127,0;
+    %             247,129,191;
+    %             37,37,37;
+    %             82,82,82;
+    %             130,130,130]/255;
+    %     p2Cidx = 5;
+    %     ccCidx = 6;
+    % 
+    %     % number of norm cases to explore (fixed as of now)
+    %     numIter = 3;
+    % 
+    %     % plot related params
+    %     dispNames = {'Inf', 'p2', 'p1'};
+    %     linSty = {'-', '--', ':'};
+    % 
+    %     % initialize containers and discretization params
+    %     dnum = 100; % keep this even and a multiple of 4 for now
+    %     uiQ = cell(1, 3); ujQ = uiQ; zxQ = ujQ; zyQ = ujQ;
+    % 
+    %     % scale p2 norm req
+    %     p2V = linspace(1, 0.2, 3);
+    %     p2V/sqrt(2)
+    % 
+    %     % compute the ellipsoid for each case
+    %     for iter = 1:numIter
+    % 
+    %         % % identify the inputs along the required ellipsoid
+    %         % switch iter
+    %         %     case 1 % scaling inputs' infinity norm is 1
+    %         %         tempi = [ ones(1, dnum/4),         linspace(1, -1, dnum/4), -1*ones(1, dnum/4),      linspace(-1, 1, dnum/4) ]; tempi(end+1) = tempi(1);
+    %         %         tempj = [ linspace(-1, 1, dnum/4), ones(1, dnum/4),         linspace(1, -1, dnum/4), -1*ones(1, dnum/4)      ]; tempi(end+1) = tempi(1);
+    %         %     case 2 % scaling inputs' 2-norm is 1
+    %         %         th = linspace(0, 2*pi, dnum);
+    %         %         uiQ{iter} = cos(th); ujQ{iter} = sin(th);  % ui.^2 + uj.^2 = 1
+    %         %     case 3 % scaling inputs' 1-norm is 1
+    %         %         th = linspace(0, 2*pi, dnum);
+    %         %         uiQ{iter} = cos(th); ujQ{iter} = 1 - uiQ{iter}; % ui + uj = 1
+    %         % end
+    % 
+    %         % get the 2-norm conserved scaling inputs
+    %         th = linspace(0, 2*pi, dnum);
+    %         uiQ{iter} = p2V(iter)*cos(th); ujQ{iter} = p2V(iter)*sin(th);  % ui.^2 + uj.^2 = p2V(iter) % conservation law
+    % 
+    %         % compute the translational displacements
+    %         zxQ{iter}    = interp2(u_i_S, u_j_S, z.zxu, uiQ{iter}, ujQ{iter}, "spline", nan);
+    %         zyQ{iter}    = interp2(u_i_S, u_j_S, z.zyu, uiQ{iter}, ujQ{iter}, "spline", nan);
+    % 
+    %     end
+    % 
+    % end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -182,11 +182,11 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
         axis equal tight; hold on; view(2);
         scatter(ax{i}, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
         colormap(ax{i},CUB_alt); clim(ax{i},C1_lim);
-        for iter = 1:numIter
-            plot(uiQ{iter}, ujQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :));
-        end
-        quiver(fliplr(p2V(2:end)/sqrt(2)), fliplr(p2V(2:end)/sqrt(2)), -diff(p2V/sqrt(2)), -diff(p2V/sqrt(2)), ...
-            "off", 'LineWidth', 2.0, 'Color', colE(ccCidx, :), 'MaxHeadSize', 0.5);
+        % for iter = 1:numIter
+        %     plot(uiQ{iter}, ujQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :));
+        % end
+        % quiver(fliplr(p2V(2:end)/sqrt(2)), fliplr(p2V(2:end)/sqrt(2)), -diff(p2V/sqrt(2)), -diff(p2V/sqrt(2)), ...
+        %     "off", 'LineWidth', 2.0, 'Color', colE(ccCidx, :), 'MaxHeadSize', 0.5);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C1.titletxt{i},'Color','k',FontSize=titleFS_i);
         if i == 1
@@ -209,11 +209,11 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
         axis equal tight; hold on; view(2);
         scatter(ax{i}, u_i_stpt, u_j_stpt, circS_i, 'k', 'filled');
         colormap(ax{i},CUB_alt); clim(ax{i},C2_lim);
-        for iter = 1:numIter
-            plot(uiQ{iter}, ujQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :));
-        end
-        quiver(fliplr(p2V(2:end)/sqrt(2)), fliplr(p2V(2:end)/sqrt(2)), -diff(p2V/sqrt(2)), -diff(p2V/sqrt(2)), ...
-            "off", 'LineWidth', 2.0, 'Color', colE(ccCidx, :), 'MaxHeadSize', 0.5);
+        % for iter = 1:numIter
+        %     plot(uiQ{iter}, ujQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :));
+        % end
+        % quiver(fliplr(p2V(2:end)/sqrt(2)), fliplr(p2V(2:end)/sqrt(2)), -diff(p2V/sqrt(2)), -diff(p2V/sqrt(2)), ...
+        %     "off", 'LineWidth', 2.0, 'Color', colE(ccCidx, :), 'MaxHeadSize', 0.5);
         set(get(ax{i},'YLabel'),'rotation',0,'VerticalAlignment','middle');
         title(ax{i},C2.titletxt{i},'Color','k',FontSize=titleFS_i);
         ax{i}.XAxis.FontSize = tickFS_i; ax{i}.YAxis.FontSize = tickFS_i;
@@ -252,22 +252,22 @@ function plotnetdispofnoslip2bgaits(datai, dataj, dataij)
     % xlim(ax, ui_lim); ylim(ax, uj_lim);
     % colorbar(ax,'TickLabelInterpreter','latex','FontSize',cbarFS_i,'Location','southoutside'); % plot the rotation colorbar
 
-    % plot the translational anisotropy ellipsoid (just p2 for now)
-    if flagE
-
-        f = figure('units','pixels','position',[100 -200 m n/3],'Color','w');
-        set(f,'Visible','on'); ax = gca; % f.CurrentAxes
-        for iter = 1:numIter
-            plot(zxQ{iter}, zyQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :), 'DisplayName', dispNames{iter}); % just p2
-            if iter == 1
-                hold on; 
-                % grid on;
-            end
-        end
-        axis equal square padded; 
-        set(ax, 'XTick', []); set(ax, 'YTick', []); set(ax, 'Visible', 'off'); box(ax, "off");
-        % legend('location', 'bestoutside');
-
-    end
+    % % plot the translational anisotropy ellipsoid (just p2 for now)
+    % if flagE
+    % 
+    %     f = figure('units','pixels','position',[100 -200 m n/3],'Color','w');
+    %     set(f,'Visible','on'); ax = gca; % f.CurrentAxes
+    %     for iter = 1:numIter
+    %         plot(zxQ{iter}, zyQ{iter}, linSty{iter}, 'LineWidth', 2.0, 'Color', colE(p2Cidx, :), 'DisplayName', dispNames{iter}); % just p2
+    %         if iter == 1
+    %             hold on; 
+    %             % grid on;
+    %         end
+    %     end
+    %     axis equal square padded; 
+    %     set(ax, 'XTick', []); set(ax, 'YTick', []); set(ax, 'Visible', 'off'); box(ax, "off");
+    %     % legend('location', 'bestoutside');
+    % 
+    % end
 
 end
