@@ -38,12 +38,13 @@ function animateSE3sys(traj, v)
         end
 
         if vidF
-            writeVideo(video,getframe(f)); % get the frame
+            framesSim(i) = getframe(f); % get the frame (need to improve)
         end
 
     end
 
     if vidF
+        writeVideo(video, framesSim); % write all the frames here
         close(video); % close the video
     end
 
