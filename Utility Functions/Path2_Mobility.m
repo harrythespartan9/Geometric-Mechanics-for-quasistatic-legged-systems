@@ -1,5 +1,5 @@
-% This is a "Path2" class for defining paths on level-2 no-slip contact
-% submanifolds for a rigid quadrupedal robot. It takes the initial 
+% This is a "Path2_Mobility" class for defining paths on level-2 no-slip 
+% contact submanifolds for a rigid quadrupedal robot. It takes the initial 
 % condition for the shape-space slice (2 dim), gait constraint vector field
 % (2 dim), and integration time for the path to construct a Path2 object. 
 % It inherits properties from the abstract class "RigidGeomQuad".
@@ -23,7 +23,7 @@ classdef Path2_Mobility < RigidGeomQuad
 
         Adot                 % Shape(directional)-derivative of the local connection vector field-- \Nabla_\alpha \boldsymbol{A}_{ij}
 
-        point_of_interest    % starting point to compute the path
+        reference_point      % point to analyze mobility from
 
         int_dirn             % direction to integrate the path along: +phi or -phi with scaling
 
@@ -34,7 +34,7 @@ classdef Path2_Mobility < RigidGeomQuad
         deadband_dutycycle   % period of time spent swinging in the sub-gait (0 <= val <= 1)
                              % path psi in submanifold + path to return to starting point through the nullspace of the submanifold
 
-        scale_path_method    % method to scale the path about the "point_of_interest"-- this prop then scales the time vector for the closed length path
+        scale_path_method    % method to scale the path about the "reference_point"-- this prop then scales the time vector for the closed length path
                              % and changes the ordering based on final time. Some examples include, 'accln', 'vel'
 
         initial_condition    % this is the starting point of the path
@@ -127,7 +127,7 @@ classdef Path2_Mobility < RigidGeomQuad
             thisPath2.ddphi = ddphiij;
             thisPath2.A = Aij;
             thisPath2.Adot = Adotij;
-            thisPath2.point_of_interest = strpt;
+            thisPath2.reference_point = strpt;
             thisPath2.int_time = t;
             thisPath2.deadband_dutycycle = dc;
             thisPath2.path_active_color = c(1,:);
@@ -147,23 +147,15 @@ classdef Path2_Mobility < RigidGeomQuad
         
         % static function to icnrement the number of objects
         function out = SetGet_static(~)
-            
             persistent var
-
             if isempty(var)
                 var = 0;
             end
-
             if nargin == 1
-
                 var = var + 1;
-
             else
-
                 out = var;
-
             end
-
         end
 
         % Compute the open_trajectory
@@ -193,8 +185,8 @@ classdef Path2_Mobility < RigidGeomQuad
             thePath2.int_cond = cond; % updated the integration property
             
             % integrate the gait constraint ode to obtain the open-trajectory for the system.
-            ai0 = thePath2.point_of_interest(1);  % initial conditions
-            aj0 = thePath2.point_of_interest(2);
+            ai0 = thePath2.reference_point(1);  % initial conditions
+            aj0 = thePath2.reference_point(2);
 
             % unpack the integration direction
             dirn = thePath2.int_dirn;
@@ -345,8 +337,8 @@ classdef Path2_Mobility < RigidGeomQuad
             end
             thePath2.int_cond = cond;
             
-            ai0 = thePath2.point_of_interest(1);
-            aj0 = thePath2.point_of_interest(2);
+            ai0 = thePath2.reference_point(1);
+            aj0 = thePath2.reference_point(2);
             
             dirn = thePath2.int_dirn;
             
@@ -426,9 +418,10 @@ classdef Path2_Mobility < RigidGeomQuad
         
         end
         
-        % This function computes different percentages of the open-trajectory by keeping "path_start" prop constant, and using interp1 with the spline method.
+        % This function computes different percentages of the 
+        % open-trajectory by keeping "path_start" prop constant, and using 
+        % interp1 with the spline method.
         function q_interp = interpolated_open_trajectory(fullPath2, p, cond, dnum)
-            
             % unpack your open_trajectory
             t = fullPath2{1};
             x = fullPath2{2};
@@ -436,25 +429,16 @@ classdef Path2_Mobility < RigidGeomQuad
             theta = fullPath2{4};
             ai = fullPath2{5};
             aj = fullPath2{6};
-
             % get the limitng points
             switch cond
-
                 case -1
-                    
                     leftpt = numel(t) - floor(p*numel(t)); rightpt = numel(t);
-
                 case  0
-
                     midpt = ceil(numel(t)/2);
                     leftpt = midpt - p*(midpt-1); rightpt = midpt + p*(midpt-1);
-
                 case  1
-
                     leftpt = 1; rightpt = ceil(p*numel(t));
-                    
             end
-
             % get the modified trajectory
             t_temp = t(leftpt:rightpt); t_temp = t_temp - t_temp(1);
             x_temp = x(leftpt:rightpt); x_temp = x_temp - x_temp(1);
@@ -462,7 +446,6 @@ classdef Path2_Mobility < RigidGeomQuad
             theta_temp = theta(leftpt:rightpt); theta_temp = theta_temp - theta_temp(1);
             ai_temp = ai(leftpt:rightpt);
             aj_temp = aj(leftpt:rightpt);
-
             % interpolate to a desired discretization
             T = linspace(t_temp(1), t_temp(end), dnum);
             X = interp1(t_temp, x_temp, T, 'pchip');
@@ -470,135 +453,8 @@ classdef Path2_Mobility < RigidGeomQuad
             THETA = interp1(t_temp, theta_temp, T, 'pchip');
             AI = interp1(t_temp, ai_temp, T, 'pchip');
             AJ = interp1(t_temp, aj_temp, T, 'pchip');
-
             % return the solution
             q_interp = {T(:)', X(:)', Y(:)', THETA(:)', AI(:)', AJ(:)'}';
-
-        end
-
-        % given a trajectory close it in the null-space of the shape-space slice
-        function [gaitTraj, gaitTraj_vel, gaitTraj_acc] = close_trajectory(openTraj, openTraj_vel, openTraj_acc, dc)
-            
-            % unpack your open_trajectory
-            t       = openTraj{1};        t_dot         = openTraj_vel{1};        t_ddot         = openTraj_acc{1};
-            x       = openTraj{2};        x_dot         = openTraj_vel{2};        x_ddot         = openTraj_acc{2};
-            y       = openTraj{3};        y_dot         = openTraj_vel{3};        y_ddot         = openTraj_acc{3};
-            theta   = openTraj{4};        theta_dot     = openTraj_vel{4};        theta_ddot     = openTraj_acc{4};
-            ai      = openTraj{5};        ai_dot        = openTraj_vel{5};        ai_ddot        = openTraj_acc{5};
-            aj      = openTraj{6};        aj_dot        = openTraj_vel{6};        aj_ddot        = openTraj_acc{6};
-
-            % get the length of the computed open trajectory
-            dnum_active = numel(t);
-            
-            % get the number of points needed in the deadband
-            dnum_dead = round(dc*dnum_active);
-
-            % get the deadband configuration trajectories q_d
-            t_d = [t, t(end) + t(end)/(dnum_active - 1)*(1:dnum_dead)]; t_dot_d = ones(1, dnum_dead); t_ddot_d = zeros(1, dnum_dead);
-            x_d = [x, x(end)*ones(1, dnum_dead)]; x_dot_d = [x_dot, zeros(1, dnum_dead)]; x_ddot_d = [x_ddot, zeros(1, dnum_dead)]; 
-            y_d = [y, y(end)*ones(1, dnum_dead)]; y_dot_d = [y_dot, zeros(1, dnum_dead)]; y_ddot_d = [y_ddot, zeros(1, dnum_dead)];
-            theta_d = [theta, theta(end)*ones(1, dnum_dead)]; theta_dot_d = [theta_dot, zeros(1, dnum_dead)]; theta_ddot_d = [theta_ddot, zeros(1, dnum_dead)];
-            ai_d = [ai, fliplr(ai(2:end-1))]; ai_dot_d = [ai_dot, fliplr(ai_dot(2:end-1))]; ai_ddot_d = [ai_ddot, fliplr(ai_ddot(2:end-1))];
-            aj_d = [aj, fliplr(aj(2:end-1))]; aj_dot_d = [aj_dot, fliplr(aj_dot(2:end-1))]; aj_ddot_d = [aj_ddot, fliplr(aj_ddot(2:end-1))];      
-
-            % create the closed configuration trajectories
-            gaitTraj    = {     t_d;       x_d;      y_d;      theta_d;      ai_d;      aj_d};
-            gaitTraj_vel= { t_dot_d;   x_dot_d;  y_dot_d;  theta_dot_d;  ai_dot_d;  aj_dot_d};
-            gaitTraj_acc= {t_ddot_d;  x_ddot_d; y_ddot_d; theta_ddot_d; ai_ddot_d; aj_ddot_d};
-
-        end
-        
-        % This function computes the no-slip shape var 2 trajectory given shape var 1 traj.
-        function [rout, rout_dot] = compute_noslip_trajectory(in)
-            
-            % Unpack
-            rinp = in{1}; % pure sine params
-            t = in{2}; % time vector
-            dpsi = in{3}; % 2x1 vector output
-            rin0 = in{4}; % ic
-            aa = in{5}; ll = in{6}; % robot params
-            
-            % Compute requirements to compute 'rout_dot'
-            rin = genswing_t(t, rinp); rin_dot = genswingrate_t(t, rinp);
-
-            % ODE intergrate to obtain 'rout'
-            [~, rout] = ode45(   @(t,x) (  [0, 1]*dpsi( aa, ll, genswing_t(t, rinp), x )  ) ./...
-                (  [1, 0]*dpsi( aa, ll, genswing_t(t, rinp), x) ) .* genswingrate_t(t, rinp),...
-                t - t(1), rin0   ); % compute
-            rout = rout(:)'; % row vector needed
-
-            % vectorially compute 'rout_dot'
-            rout_dot = (  [0, 1]*dpsi( aa, ll, rin, rout )  ) ./ (  [1, 0]*dpsi( aa, ll, rin, rout) ) .* rin_dot;
-
-        end
-
-        % given a contact and shape trajectory-- say from an experiment, obtain an estimate for the SE(2) body velocity and then integrate it to obtain the body
-        % trajectory
-        % % case 0: shape trajectories estimated from experiments
-        % % case 1: pure sinusoidal swing with contact during backward swing
-        % % case 2: case 1 but with phase offset to reduce slip between 
-        function b_hat = estimate_SE2_trajectory(in, robot_params)
-
-            % Unpack
-            pfaff_i = robot_params{1}; aa = robot_params{2}; ll = robot_params{3};
-            bic = in{1}; t = in{2}; that = t - t(1);
-
-            switch numel(in{3})
-                case 2
-                    if numel(in{3}{1}) ~= numel(in{3}{2})
-                        error('ERROR! The length of r and r_dot must be equal.');
-                    end
-                    verifylength(in{3}{1});
-                    verifylength(in{3}{2});
-                    for idx = 1:numel(in{3}{1})
-                        if numel(in{3}{1}{idx}) ~= numel(t)
-                            error(['ERROR! The length of trajectory element r_'...
-                                num2str(idx) ' and t must be equal.']);
-                        end
-                        if numel(in{3}{2}{idx}) ~= numel(t)
-                            error(['ERROR! The length of trajectory element r_dot_'...
-                                num2str(idx) ' and t must be equal.']);
-                        end
-                    end
-                    r = in{3}{1}; r_dot = in{3}{2};
-                case 1
-                    % if it is not a pure sine fit, then return an error
-                    % fit form: mul*yamp*cos(2*pi*f*(t - tau)) + y_dc
-                    % params order: {mul, yamp, f, tau, y_dc}
-                    for idx = 1:numel(in{3}{1})
-                        if numel(in{3}{1}{idx}) ~= 5
-                            error(['ERROR! This function only accepts time-series arrays {1x2}{8x1}[1xtn] or' ...
-                                ' pure sine fits {1x1}{8x1}[5x1].']);
-                        end
-                    end
-                    [r, r_dot] = genSine_r_rdot(in{3}{1}, t);
-            end
-            if numel(r) == 8
-                r = r(1:2:end); r_dot = r_dot(1:2:end);
-            end
-
-            switch size(in{4}{1}, 1)
-                case 1
-                    c = in{4};
-                case 3
-                    if numel(robot_params) ~= 4
-                        error(['ERROR! For recreating contact trajectory from leg_z trajectory, a threshold' ...
-                            'value is needed as the 4th input in the second argument.'])
-                    end
-                    c = expkin_contact_thresholding(in{4} ,robot_params{4});
-            end
-            r = convert2case1convention(r); r_dot = convert2case1convention(r_dot); % conversion to case 1 format
-
-            % Initial condition for body trajectory
-            x0 = [-bic{2}; bic{1}; bic{3}];
-
-             % Compute the body velocity using ode45
-            warning("off"); % switch off interpolation warnings and switch it back on after integrating the ode
-            [~, b_hat_temp] = ode45(  @(t,x) compute_SE2bodyvelocityfromfullJ( t, aa, ll, x, {c, pfaff_i, r, r_dot, that}), that, x0  ); % pass the time vector for interp1
-            warning("on");
-            b_hat{1} = b_hat_temp(:, 2); b_hat{2} = -b_hat_temp(:, 1); b_hat{3} = b_hat_temp(:, 3); % convert it back to the HAMR Kinematics format
-            b_hat{1} = b_hat{1}(:)'; b_hat{2} = b_hat{2}(:)'; b_hat{3} = b_hat{3}(:)'; b_hat = b_hat(:); % make them row time-series and stack the cell array
-            
         end
         
         
