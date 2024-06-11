@@ -15,14 +15,18 @@ classdef Path2_Mobility < RigidGeomQuad
                              % contact state ordering is as follows: 
                              % {12, 23, 34, 41, 13, 24}
 
-        dz                   % Gait constraint based stratified panel dzij
-                             % -- [A]*\Delta\alpha_{i}
+        F                    % squared interfoot distance between legs m 
+                             % and n during stance i \in 
+                             % {12, 23, 34, 41, 13, 24}
 
         deltaAlpha           % stance phase constraint vector field-- 
                              % \Delta\alpha_{i}
 
         A                    % Local connection vector field-- 
                              % \boldsymbol{A}_{i}
+
+        dz                   % Gait constraint based stratified panel dzij
+                             % -- [A]*\Delta\alpha_{i}
 
         reference_point      % point to analyze mobility from
         
@@ -34,18 +38,19 @@ classdef Path2_Mobility < RigidGeomQuad
     methods
         
         % Constructor
-        function [thisPath2] = Path2_Mobility( ank, a, l, stratified_panel, ...
-                delta_alpha, local_connection, reference_point, color, ...
-                lvl2SubmanifoldIdx)
+        function [thisPath2] = Path2_Mobility( ank, a, l, ...
+                F, delta_alpha, local_connection, stratified_panel, ...
+                reference_point, color, lvl2SubmanifoldIdx)
 
             % Setup the requirements for the arguments
             arguments
                 ank                (1, 1) double {mustBeGreaterThan(ank,0.1)}
                 a                  (1, 1) double {mustBeGreaterThan(a,0.1)}
                 l                  (1, 1) double {mustBeGreaterThan(l,0.1)}
-                stratified_panel   (3, 1) sym    {mustBeA(stratified_panel, 'sym')}
+                F                  (1, 1)
                 delta_alpha        (2, 1) sym    {mustBeA(delta_alpha, 'sym')}
                 local_connection   (3, 2) sym    {mustBeA(local_connection, 'sym')}
+                stratified_panel   (3, 1) sym    {mustBeA(stratified_panel, 'sym')}
                 reference_point    (1, 2) double {mustBeNumeric}
                 color              (1, 3) double {mustBeLessThanOrEqual(color, 1)}
                 lvl2SubmanifoldIdx (1, 1) double {mustBePositive, mustBeLessThanOrEqual(lvl2SubmanifoldIdx, 6)}
