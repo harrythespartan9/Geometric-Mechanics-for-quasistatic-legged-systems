@@ -31,6 +31,7 @@ rot_in_ij = @(theta) [cos(theta), -sin(theta);
 % -------------------------------------------------------------------------
 plot_info.configs = num2cell([nan(3,1),configs]); % modify the config format
 plot_info.fields = fields; % the columns requested
+% laptop: 2000, 1080 % PC: 2250, 1800
 plot_info.m = 2250*(numel(fields)+1)/5; % scaled figure x-resolution
 plot_info.n = 1800; % fixed figure y-resolution
 plot_info.tickFS = 21*fontscale; 
@@ -561,7 +562,7 @@ set(groot,'defaulttextinterpreter','latex');
 set(groot,'defaultLegendInterpreter','latex');
 % -------------------------------------------------------------------------
 figure('units','pixels','position',[100 -200 plot_info.m plot_info.n],...
-    'Color','w');
+    'Color','w'); 
 set(gcf,'Visible','on'); % pop-out the current figure
 
 % Create the parent tiled layout chart ------------------------------------
