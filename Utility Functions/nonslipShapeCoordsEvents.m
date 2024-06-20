@@ -16,9 +16,8 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
     % initialize the return value based on the number of EVENTs requested
     % and each output argument as a cell array of the same size
     eventNum = numel(eventList);
-    value = cell(eventNum, 1);
-    isTerminal = cell(eventNum, 1);
-    direction = cell(eventNum, 1);
+    value = nan(eventNum, 1); isTerminal = nan(eventNum, 1);
+    direction = nan(eventNum, 1);
     
     % EVENTs are requested and thus we iterate over the EVENT list cell 
     % array
@@ -77,9 +76,9 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 
         end
         % Assign the current event details
-        value{i}      = valueNow;
-        isTerminal{i} = isTerminalNow;
-        direction{i}  = directionNow;
+        value(i)      = valueNow;
+        isTerminal(i) = isTerminalNow;
+        direction(i)  = directionNow;
     end
 
 
