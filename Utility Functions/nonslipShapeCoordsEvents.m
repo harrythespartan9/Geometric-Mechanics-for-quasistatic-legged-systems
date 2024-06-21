@@ -13,6 +13,15 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
         value = 1; isTerminal = 0; direction = 0; return
     end
     
+    % unpack the argument structure
+    % ... parameters include arguments to evaluate functions
+    % ... bounds include 1D or 2D closed intervals  to define the allowable
+    % ... range for the ode integration
+    % ... functions we need to evaluate
+    argParameters = argStruct.parameters;
+    argBounds = argStruct.bounds;
+    argFunctions = argStruct.functions;
+
     % initialize the return value based on the number of EVENTs requested
     % and each output argument as a cell array of the same size
     eventNum = numel(eventList);
@@ -35,9 +44,11 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % ... the number of points around a 4-gon is 5 because we
                 % ... double count the first point for interpolation
                 % ... we also
-                numPtsClosedLoop = numel(argStruct.alphaBox.X) + 1;
-                X = [argStruct.alphaBox.X(:)', argStruct.alphaBox.X(1)];
-                Y = [argStruct.alphaBox.Y(:)', argStruct.alphaBox.Y(1)];
+                numPtsClosedLoop = numel(argBounds.alphaBox.X) + 1;
+                X = [argBounds.alphaBox.X(:)',...
+                     argBounds.alphaBox.X(1)];
+                Y = [argBounds.alphaBox.Y(:)',...
+                     argBounds.alphaBox.Y(1)];
                 % check if the query point 'y' is inside, on the boundary,
                 % or outside the polygon
                 % ... based on this value, setup an increasing multiplier
@@ -66,16 +77,95 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                     ceil(numPtsClosedLoop/2),... % start in the middle
                     [], [], [], [],... % no equality or inequality constr.
                     0, numPtsClosedLoop); % upper and lower bounds
-                valueNow = ... % obtain the value for EVENT
+                valueNow = ... % EVENT value
                     mul*computeDistToPolyBounds(X, Y, minDistPolyLoc);
-                if valueNow >= 0, isTerminalNow = 1; end % terminate int.
 
             case 'F_bounds'
+                % initialize increasing direction
+                directionNow = +1;
+                % unpack and init
+                a = argParameters.a;
+                l = argParameters.l;
+                F_bounds = argBounds.F_bounds;
+                F_fxn = argFunctions.F_fxn;
+                % check the current value of F
+                F_now = F_fxn(a, l, y(1), y(2));
+                % obtain the EVENT value
+                % ... this is defined as the minimum distance to the bounds
+                % ... of the scalar field F
+                % ... this distance is further multiplied by +1 if outside
+                % ... the bounds, 0 for on the bounds, and -1 for inside
+                % ... the bounds
+                if F_now > F_bounds(1) && F_now < F_bounds(2)
+                    mul = -1;
+                elseif F_now == F_bounds(1) || F_now == F_bounds(2)
+                    mul = 0;
+                else
+                    mul = +1; % current multiplier
+                end
+                valueNow = mul*min(norm(F_bounds - F_now)); % EVENT value
 
             case 'phase_bounds'
+                % initialize the direction
+                % ... this will be decreasing because the angle bounds are
+                % ... very small, and EVENT value will be defined from
+                % ... within the centroid of the angle bounds
+                directionNow = -1;
+                % unpack and init
+                angleThreshold = argParameters.angleThreshold;
+                yRefPhase = argParameters.yRefPhase;
+                yExtremal = argParameters.yExtremal;
+                % create the phase bounds
+                % ... we first obtain the self-connection points for the
+                % ... current level-set of F
+                % ... obtain the phase bounds about this point 
+                selfConnectingPhase = yRefPhase + pi;
+                phaseBounds = selfConnectingPhase + angleThreshold*[-1, 1];
+                cosBounds = [cos(phaseBounds),... % pts of interest
+                                    cos(selfConnectingPhase)];
+                cosBounds = computeBounds(cosBounds); % bounds of these pts
+                sinBounds = [sin(phaseBounds),... 
+                                    sin(selfConnectingPhase)];
+                sinBounds = computeBounds(sinBounds);
+                % obtain the current phase
+                % ... we first obtain the phase of the current position 'y'
+                % ... from the centroid 'yExtremal' and check if the angle
+                % ... of this phasor is within our bounds for self
+                % ... connected sets of F
+                phasorNow = y(:) - yExtremal(:)/norm(y(:) - yExtremal(:));
+                phaseNow = atan2(phasorNow(2), phasorNow(1));
+                cosPhase = cos(phaseNow); sinPhase = sin(phaseNow);
+                % obtain the EVENT value
+                % ... we first obtain the location of the current phase
+                % ... to in turn obtain the value multiple
+                % ... then we obtain the EVENT value by scaling the
+                % ... difference to the closest boundary
+                if (cosPhase > cosBounds(1) && cosPhase < cosBounds(2))... 
+                && (sinPhase > sinBounds(1) && sinPhase < sinBounds(2))
+                    % out-of-bounds/violation zone
+                    mul = -1;
+                elseif (cosPhase == cosBounds(1) && sinPhase == sinBounds(1))...
+                    || (cosPhase == cosBounds(2) && sinPhase == sinBounds(2))
+                    % on the bounds
+                    mul = 0;
+                else
+                    % inside the bounds
+                    mul = 1;
+                end
+                % distance of current phase to each bound
+                dist2Bounds = min( ...
+                              vecnorm([cosBounds-cosPhase;... x-distance
+                                       sinBounds-sinPhase],... y-distnace
+                                       2, 1)... % 2-norm, row-wise 
+                                 );  % give the minimum distance
+                valueNow = mul*min(dist2Bounds);
 
         end
-        % Assign the current event details
+        
+        % terminate the integration if the EVENT value is zero
+        if valueNow == 0, isTerminalNow = 1; else, isTerminalNow = 0; end
+
+        % Assign the current EVENT details
         value(i)      = valueNow;
         isTerminal(i) = isTerminalNow;
         direction(i)  = directionNow;
@@ -102,4 +192,10 @@ end
 function dist = computeDistToPolyBounds(pt, X, Y, idx)
     polyPt = obtainPolyBoundPt(X, Y, idx);
     dist = computeDistBWtwoPoints(pt, polyPt);
+end
+
+% compute the bounds from points of interest provide as an array by taking
+% the minimum and maximum value
+function boundsArr = computeBounds(inArr)
+    boundsArr = [min(inArr, [], "all"), max(inArr, [], "all")];
 end
