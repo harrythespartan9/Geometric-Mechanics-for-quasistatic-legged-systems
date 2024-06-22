@@ -6,6 +6,12 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 %   This function checks if ode terminating EVENTs are true based on the
 %   provided 'eventList'. If a new EVENT is needed, it should be first
 %   defined within the switch case statement below.
+
+    % static decimal precision below for checking if a point is on the
+    % boundary
+    % ... static because higher values don't work from trials and lower
+    % ... values are too imprecise
+    decimalPrecision = 5;
     
     % By default, just return nonterminal conditions if not EVENT is
     % requested
@@ -41,44 +47,34 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % ... boundary, and positive outside.
                 directionNow = +1;
                 % unpack and init
-                % ... the number of points around a 4-gon is 5 because we
-                % ... double count the first point for interpolation
-                % ... we also
-                numPtsClosedLoop = numel(argBounds.alphaBox.X) + 1;
-                X = [argBounds.alphaBox.X(:)',...
-                     argBounds.alphaBox.X(1)];
-                Y = [argBounds.alphaBox.Y(:)',...
-                     argBounds.alphaBox.Y(1)];
-                % check if the query point 'y' is inside, on the boundary,
-                % or outside the polygon
-                % ... based on this value, setup an increasing multiplier
-                % ... scale the 'minDist'
-                [inFlag, onFlag] = inpolygon(y(1), y(2), X, Y);
-                switch inFlag % if inside or on the boundary
-                    case 1
-                        if onFlag % if on the boundary
-                            mul = 0;
-                        else % if completely inside
-                            mul = -1;
-                        end
-                    case 0
-                        mul = 1;
+                % ... get the shape space limits and check if each
+                % ... component is within the bounds in the corresponding
+                % ... direction
+                alphaLimits = argBounds.alphaLimits;
+                % check if the query point 'y' is inside the accessible
+                % shape space
+                % ... we do this by simply comparing each component of 'y'
+                % ... with componentwise bounds
+                alphaInsideCheck = (y(1) > alphaLimits(1, 1) ...
+                                            && y(1) < alphaLimits(1, 2))...
+                                && (y(2) > alphaLimits(2, 1) ...
+                                            && y(2) < alphaLimits(2, 2));
+                alphaBoundaryCheck = isOnBoundsWithPrecision(y,...
+                                                        alphaLimits,...
+                                                        decimalPrecision);
+                if alphaInsideCheck
+                    mul = -1;
+                elseif alphaBoundaryCheck
+                    mul = 0;
+                else
+                    mul = +1;
                 end
                 % find the minimum distance between y and the boundary of 
-                % the polygon
-                % ... we set this up as a constrained minimization problem
-                % ... and solve it using 'fmincon' function
-                % ... the 'computeDistFromYtoPolyBounds' will evalute the
-                % ... distance to 'y' for a chosen point
-                % ... finally, we scale the point using the bounds
-                % ... multiplier ('mul') we computed earlier
-                minDistPolyLoc = ...
-                    fmincon(@(idx) computeDistToPolyBounds(y, X, Y, idx), ...
-                    ceil(numPtsClosedLoop/2),... % start in the middle
-                    [], [], [], [],... % no equality or inequality constr.
-                    0, numPtsClosedLoop); % upper and lower bounds
-                valueNow = ... % EVENT value
-                    mul*computeDistToPolyBounds(X, Y, minDistPolyLoc);
+                % the polygon-- EVENT value
+                % ... this is akin to finding the minimum distance to
+                % ... componentwise bounds
+                valueNow = mul*min( abs(alphaLimits - repmat(y(:), 1, 2)),...
+                                    [], "all" );
 
             case 'F_bounds'
                 % initialize increasing direction
@@ -98,12 +94,13 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % ... the bounds
                 if F_now > F_bounds(1) && F_now < F_bounds(2)
                     mul = -1;
-                elseif F_now == F_bounds(1) || F_now == F_bounds(2)
+                elseif isOnBoundsWithPrecision(F_now, F_bounds,...
+                                                        decimalPrecision)
                     mul = 0;
                 else
                     mul = +1; % current multiplier
                 end
-                valueNow = mul*min(norm(F_bounds - F_now)); % EVENT value
+                valueNow = mul*min(abs(F_bounds - F_now), [], "all");
 
             case 'phase_bounds'
                 % initialize the direction
@@ -112,7 +109,7 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % ... within the centroid of the angle bounds
                 directionNow = -1;
                 % unpack and init
-                angleThreshold = argParameters.angleThreshold;
+                angleThreshold = argBounds.angleThreshold;
                 yRefPhase = argParameters.yRefPhase;
                 yExtremal = argParameters.yExtremal;
                 % create the phase bounds
@@ -140,12 +137,18 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % ... to in turn obtain the value multiple
                 % ... then we obtain the EVENT value by scaling the
                 % ... difference to the closest boundary
-                if (cosPhase > cosBounds(1) && cosPhase < cosBounds(2))... 
-                && (sinPhase > sinBounds(1) && sinPhase < sinBounds(2))
+                insideBoundsCheck = (cosPhase > cosBounds(1) ...
+                                            && cosPhase < cosBounds(2))...
+                                 && (sinPhase > sinBounds(1) ...
+                                            && sinPhase < sinBounds(2));
+                onBoundsCheck = (cosPhase == cosBounds(1) ...
+                                            && sinPhase == sinBounds(1))...
+                    || (cosPhase == cosBounds(2) ...
+                                            && sinPhase == sinBounds(2));
+                if insideBoundsCheck
                     % out-of-bounds/violation zone
                     mul = -1;
-                elseif (cosPhase == cosBounds(1) && sinPhase == sinBounds(1))...
-                    || (cosPhase == cosBounds(2) && sinPhase == sinBounds(2))
+                elseif onBoundsCheck
                     % on the bounds
                     mul = 0;
                 else
@@ -162,8 +165,16 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 
         end
         
-        % terminate the integration if the EVENT value is zero
-        if valueNow == 0, isTerminalNow = 1; else, isTerminalNow = 0; end
+        % terminate the integration if the EVENT value is zero and positive
+        % or negative based on the direction
+        switch directionNow
+            case +1
+                if valueNow>=0, isTerminalNow=1; else, isTerminalNow=0; end
+            case 0
+                if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
+            case -1
+                if valueNow<=0, isTerminalNow=1; else, isTerminalNow=0; end
+        end
 
         % Assign the current EVENT details
         value(i)      = valueNow;
@@ -176,22 +187,31 @@ end
 
 %% AUXILIARY FUNCTIONS
 
-% interpolate along the corners of a polygon represented as a closed-loop
-% set of coordinates in 'X' and 'Y'
-function polyPt = obtainPolyBoundPt(X, Y, idx)
-    polyPt = interp1(0:numel(X), [X; Y], idx, "linear"); % specified pt
-end
-
-% compute the distance from 'pt1' to another pt 'pt2'
-function dist = computeDistBWtwoPoints(pt1, pt2)
-    dist = norm(pt1(:) - pt2(:)); % 2-norm distance
-end
-
-% Compute the distance from 'pt' to a  point on the boundary of the polygon 
-% specified by a set closed loop of corners in their cartesian coordinates.
-function dist = computeDistToPolyBounds(pt, X, Y, idx)
-    polyPt = obtainPolyBoundPt(X, Y, idx);
-    dist = computeDistBWtwoPoints(pt, polyPt);
+% compute if the position 'y' is close enough to the boudary
+% ... specifically useful when we can't achieve perfect equality with the
+% ... bounds especially working with floating-point precision,
+% ... trigonometric functions, and other special constants
+function flag = isOnBoundsWithPrecision(y, yBounds, decimalPrecision)
+    % unset the flag by default
+    flag = false;
+    % iterate over each component and compute if they are within the
+    % reasonable bounds
+    for i = 1:numel(y)
+        yComponentNow = y(i);
+        for j = 1:size(yBounds)
+            yBoundNow = yBounds(i, j);
+            yBoundThesholdNow = sort( yBoundNow*(ones(1, 2) + ...
+                                    (10*[-1 +1]).^-decimalPrecision) );
+            % check if the component is within a precision ball of the 
+            % current boundary
+            yBoundaryCheck = ...
+                yComponentNow >= yBoundThesholdNow(1) &&...
+                yComponentNow <= yBoundThesholdNow(2);
+            if yBoundaryCheck
+                flag = true; return
+            end
+        end
+    end
 end
 
 % compute the bounds from points of interest provide as an array by taking
