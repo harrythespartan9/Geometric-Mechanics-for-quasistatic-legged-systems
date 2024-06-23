@@ -41,11 +41,10 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 
             case 'shape_bounds'
                 % initialize the direction
-                % ... the direction for this EVENT is increasing because
-                % ... when the point is inside the shape-bounds, the
-                % ... minimum distance takes a negative value, zero on the
-                % ... boundary, and positive outside.
-                directionNow = +1;
+                % ... the direction for this EVENT is zero because you can
+                % ... start arbitrarily close, but outside the shape bounds
+                % ... in some cases
+                directionNow = 0;
                 % unpack and init
                 % ... get the shape space limits and check if each
                 % ... component is within the bounds in the corresponding
@@ -55,13 +54,18 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % shape space
                 % ... we do this by simply comparing each component of 'y'
                 % ... with componentwise bounds
+                % ... do approximate 'onBounds' check only if the inside
+                % ... check returns false
                 alphaInsideCheck = (y(1) > alphaLimits(1, 1) ...
                                             && y(1) < alphaLimits(1, 2))...
                                 && (y(2) > alphaLimits(2, 1) ...
                                             && y(2) < alphaLimits(2, 2));
-                alphaBoundaryCheck = isOnBoundsWithPrecision(y,...
+                if ~alphaInsideCheck
+                    alphaBoundaryCheck = isOnBoundsWithPrecision(y,...
                                                         alphaLimits,...
                                                         decimalPrecision);
+                end
+                % get the multipler for EVENT value
                 if alphaInsideCheck
                     mul = -1;
                 elseif alphaBoundaryCheck
@@ -73,8 +77,8 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % the polygon-- EVENT value
                 % ... this is akin to finding the minimum distance to
                 % ... componentwise bounds
-                valueNow = mul*min( abs(alphaLimits - repmat(y(:), 1, 2)),...
-                                    [], "all" );
+                valueNow = mul*min(abs(alphaLimits-repmat(y(:),1,2)),...
+                                    [], "all");
 
             case 'F_bounds'
                 % initialize increasing direction
@@ -165,16 +169,16 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 
         end
         
-        % terminate the integration if the EVENT value is zero and positive
-        % or negative based on the direction
-        switch directionNow
-            case +1
-                if valueNow>=0, isTerminalNow=1; else, isTerminalNow=0; end
-            case 0
-                if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
-            case -1
-                if valueNow<=0, isTerminalNow=1; else, isTerminalNow=0; end
-        end
+        % terminate the integration if the EVENT value is zero
+        % switch directionNow
+        %     case +1
+        %         if valueNow>=0, isTerminalNow=1; else, isTerminalNow=0; end
+        %     case 0
+        %         if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
+        %     case -1
+        %         if valueNow<=0, isTerminalNow=1; else, isTerminalNow=0; end
+        % end
+        if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
 
         % Assign the current EVENT details
         value(i)      = valueNow;
@@ -198,7 +202,7 @@ function flag = isOnBoundsWithPrecision(y, yBounds, decimalPrecision)
     % reasonable bounds
     for i = 1:numel(y)
         yComponentNow = y(i);
-        for j = 1:size(yBounds)
+        for j = 1:size(yBounds, 1)
             yBoundNow = yBounds(i, j);
             yBoundThesholdNow = sort( yBoundNow*(ones(1, 2) + ...
                                     (10*[-1 +1]).^-decimalPrecision) );
