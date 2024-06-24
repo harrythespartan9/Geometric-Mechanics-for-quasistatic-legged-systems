@@ -16,7 +16,7 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
     % By default, just return nonterminal conditions if not EVENT is
     % requested
     if nargin < 4
-        value = 1; isTerminal = 0; direction = 0; return
+        value = 1; isTerminal = 1; direction = 0; return
     end
     
     % unpack the argument structure
@@ -31,7 +31,8 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
     % initialize the return value based on the number of EVENTs requested
     % and each output argument as a cell array of the same size
     eventNum = numel(eventList);
-    value = nan(eventNum, 1); isTerminal = nan(eventNum, 1);
+    value = nan(eventNum, 1); 
+    isTerminal = ones(eventNum, 1); % terminate when EVENT by default
     direction = nan(eventNum, 1);
     
     % EVENTs are requested and thus we iterate over the EVENT list cell 
@@ -41,10 +42,9 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 
             case 'shape_bounds'
                 % initialize the direction
-                % ... the direction for this EVENT is zero because you can
-                % ... start arbitrarily close, but outside the shape bounds
-                % ... in some cases
-                directionNow = 0;
+                % ... the direction for this EVENT is increasing as you
+                % ... leave the accessible shape space bounds
+                directionNow = +1;
                 % unpack and init
                 % ... get the shape space limits and check if each
                 % ... component is within the bounds in the corresponding
@@ -115,74 +115,35 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
                 % unpack and init
                 angleThreshold = argBounds.angleThreshold;
                 yRefPhase = argParameters.yRefPhase;
-                yExtremal = argParameters.yExtremal;
-                % create the phase bounds
-                % ... we first obtain the self-connection points for the
-                % ... current level-set of F
-                % ... obtain the phase bounds about this point 
-                selfConnectingPhase = yRefPhase + pi;
-                phaseBounds = selfConnectingPhase + angleThreshold*[-1, 1];
-                cosBounds = [cos(phaseBounds),... % pts of interest
-                                    cos(selfConnectingPhase)];
-                cosBounds = computeBounds(cosBounds); % bounds of these pts
-                sinBounds = [sin(phaseBounds),... 
-                                    sin(selfConnectingPhase)];
-                sinBounds = computeBounds(sinBounds);
-                % obtain the current phase
-                % ... we first obtain the phase of the current position 'y'
-                % ... from the centroid 'yExtremal' and check if the angle
-                % ... of this phasor is within our bounds for self
-                % ... connected sets of F
-                phasorNow = y(:) - yExtremal(:)/norm(y(:) - yExtremal(:));
-                phaseNow = atan2(phasorNow(2), phasorNow(1));
-                cosPhase = cos(phaseNow); sinPhase = sin(phaseNow);
-                % obtain the EVENT value
-                % ... we first obtain the location of the current phase
-                % ... to in turn obtain the value multiple
-                % ... then we obtain the EVENT value by scaling the
-                % ... difference to the closest boundary
-                outsideBoundsCheck = (cosPhase > cosBounds(1) ...
-                                            && cosPhase < cosBounds(2))...
-                                 && (sinPhase > sinBounds(1) ...
-                                            && sinPhase < sinBounds(2));
-                onBoundsCheck = (cosPhase == cosBounds(1) && ...
-                                            sinPhase == sinBounds(1)) ...
-                             || (cosPhase == cosBounds(2) && ...
-                                            sinPhase == sinBounds(2));
-                if outsideBoundsCheck
-                    % out-of-bounds/violation zone
+                yExtremal = argParameters.yExtremal';
+                % compute the EVENT value
+                % ... create SO(2) matrix for the self-connecting level-set
+                % ... phase by adding pi to 'yRefPhase'
+                % ... compute the SO(2) matrix to go from the previous
+                % ... matrix to the current 'y' phase
+                % ... computed as: ySO2*ySelfConnectedSO2'
+                ySelfConnectedSO2 = rot_SE2(pi)*rot_SE2(yRefPhase);
+                yNow = (y - yExtremal)/norm(y - yExtremal); 
+                yPhaseNow = atan2(yNow(2), yNow(1));
+                ySO2 = rot_SE2(yPhaseNow);
+                yDiffSO2 = ySO2*ySelfConnectedSO2';
+                diffNow = atan2(  (-yDiffSO2(1, 2)+yDiffSO2(2, 1))*0.5, ...
+                                  ( yDiffSO2(1, 1)+yDiffSO2(2, 2))*0.5   );
+                if abs(diffNow) < angleThreshold % inside self-connection 
+                                                 % threshold
                     mul = -1;
-                elseif onBoundsCheck
-                    % on the bounds
+                elseif isOnBoundsWithPrecision...% is on the threshold
+                        (diffNow, angleThreshold*[-1, 1], decimalPrecision)
                     mul = 0;
-                else
-                    % inside the bounds
-                    mul = 1;
+                else                             % allowable space
+                    mul = +1;
                 end
-                % distance of current phase to each bound
-                dist2Bounds = min( ...
-                              vecnorm([cosBounds-cosPhase;... x-distance
-                                       sinBounds-sinPhase],... y-distnace
-                                       2, 1)... % 2-norm, row-wise 
-                                 );  % give the minimum distance
-                valueNow = mul*min(dist2Bounds);
+                valueNow = mul*min(abs(angleThreshold*[-1, 1] - diffNow));
 
         end
-        
-        % terminate the integration if the EVENT value is zero
-        % switch directionNow
-        %     case +1
-        %         if valueNow>=0, isTerminalNow=1; else, isTerminalNow=0; end
-        %     case 0
-        %         if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
-        %     case -1
-        %         if valueNow<=0, isTerminalNow=1; else, isTerminalNow=0; end
-        % end
-        if valueNow==0, isTerminalNow=1; else, isTerminalNow=0; end
 
         % Assign the current EVENT details
         value(i)      = valueNow;
-        isTerminal(i) = isTerminalNow;
         direction(i)  = directionNow;
     end
 
@@ -202,7 +163,7 @@ function flag = isOnBoundsWithPrecision(y, yBounds, decimalPrecision)
     % reasonable bounds
     for i = 1:numel(y)
         yComponentNow = y(i);
-        for j = 1:size(yBounds, 1)
+        for j = 1:size(yBounds, 2)
             yBoundNow = yBounds(i, j);
             yBoundThesholdNow = sort( yBoundNow*(ones(1, 2) + ...
                                     (10*[-1 +1]).^-decimalPrecision) );
