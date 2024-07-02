@@ -1,6 +1,7 @@
 % This script computes the kinematics of the level-2 contact states of a
 % quadrupedal robot undergoing no-slip condition
-function [plot_info, plot_kin, kin_info] = qlevel2noslip(kin_info, plot_info)
+function [plot_info, plot_kin, kin_info] = qlevel2noslip(kin_info, ...
+                                                                plot_info)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Computed Plot Information %%%%%%%%%%%%%%%%%%
