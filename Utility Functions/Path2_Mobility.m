@@ -536,12 +536,21 @@ classdef Path2_Mobility
                 end
             end
             thisPath2.aParaRef.y = yNow(tNow <= tFull, :);
-            thisPath2.aParaRef.t = tNow(tNow <= tFull); % final solution
-            % ... compute the stratified panel along this solution
+            thisPath2.aParaRef.t = tNow(tNow <= tFull);
             thisPath2.aParaRef.dz = thisPath2.dz(...
                                     thisPath2.a, thisPath2.l,...
                                     thisPath2.aParaRef.y(:, 1), ...
                                     thisPath2.aParaRef.y(:, 2));
+            % ... store the color of the current level-set
+            F_ref = thisPath2.F_fxn...
+                        (thisPath2.a, thisPath2.l, refPt(1), refPt(2));
+            thisPath2.aParaRef.color = ...
+                interpColorAndCondition...
+                (...
+                linspace(thisPath2.F_inf, thisPath2.F_sup,...
+                                    size(thisPath2.p_info.jetDark, 1)), ...
+                thisPath2.p_info.jetDark, F_ref...
+                );
         end
 
         % check if a given point is inside the accessible shape space
@@ -566,17 +575,193 @@ classdef Path2_Mobility
                     flag = true;
             end
         end
-
-        function visualizeAccessibleShapeSpace(thisPath2)
+        
+        % this function plpots the computed nonslip level sets from the
+        % slip-nonslip coordinates
+        function visualizeNonslipLevelSets(thisPath2)
+            % unpack information for plotting
+            % ... basic plot info and instance props
+            pInfo = thisPath2.p_info; 
+            lW = pInfo.lW; 
+            colLimits = [thisPath2.F_inf, thisPath2.F_sup];
+            stanceColor = pInfo.gc_col;
+            scatSingSize = pInfo.circS;
+            % ... find starting and ending points along the slip axis for valid
+            % ... level-sets of F
+            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            % plot the figure .............................................
+            figure('Visible', 'on', 'Units', 'pixels',...
+                'Position', [0 0 600 600]); ax = gca; box(ax, "on");
+            ax.XColor = stanceColor; ax.YColor = stanceColor;
+            axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
+            set(ax, 'Color',pInfo.col_backg);
+            % ... plot the singularity if within accessible shape space
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aSup)
+                scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(end, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aInf)
+                scatter(ax, thisPath2.aInf(1), thisPath2.aInf(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            % ... contourf plot the level-sets of F
+            % ... ... basic, level-set based plot method
+            % ... ... providing the alpha value at the end helps with this
+            for i = startIdx:endIdx
+                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                    'Color', thisPath2.aPerpF.color(i, :));
+            end
+            % ... setup rest of the figure
+            colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
+            colorbar(ax, 'TickLabelInterpreter', 'latex',...
+                'FontSize', pInfo.cbarFS);
+            set(get(ax, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
+            xticks(ax, pInfo.xtickval); yticks(ax, pInfo.ytickval);
+            xticklabels(ax, pInfo.xticklab); yticklabels(ax, pInfo.yticklab);
+            xlabel(ax, pInfo.x_label_txt,FontSize=pInfo.labelFS); 
+                        ylabel(ax, pInfo.y_label_txt,FontSize=pInfo.labelFS);
+            ax.XAxis.FontSize = pInfo.tickFS; 
+                        ax.YAxis.FontSize = pInfo.tickFS;
+            xlim(pInfo.xlimits); ylim(pInfo.ylimits);
         end
-
-        function visualizePerpendicularDirections(thisPath2)
-        end
-
-        function visualizeNonslipDirections(thisPath2)
-        end
-
+        
+        % this function plpots the computed nonslip level sets from the
+        % slip-nonslip coordinates and highlights the axes of the two
+        % coordinates
         function visualizeSlipNonslipShapeCoordinates(thisPath2)
+            % unpack information for plotting
+            % ... basic plot info and instance props
+            pInfo = thisPath2.p_info; 
+            lW = pInfo.lW; 
+            colLimits = [thisPath2.F_inf, thisPath2.F_sup];
+            stanceColor = pInfo.gc_col;
+            scatSingSize = pInfo.circS;
+            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            domainPercentage = 5; arrAngle = deg2rad(18);
+            arrSize = domainPercentage/100*mean(diff(thisPath2.aLimits, 1, 2), 1);
+            % ... setup a linealpha value to make the slip and nonslip axes
+            % ... more visible
+            fAc = 0.5; % init
+            if ~isfield(thisPath2.p_info, 'fAc')
+                thisPath2.p_info.fAc = fAc; % store if not present
+            end
+            % .............................................................
+            figure('Visible', 'on', 'Units', 'pixels',...
+                'Position', [0 0 600 600]); ax = gca; box(ax, "on");
+            ax.XColor = stanceColor; ax.YColor = stanceColor;
+            axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
+            set(ax, 'Color',pInfo.col_backg);
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aSup)
+                scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(end, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aInf)
+                scatter(ax, thisPath2.aInf(1), thisPath2.aInf(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            for i = startIdx:endIdx
+                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                    'Color', [thisPath2.aPerpF.color(i, :), fAc]);
+            end
+            % ... plot the slip axis
+            % ... ... first plot the axis and then add an arrow
+            plot(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2), 'LineWidth', lW,...
+                'Color', stanceColor);
+            plotPathArrowV2(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2),...
+                arrSize*sum(thisPath2.intTime)/2, arrAngle,...
+                lW, stanceColor, 'front_end');
+            % ... plot the nonslip axis
+            plot(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
+                'Color', stanceColor);
+            plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2),...
+                arrSize*sum(thisPath2.intTime)/2, arrAngle,...
+                lW, stanceColor, 'front_end');
+            colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
+            colorbar(ax, 'TickLabelInterpreter', 'latex',...
+                'FontSize', pInfo.cbarFS);
+            set(get(ax, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
+            xticks(ax, pInfo.xtickval); yticks(ax, pInfo.ytickval);
+            xticklabels(ax, pInfo.xticklab); yticklabels(ax, pInfo.yticklab);
+            xlabel(ax, pInfo.x_label_txt,FontSize=pInfo.labelFS); 
+                        ylabel(ax, pInfo.y_label_txt,FontSize=pInfo.labelFS);
+            ax.XAxis.FontSize = pInfo.tickFS; 
+                        ax.YAxis.FontSize = pInfo.tickFS;
+            xlim(pInfo.xlimits); ylim(pInfo.ylimits);
+            % .............................................................
+        end
+        
+        % this function plots highlights F level-set solution at the chosen 
+        % point
+        function highlightNonslipLevelSet(thisPath2, refPtNow)
+            % obtain the level-set at the requested point
+            % ... we are creating a temporary instance because we don't
+            % ... want to overwrite existing properties
+            thisPath2Now = ...
+                Path2_Mobility.computeSpecificParallelCoordinates...
+                                            ( thisPath2, refPtNow );
+            aParaRefNow = thisPath2Now.aParaRef;
+            % unpack information for plotting
+            % ... basic plot info and instance props
+            pInfo = thisPath2.p_info; 
+            lW = pInfo.lW; 
+            colLimits = [thisPath2.F_inf, thisPath2.F_sup];
+            stanceColor = pInfo.gc_col;
+            scatSingSize = pInfo.circS;
+            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            % ... setup a linealpha value to make the highlighted level-set
+            % ... more visible
+            fAc = 0.6; % init
+            if ~isfield(thisPath2.p_info, 'fAc')
+                thisPath2.p_info.fAc = fAc; % store if not present
+            end
+            % .............................................................
+            figure('Visible', 'on', 'Units', 'pixels',...
+                'Position', [0 0 600 600]); ax = gca; box(ax, "on");
+            ax.XColor = stanceColor; ax.YColor = stanceColor;
+            axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
+            set(ax, 'Color',pInfo.col_backg);
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aSup)
+                scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(end, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aInf)
+                scatter(ax, thisPath2.aInf(1), thisPath2.aInf(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            for i = startIdx:endIdx
+                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                    'Color', [thisPath2.aPerpF.color(i, :), fAc]);
+            end
+            % ... highlight the requested level-set
+            plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,...
+                'Color', stanceColor);
+            colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
+            colorbar(ax, 'TickLabelInterpreter', 'latex',...
+                'FontSize', pInfo.cbarFS);
+            set(get(ax, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
+            xticks(ax, pInfo.xtickval); yticks(ax, pInfo.ytickval);
+            xticklabels(ax, pInfo.xticklab); yticklabels(ax, pInfo.yticklab);
+            xlabel(ax, pInfo.x_label_txt,FontSize=pInfo.labelFS); 
+                        ylabel(ax, pInfo.y_label_txt,FontSize=pInfo.labelFS);
+            ax.XAxis.FontSize = pInfo.tickFS; 
+                        ax.YAxis.FontSize = pInfo.tickFS;
+            xlim(pInfo.xlimits); ylim(pInfo.ylimits);
+            % .............................................................
         end
 
         
