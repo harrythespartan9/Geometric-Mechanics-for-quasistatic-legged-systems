@@ -544,16 +544,39 @@ classdef Path2_Mobility
                                     thisPath2.aParaRef.y(:, 2));
         end
 
-        function visualizeAccessibleShapeSpace(thePath2)
+        % check if a given point is inside the accessible shape space
+        % ... for this, we use the "nonslipShapeCoordsEvents.m" EVENT
+        % ... function in the shape bounds mode to check if the queried
+        % ... point is inside or outside the shape space bounds
+        % ... for more information, refer to 
+        % ... "computePerpendicularCoordinates" or 
+        % ... "computeParallelCoordinates" methods defined above
+        function flag = checkInsideAccessibleShapeSpace(thisPath2, queryPt)
+            argStruct = []; 
+            argStruct.parameters = []; 
+                argStruct.bounds = []; argStruct.functions = [];
+            argStruct.bounds.alphaLimits = thisPath2.aLimits;
+            switch ( ...
+                    nonslipShapeCoordsEvents...
+                    (0, queryPt, argStruct, {'shape_bounds'}) > 0 ...
+                   )
+                case 1
+                    flag = false;
+                case 0
+                    flag = true;
+            end
         end
 
-        function visualizePerpendicularDirections(thePath2)
+        function visualizeAccessibleShapeSpace(thisPath2)
         end
 
-        function visualizeNonslipDirections(thePath2)
+        function visualizePerpendicularDirections(thisPath2)
         end
 
-        function visualizeSlipNonslipShapeCoordinates(thePath2)
+        function visualizeNonslipDirections(thisPath2)
+        end
+
+        function visualizeSlipNonslipShapeCoordinates(thisPath2)
         end
 
         
