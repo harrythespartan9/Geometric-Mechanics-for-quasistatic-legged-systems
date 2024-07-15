@@ -17,9 +17,9 @@ function out = SE2_mat2vec(in)
             % iterate and compute
             out = cell(size(in));
             for i = 1:numel(in)
-                if sum(size(in{i}) == [3,3]) ~= 2
+                if ~all(size(in{i}) == [3,3])
                     error(['ERROR!', ' In the cell ', num2str(i),...
-                        ' of the input, there should be atleast one dimension with size 3.']);
+                        ' of the input, both dimensions need to be size 3.']);
                 end
                 out{i} = M2v_SE2(in{i});
                 if ~symFlag

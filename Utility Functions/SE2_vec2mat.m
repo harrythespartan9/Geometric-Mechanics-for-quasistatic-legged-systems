@@ -5,7 +5,7 @@ function out = SE2_vec2mat(in)
     
     switch iscell(in)
         case 0
-            if sum(size(in) == 3) == 0
+            if ~any(size(in) == 3) || all(size(in) == 3)
                 error('ERROR! There should be atleast one dimension with size 3.');
             end
             if numel(in) > 3
@@ -21,7 +21,7 @@ function out = SE2_vec2mat(in)
 
             out = cell(size(in));
             for i = 1:numel(in)
-                if sum(size(in{i}) == 3) == 0
+                if ~any(size(in{i}) == 3)
                     error(['ERROR!', ' In the cell ', num2str(i),...
                         ' of the input, there should be atleast one dimension with size 3.']);
                 end

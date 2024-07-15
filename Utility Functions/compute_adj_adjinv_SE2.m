@@ -2,6 +2,13 @@
 % transformation matrix. Input container 'f' specifies if the adjoint or adjoint-inverse is needed.
 function out = compute_adj_adjinv_SE2(in, f)
 
+    % check if the 'in' is not in group-operation/matrix form, convert it
+    if ~all(size(in) == [3, 3]) % if not a 3x3 SE(2) group matrix
+        if numel(in) == 3 % if in 3x1 vector form, convert to matrix form
+            in = SE2_vec2mat(in);
+        end
+    end
+
     % Perform all checks and return the rotational and translational components of the SE(3) transformation
     R = in(1:2, 1:2); p = in(1:2, 3);
 
