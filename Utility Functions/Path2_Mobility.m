@@ -50,6 +50,8 @@ classdef Path2_Mobility
 
         dz        % stratified panel function
 
+        dQ        % configuration velocity along the nonslip paths
+
         aInf      % limb coordinates at the infimum of F
 
         aSup      % limb coordinates at the supremum of F
@@ -160,6 +162,17 @@ classdef Path2_Mobility
                 "Vars", [ sym("a"), sym("l"),...
                 sym(['alpha_' num2str(thisPath2.cs(1))]),...
                 sym(['alpha_' num2str(thisPath2.cs(2))]) ]);
+            % configuration velocity
+            % ... we construct this velocity using symbolic variables and
+            % ... then use that to create a function for later use
+            dQ_now = matlabFunction( [rot_SE2(sym("theta")), zeros(3, 2); 
+                                            zeros(2, 3), eye(2, 2)]*...
+                      [thisPath2.kin.dz_psi{sIdx}; thisPath2.kinfunc.dpsi], ...
+                      "Vars", [ sym("a"), sym("l"),... % body params
+                                sym("x"), sym("y"), sym("theta"),... % position
+                                sym(['alpha_' num2str(thisPath2.cs(1))]),... % shape vars
+                                sym(['alpha_' num2str(thisPath2.cs(2))]) ]);
+            thisPath2.dQ = dQ_now;
             % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
             % compute the nonslip-slip shape coordinates
             % ... we first compute the slip coordinates from the specified
