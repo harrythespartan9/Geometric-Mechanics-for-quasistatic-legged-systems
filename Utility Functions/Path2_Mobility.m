@@ -165,6 +165,8 @@ classdef Path2_Mobility
             % configuration velocity
             % ... we construct this velocity using symbolic variables and
             % ... then use that to create a function for later use
+            % ... ENSURE to negate the stratified panels because they are
+            % ... defined '-'ly because of tradition
             dQ_now = matlabFunction( [rot_SE2(sym("theta")), zeros(3, 2); 
                                             zeros(2, 3), eye(2, 2)]*...
                       [thisPath2.kin.dz_psi{sIdx}; thisPath2.kinfunc.dpsi], ...
@@ -775,6 +777,43 @@ classdef Path2_Mobility
                         ax.YAxis.FontSize = pInfo.tickFS;
             xlim(pInfo.xlimits); ylim(pInfo.ylimits);
             % .............................................................
+        end
+        
+        % this function computes the body trajectory when provided with a
+        % reference point, forward and backward integration times, and the
+        % scaling and sliding inputs.
+        function bodyTraj = simulateInputResponse(ref, inputs,...
+                                                                thisPath2)
+            % unpack reference
+            % ... 1. a reference point
+            % ... 2. integration times (taken togther with 1. provide the
+            % ... starting and ending points for the stance path)
+            % ... 3./4. the initial condition for the body trajectory; this 
+            % ... is specifically useful when stiching this trajectory to a
+            % ... previously obtained trajectory
+            refPt = ref.P; refT = ref.T; 
+            ref_tEnd = ref.tEnd; ref_bEnd = ref.bEnd;
+            % unpack instance parameters
+            aa = thisPath2.a;
+            ll = thisPath2.l; dnum = size(thisPath2.ai, 1);
+            % unpack instance functions
+            dalpha = thisPath2.paraFdirn;
+            dQ = thisPath2.dQ;
+            % integration times to get to the initial and final conditions
+            % of the path
+            tIC = -inputs(1)*refT(1) + inputs(2);
+            tFC = +inputs(1)*refT(2) + inputs(2);
+            % time array for the compute solution
+            solnT = linspace(ref_tEnd, ref_tEnd + (tFC - tIC), dnum);
+            % integrate to obtain the solution
+            [~, a0] = ode89( @(t, y) dalpha(aa, ll, y(1), y(2)), ...
+                [0, tIC], refPt );
+            [solnT, solnY] = ode89( @(t, y) dQ(aa, ll,...
+                                                y(1), y(2), y(3),...
+                                                y(4), y(5)),...
+                                    solnT, [ref_bEnd, a0(end, :)] );
+            % package and return this solution
+            bodyTraj.T = solnT; bodyTraj.Y = solnY(:, 1:3);
         end
 
         
