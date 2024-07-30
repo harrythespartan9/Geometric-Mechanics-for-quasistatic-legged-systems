@@ -814,32 +814,32 @@ classdef Path2_Mobility
                                     solnT, [zeros(1, 3), a0(end, :)] );
             % package and return this solution
             % ... store and compute the full solution here
-            configTraj.full.t = solnT;
-            configTraj.full.g = solnY(:, 1:3); 
-            configTraj.full.r = solnY(:, 4:end);
-            configTraj.full.dz = ...
+            configTraj.complete.t = solnT;
+            configTraj.complete.g = solnY(:, 1:3); 
+            configTraj.complete.r = solnY(:, 4:end);
+            configTraj.complete.dz = ...
                 dz(aa, ll, solnY(:, 4), solnY(:, 5));
-            configTraj.full.gHat = cumtrapz(solnT, configTraj.full.dz);
+            configTraj.complete.gHat = cumtrapz(solnT, configTraj.complete.dz);
             % ... compute the length of the shape path and the number of 
             % ... discretizations required to define the shape trajectory
             % ... based on the overall discretization of the continuous
             % ... shape subspace
-            configTraj.param.Length = ...
+            configTraj.parameters.Length = ...
                 abs(solnT(end) - solnT(1)); % length of trajectory
-            configTraj.param.disc = ... % discretization
-                ceil(configTraj.param.Length...
+            configTraj.parameters.disc = ... % discretization
+                ceil(configTraj.parameters.Length...
                                             /sum(intTime)*dnum);
             % ... using that information, condition the trajectory and
             % ... compute the stratified panels before returning
             solnHatT = linspace(solnT(1), solnT(end),...
-                                                configTraj.param.disc)';
+                                                configTraj.parameters.disc)';
             solnHatY = interp1(solnT, solnY, solnHatT, "pchip");
-            configTraj.disc.t = solnHatT;
-            configTraj.disc.g = solnHatY(:, 1:3); 
-            configTraj.disc.r = solnHatY(:, 4:end);
-            configTraj.disc.dz = ...
+            configTraj.discretized.t = solnHatT;
+            configTraj.discretized.g = solnHatY(:, 1:3); 
+            configTraj.discretized.r = solnHatY(:, 4:end);
+            configTraj.discretized.dz = ...
                 dz(aa, ll, solnHatY(:, 4), solnHatY(:, 5));
-            configTraj.disc.gHat = cumtrapz(solnHatT, configTraj.disc.dz);
+            configTraj.discretized.gHat = cumtrapz(solnHatT, configTraj.discretized.dz);
         end
 
         
