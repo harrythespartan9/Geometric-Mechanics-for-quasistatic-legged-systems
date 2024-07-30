@@ -658,8 +658,8 @@ classdef Path2_Mobility
             scatSingSize = pInfo.circS;
             startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
             endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
-            domainPercentage = 5; arrAngle = deg2rad(18);
-            arrSize = domainPercentage/100*mean(diff(thisPath2.aLimits, 1, 2), 1);
+            domainPercentage = 5; arrowAngle = deg2rad(18);
+            arrowSize = domainPercentage/100*mean(diff(thisPath2.aLimits, 1, 2), 1);
             % ... setup a linealpha value to make the slip and nonslip axes
             % ... more visible
             fAc = 0.5; % init
@@ -693,13 +693,13 @@ classdef Path2_Mobility
             plot(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2), 'LineWidth', lW,...
                 'Color', stanceColor);
             plotPathArrowV2(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2),...
-                arrSize*sum(thisPath2.intTime)/2, arrAngle,...
+                arrowSize*sum(thisPath2.intTime)/2, arrowAngle,...
                 lW, stanceColor, 'front_end');
             % ... plot the nonslip axis
             plot(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
                 'Color', stanceColor);
             plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2),...
-                arrSize*sum(thisPath2.intTime)/2, arrAngle,...
+                arrowSize*sum(thisPath2.intTime)/2, arrowAngle,...
                 lW, stanceColor, 'front_end');
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
@@ -782,8 +782,8 @@ classdef Path2_Mobility
         % this function computes the body trajectory when provided with a
         % reference point, forward and backward integration times, and the
         % scaling and sliding inputs.
-        function bodyTraj = simulateInputResponse(ref, inputs,...
-                                                                thisPath2)
+        function configTraj = simulateConfigurationTrajectory...
+                                                (ref, inputs, thisPath2)
             % unpack reference
             % ... 1. a reference point
             % ... 2. integration times (taken togther with 1. provide the
@@ -792,28 +792,54 @@ classdef Path2_Mobility
             % ... is specifically useful when stiching this trajectory to a
             % ... previously obtained trajectory
             refPt = ref.P; refT = ref.T; 
-            ref_tEnd = ref.tEnd; ref_bEnd = ref.bEnd;
             % unpack instance parameters
-            aa = thisPath2.a;
-            ll = thisPath2.l; dnum = size(thisPath2.ai, 1);
+            aa = thisPath2.a; ll = thisPath2.l; 
+            dnum = size(thisPath2.ai, 1); intTime = thisPath2.intTime;
             % unpack instance functions
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;
+            dz = thisPath2.dz;
             % integration times to get to the initial and final conditions
             % of the path
             tIC = -inputs(1)*refT(1) + inputs(2);
             tFC = +inputs(1)*refT(2) + inputs(2);
             % time array for the compute solution
-            solnT = linspace(ref_tEnd, ref_tEnd + (tFC - tIC), dnum);
+            solnT = linspace(0, tFC-tIC, dnum);
             % integrate to obtain the solution
             [~, a0] = ode89( @(t, y) dalpha(aa, ll, y(1), y(2)), ...
                 [0, tIC], refPt );
             [solnT, solnY] = ode89( @(t, y) dQ(aa, ll,...
                                                 y(1), y(2), y(3),...
                                                 y(4), y(5)),...
-                                    solnT, [ref_bEnd, a0(end, :)] );
+                                    solnT, [zeros(1, 3), a0(end, :)] );
             % package and return this solution
-            bodyTraj.T = solnT; bodyTraj.Y = solnY(:, 1:3);
+            % ... store and compute the full solution here
+            configTraj.full.t = solnT;
+            configTraj.full.g = solnY(:, 1:3); 
+            configTraj.full.r = solnY(:, 4:end);
+            configTraj.full.dz = ...
+                dz(aa, ll, solnY(:, 4), solnY(:, 5));
+            configTraj.full.gHat = cumtrapz(solnT, configTraj.full.dz);
+            % ... compute the length of the shape path and the number of 
+            % ... discretizations required to define the shape trajectory
+            % ... based on the overall discretization of the continuous
+            % ... shape subspace
+            configTraj.param.Length = ...
+                abs(solnT(end) - solnT(1)); % length of trajectory
+            configTraj.param.disc = ... % discretization
+                ceil(configTraj.param.Length...
+                                            /sum(intTime)*dnum);
+            % ... using that information, condition the trajectory and
+            % ... compute the stratified panels before returning
+            solnHatT = linspace(solnT(1), solnT(end),...
+                                                configTraj.param.disc)';
+            solnHatY = interp1(solnT, solnY, solnHatT, "pchip");
+            configTraj.disc.t = solnHatT;
+            configTraj.disc.g = solnHatY(:, 1:3); 
+            configTraj.disc.r = solnHatY(:, 4:end);
+            configTraj.disc.dz = ...
+                dz(aa, ll, solnHatY(:, 4), solnHatY(:, 5));
+            configTraj.disc.gHat = cumtrapz(solnHatT, configTraj.disc.dz);
         end
 
         
