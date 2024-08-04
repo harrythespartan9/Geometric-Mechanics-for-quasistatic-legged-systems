@@ -816,53 +816,86 @@ classdef Path2_Mobility
                     configTraj.discretized.dz = ...
                         dz(aa, ll, refPt(1), refPt(2));
                     configTraj.discretized.gHat = zeros(1, 3);
-                otherwise % normal case
-                    % integration times to get to the initial and final 
-                    % conditions of the path
-                    tIC = -inputs(1)*refT(1) + inputs(2);
-                    tFC = +inputs(1)*refT(2) + inputs(2);
-                    % time array for the compute solution
-                    solnT = linspace(0, tFC-tIC, dnum);
-                    % integrate to obtain the solution
-                    [~, a0] = ode89( @(t, y) dalpha(aa, ll, y(1), y(2)), ...
-                        [0, tIC], refPt );
-                    [solnT, solnY] = ode89( @(t, y) dQ(aa, ll,...
+                otherwise % both inputs are not zero
+                    switch inputs(1) == 0
+                        case 1 % the first input is zero
+                            % integration times to the initial condition of
+                            % the shape path
+                            tIC = -inputs(1)*refT(1) + inputs(2);
+                            % integrate and obtain the solution
+                            [~, a0] = ode89( @(t, y)...
+                                dalpha(aa, ll, y(1), y(2)), ...
+                                [0, tIC], refPt ); % compute just shape IC
+                            % pack this up similar to last case
+                            configTraj.complete.t = 0;
+                            configTraj.complete.g = zeros(1, 3); 
+                            configTraj.complete.r = a0(end, :);
+                            configTraj.complete.dz = ...
+                                dz(aa, ll, a0(end, 1), a0(end, 2));
+                            configTraj.complete.gHat = zeros(1, 3);
+                            configTraj.parameters.Length = 0;
+                            configTraj.parameters.disc = 1;
+                            configTraj.discretized.t = 0;
+                            configTraj.discretized.g = zeros(1, 3); 
+                            configTraj.discretized.r = a0(end, :);
+                            configTraj.discretized.dz = ...
+                                dz(aa, ll, a0(end, 1), a0(end, 2));
+                            configTraj.discretized.gHat = zeros(1, 3);
+                        case 0 % none of the inputs are zero
+                            % integration times to get to the initial and 
+                            % final conditions of the path
+                            tIC = -inputs(1)*refT(1) + inputs(2);
+                            tFC = +inputs(1)*refT(2) + inputs(2);
+                            % time array for the compute solution
+                            solnT = linspace(0, tFC-tIC, dnum);
+                            % integrate to obtain the solution
+                            [~, a0] = ode89( @(t, y)...
+                                dalpha(aa, ll, y(1), y(2)), ...
+                                [0, tIC], refPt );
+                            [solnT, solnY] = ode89( @(t, y) dQ(aa, ll,...
                                                         y(1), y(2), y(3),...
                                                         y(4), y(5)),...
                                         solnT, [zeros(1, 3), a0(end, :)] );
-                    % package and return this solution
-                    % ... store and compute the full solution here
-                    configTraj.complete.t = solnT;
-                    configTraj.complete.g = solnY(:, 1:3); 
-                    configTraj.complete.r = solnY(:, 4:end);
-                    configTraj.complete.dz = ...
-                        dz(aa, ll, solnY(:, 4), solnY(:, 5));
-                    configTraj.complete.gHat = cumtrapz(solnT, ...
+                            % package and return this solution
+                            % ... store and compute the full solution here
+                            configTraj.complete.t = solnT;
+                            configTraj.complete.g = solnY(:, 1:3); 
+                            configTraj.complete.r = solnY(:, 4:end);
+                            configTraj.complete.dz = ...
+                                dz(aa, ll, solnY(:, 4), solnY(:, 5));
+                            configTraj.complete.gHat = cumtrapz(solnT, ...
                                                 configTraj.complete.dz);
-                    % ... compute the length of the shape path and the 
-                    % ... number of discretizations required to define the 
-                    % ... shape trajectory based on the overall 
-                    % ... discretization of the continuous shape subspace
-                    configTraj.parameters.Length = ...
-                        abs(solnT(end) - solnT(1)); % length of trajectory
-                    configTraj.parameters.disc = ... % discretization
-                        ceil(configTraj.parameters.Length...
+                            % ... compute the length of the shape path and 
+                            % ... the number of discretizations required to 
+                            % ... define the shape trajectory based on the 
+                            % ... overall discretization of the continuous 
+                            % ... shape subspace
+                            configTraj.parameters.Length = ...
+                                abs(solnT(end) - solnT(1)); 
+                            configTraj.parameters.disc = ...
+                                ceil(configTraj.parameters.Length...
                                                     /sum(intTime)*dnum);
-                    if configTraj.parameters.disc == 0
-                        configTraj.parameters.disc = 1;
-                        % ... the discretization should not be zero
+                            if configTraj.parameters.disc == 0
+                                configTraj.parameters.disc = 1;
+                                % ... the discretization should not be zero
+                            end
+                            % ... using that information, condition the 
+                            % ... trajectory and compute the stratified 
+                            % ... panels before returning
+                            solnHatT = linspace(solnT(1), solnT(end),...
+                                            configTraj.parameters.disc)';
+                            solnHatY = interp1(solnT, solnY, solnHatT, ...
+                                                    "pchip");
+                            configTraj.discretized.t = solnHatT;
+                            configTraj.discretized.g = solnHatY(:, 1:3); 
+                            configTraj.discretized.r = solnHatY(:, 4:end);
+                            configTraj.discretized.dz = ...
+                                dz(aa, ll, solnHatY(:, 4), solnHatY(:, 5));
+                            configTraj.discretized.gHat = ...
+                                        cumtrapz(solnHatT, ...
+                                                configTraj.discretized.dz);
                     end
-                    % ... using that information, condition the trajectory and
-                    % ... compute the stratified panels before returning
-                    solnHatT = linspace(solnT(1), solnT(end),...
-                                                        configTraj.parameters.disc)';
-                    solnHatY = interp1(solnT, solnY, solnHatT, "pchip");
-                    configTraj.discretized.t = solnHatT;
-                    configTraj.discretized.g = solnHatY(:, 1:3); 
-                    configTraj.discretized.r = solnHatY(:, 4:end);
-                    configTraj.discretized.dz = ...
-                        dz(aa, ll, solnHatY(:, 4), solnHatY(:, 5));
-                    configTraj.discretized.gHat = cumtrapz(solnHatT, configTraj.discretized.dz);
+                    
             end
         end
 
