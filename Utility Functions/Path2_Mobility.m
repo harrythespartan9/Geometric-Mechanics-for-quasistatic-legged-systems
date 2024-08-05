@@ -197,7 +197,7 @@ classdef Path2_Mobility
             thisPath2 = Path2_Mobility.computeParallelCoordinates...
                                                             ( thisPath2 );
             thisPath2 = Path2_Mobility.computeSpecificParallelCoordinates...
-                                            ( thisPath2, refPt, intTime );
+                                            ( thisPath2, refPt );
             % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
             % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
             % increment the number of objects
@@ -420,6 +420,12 @@ classdef Path2_Mobility
                                                                     ];
                     end
                 end
+                % ... offset the time array such that the reference point
+                % ... provided by 'aPerpF', 'y0now' is at time == 0
+                % ... do this for both 'tFull' (cutoff threshold) and the
+                % ... 'tNow' time vector
+                tNow = tNow - tBwd; tFull = tFull - tBwd;
+                % ... store the main solution
                 thisPath2.aParallF.y{i} = yNow(tNow <= tFull, :);
                 thisPath2.aParallF.t{i} = tNow(tNow <= tFull); % final solution
                 % ... compute the stratified panel along this solution
@@ -550,6 +556,7 @@ classdef Path2_Mobility
                                                                 ];
                 end
             end
+            tNow = tNow - tBwd; tFull = tFull - tBwd;
             thisPath2.aParaRef.y = yNow(tNow <= tFull, :);
             thisPath2.aParaRef.t = tNow(tNow <= tFull);
             thisPath2.aParaRef.dz = thisPath2.dz(...
@@ -799,6 +806,15 @@ classdef Path2_Mobility
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;
             dz = thisPath2.dz;
+            % compute the time offset that is required at this location
+            % using the local parallel coordinates
+            % ... 1) find the euclidean distance between reference point
+            % ... and all the points in the parallel coordinates
+            % ... 2) using fmincon, find the time at which the smallest 
+            % ... difference (that might not be zero) occurs
+            % ... ... might not be zero because, the we interpolate to find
+            % ... ... the closest reference point
+            
             % check which case we are in and handle accordingly
             switch all(inputs == 0)
                 case 1 % if both inputs are zero
@@ -899,6 +915,26 @@ classdef Path2_Mobility
             end
         end
 
+        % method to compute the reference point along the perpendicular
+        % coordinate given another reference point and the time offset
+        function [tOff, thisPath2] = computeToffFromPerpCoord(refPt, thisPath2)
+            % unpack
+            a = thisPath2.kinfunc.aa;
+            l = thisPath2.kinfunc.ll;
+            F_fxn = thisPath2.kin.ksq_ij{thisPath2.sIdx};
+            perpCoords = thisPath2.aPerpF;
+            % compute the current F-lvl
+            refF = F_fxn(a, l, refPt(1), refPt(2));
+            % compute the reference along the perp coordinates with the
+            % same F-value
+            perpRef = interp1(perpCoords.F, perpCoords.y, refF,...
+                                                            "pchip", nan);
+            % Now, we compute the local parallel coordinates
+            if isnan()
+            thisPath2 = Path2_Mobility.computeSpecificParallelCoordinates...
+                                            ( thisPath2, perpRef );
+        end
+        
         
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
