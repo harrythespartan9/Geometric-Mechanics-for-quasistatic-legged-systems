@@ -795,10 +795,10 @@ classdef Path2_Mobility
             % ... 1. a reference point
             % ... 2. integration times (taken togther with 1. provide the
             % ... starting and ending points for the stance path)
-            % ... 3./4. the initial condition for the body trajectory; this 
-            % ... is specifically useful when stiching this trajectory to a
-            % ... previously obtained trajectory
-            refPt = ref.P; refT = ref.T; 
+            % ... 3. the offset time to offset the time vectors for the
+            % ... stance trajectory, this helps relate them back to the 
+            % ... local parallel coordinates
+            refPt = ref.P; refT = ref.T; refToff = ref.tOff;
             % unpack instance parameters
             aa = thisPath2.a; ll = thisPath2.l; 
             dnum = size(thisPath2.ai, 1); intTime = thisPath2.intTime;
@@ -818,7 +818,7 @@ classdef Path2_Mobility
             % check which case we are in and handle accordingly
             switch all(inputs == 0)
                 case 1 % if both inputs are zero
-                    configTraj.complete.t = 0;
+                    configTraj.complete.t = refToff;
                     configTraj.complete.g = zeros(1, 3); 
                     configTraj.complete.r = refPt;
                     configTraj.complete.dz = ...
@@ -826,7 +826,7 @@ classdef Path2_Mobility
                     configTraj.complete.gHat = zeros(1, 3);
                     configTraj.parameters.Length = 0;
                     configTraj.parameters.disc = 1;
-                    configTraj.discretized.t = 0;
+                    configTraj.discretized.t = refToff;
                     configTraj.discretized.g = zeros(1, 3); 
                     configTraj.discretized.r = refPt;
                     configTraj.discretized.dz = ...
@@ -843,7 +843,7 @@ classdef Path2_Mobility
                                 dalpha(aa, ll, y(1), y(2)), ...
                                 [0, tIC], refPt ); % compute just shape IC
                             % pack this up similar to last case
-                            configTraj.complete.t = 0;
+                            configTraj.complete.t = refToff+tIC;
                             configTraj.complete.g = zeros(1, 3); 
                             configTraj.complete.r = a0(end, :);
                             configTraj.complete.dz = ...
@@ -851,7 +851,7 @@ classdef Path2_Mobility
                             configTraj.complete.gHat = zeros(1, 3);
                             configTraj.parameters.Length = 0;
                             configTraj.parameters.disc = 1;
-                            configTraj.discretized.t = 0;
+                            configTraj.discretized.t = refToff+tIC;
                             configTraj.discretized.g = zeros(1, 3); 
                             configTraj.discretized.r = a0(end, :);
                             configTraj.discretized.dz = ...
@@ -872,6 +872,9 @@ classdef Path2_Mobility
                                                         y(1), y(2), y(3),...
                                                         y(4), y(5)),...
                                         solnT, [zeros(1, 3), a0(end, :)] );
+                            % offset the time vector to accommodate the
+                            % reference point and initial condition
+                            solnT = solnT + refToff + tIC;
                             % package and return this solution
                             % ... store and compute the full solution here
                             configTraj.complete.t = solnT;
@@ -915,24 +918,92 @@ classdef Path2_Mobility
             end
         end
 
+        % method to extract a specific parallel coordinate given the index
+        % and parallel coordinate sweep
+        function aParaOut = fetchParallCoordsFromIndex(aParaIn, idx)
+            fieldsPara = fieldnames(aParaIn);
+            aParaOut = [];
+            for i = 1:numel(fieldsPara)
+                switch fieldsPara{i}
+                    case 'isValid'
+                        aParaOut.(fieldsPara{i}) = ...
+                            aParaIn.(fieldsPara{i})(idx);
+                    otherwise
+                        aParaOut.(fieldsPara{i}) = ...
+                            aParaIn.(fieldsPara{i}){idx};
+                end
+            end
+        end
+
         % method to compute the reference point along the perpendicular
         % coordinate given another reference point and the time offset
-        function [tOff, thisPath2] = computeToffFromPerpCoord(refPt, thisPath2)
+        function [tOff, thisPath2] = computeToffFromPerpCoord(refPt, ...
+                                                                thisPath2)
             % unpack
             a = thisPath2.kinfunc.aa;
             l = thisPath2.kinfunc.ll;
             F_fxn = thisPath2.kin.ksq_ij{thisPath2.sIdx};
-            perpCoords = thisPath2.aPerpF;
-            % compute the current F-lvl
-            refF = F_fxn(a, l, refPt(1), refPt(2));
+            perpCoords = thisPath2.aPerpF; paraCoords = thisPath2.aParallF;
             % compute the reference along the perp coordinates with the
             % same F-value
-            perpRef = interp1(perpCoords.F, perpCoords.y, refF,...
-                                                            "pchip", nan);
-            % Now, we compute the local parallel coordinates
-            if isnan()
-            thisPath2 = Path2_Mobility.computeSpecificParallelCoordinates...
-                                            ( thisPath2, perpRef );
+            % ... this is a two step process: 1) if the reference is very
+            % ... close to an already existing point, then we replace the
+            % ... requested reference with that pre-computed point
+            % ... 2) if the reference doesn't exist, then we interpolate to
+            % ... find corresponding reference in the perp coords
+            switch min(vecnorm(perpCoords.y - refPt, 2, 2)) < 1e-6
+                case 1
+                    % find the index with the smallest value below the
+                    % threshold and obtain the corresponding parallel
+                    % coordinates
+                    [~, idxRef] = min(vecnorm(perpCoords.y - refPt, 2, 2));
+                    aParaNow = Path2_Mobility.fetchParallCoordsFromIndex...
+                                                (paraCoords, idxRef);
+                case 0
+                    % if you're here, none of the points are sufficiently
+                    % close, so we explicity compute the parallel
+                    % coordinates
+                    % ... compute the F-lvl requested and the corresponding reference
+                    % ... along the perp coords
+                    refF = F_fxn(a, l, refPt(1), refPt(2));
+                    perpRef = interp1(perpCoords.F, perpCoords.y, refF,...
+                                                            "spline", nan);
+                    % ... Now, we compute the local parallel coordinates if 
+                    % ... the reference at the interpolated perpendicular 
+                    % ... Ref is not nan-- if it is, we return an error to 
+                    % ... signify that a reference outside the allowable 
+                    % ... region of F is chosen
+                    if any(isnan(perpRef))
+                        error(['ERROR! Please choose a reference within ' ...
+                            'the allowable region of F.']);
+                    end
+                    thisPath2 = ...
+                        Path2_Mobility.computeSpecificParallelCoordinates...
+                        ( thisPath2, perpRef ); 
+                    aParaNow = thisPath2.aParaRef;
+            end
+            % Now, we compute the the time offset based on the difference
+            % between the requested reference and the computed parallel
+            % coordinates
+            % ... again, if the time offset is smaller than 1e-6, just set
+            % ... it to 0.
+            refDiff = aParaNow.y - refPt;
+            tOff = fmincon(@(x) ...
+                        norm(interp1(aParaNow.t, refDiff, x, "pchip")),...
+                mean(aParaNow.t), [], [], [], [],...
+                min(aParaNow.t), max(aParaNow.t), [],...
+                optimoptions("fmincon", "Display", "none") );
+            if isnan(tOff)
+                error(['ERROR! If the offset time is "nan", then the ' ...
+                    'problem is ill-conditioned and lies outside ' ...
+                    'slip-nonslip coordinates. Please reframe the problem ' ...
+                    'to these computed coordinates. Use the ' ...
+                    '"highlightNonslipLevelSet" to help visualize if the ' ...
+                    'selected reference point is within this space.']);
+            end
+            if abs(tOff) < 1e-6
+                tOff = 0;
+            end
         end
         
         
