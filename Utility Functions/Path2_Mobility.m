@@ -494,6 +494,7 @@ classdef Path2_Mobility
             yPhasorNow = (refPt - yExtremal)/norm(refPt - yExtremal); 
             yRefPhase = atan2(yPhasorNow(2), yPhasorNow(1));
             thisPath2.aParaRef = [];
+            thisPath2.aParaRef.refPt = refPt;
             thisPath2.aParaRef.isValid = true;
             thisPath2.aParaRef.eventInfo = cell(1, 2);
             eventList = {'shape_bounds', 'phase_bounds'};
@@ -563,9 +564,10 @@ classdef Path2_Mobility
                                     thisPath2.a, thisPath2.l,...
                                     thisPath2.aParaRef.y(:, 1), ...
                                     thisPath2.aParaRef.y(:, 2));
-            % ... store the color of the current level-set
+            % ... store the color of the current level-set and the value
             F_ref = thisPath2.F_fxn...
                         (thisPath2.a, thisPath2.l, refPt(1), refPt(2));
+            thisPath2.aParaRef.F = F_ref;
             thisPath2.aParaRef.color = ...
                 interpColorAndCondition...
                 (...
@@ -832,6 +834,7 @@ classdef Path2_Mobility
                     configTraj.discretized.dz = ...
                         dz(aa, ll, refPt(1), refPt(2));
                     configTraj.discretized.gHat = zeros(1, 3);
+                    configTraj.status = 'point';
                 otherwise % both inputs are not zero
                     switch inputs(1) == 0
                         case 1 % the first input is zero
@@ -857,7 +860,10 @@ classdef Path2_Mobility
                             configTraj.discretized.dz = ...
                                 dz(aa, ll, a0(end, 1), a0(end, 2));
                             configTraj.discretized.gHat = zeros(1, 3);
+                            configTraj.status = 'point';
                         case 0 % none of the inputs are zero
+                            % set the status to a path
+                            configTraj.status = 'path';
                             % integration times to get to the initial and 
                             % final conditions of the path
                             tIC = -inputs(1)*refT(1) + inputs(2);
