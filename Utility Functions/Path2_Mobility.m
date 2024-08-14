@@ -825,7 +825,7 @@ classdef Path2_Mobility
                     configTraj.complete.r = refPt;
                     configTraj.complete.dz = ...
                         dz(aa, ll, refPt(1), refPt(2));
-                    configTraj.complete.gHat = zeros(1, 3);
+                    configTraj.complete.gCirc = zeros(1, 3);
                     configTraj.parameters.Length = 0;
                     configTraj.parameters.disc = 1;
                     configTraj.discretized.t = refToff;
@@ -833,7 +833,7 @@ classdef Path2_Mobility
                     configTraj.discretized.r = refPt;
                     configTraj.discretized.dz = ...
                         dz(aa, ll, refPt(1), refPt(2));
-                    configTraj.discretized.gHat = zeros(1, 3);
+                    configTraj.discretized.gCirc = zeros(1, 3);
                     configTraj.status = 'point';
                 otherwise % both inputs are not zero
                     switch inputs(1) == 0
@@ -851,7 +851,7 @@ classdef Path2_Mobility
                             configTraj.complete.r = a0(end, :);
                             configTraj.complete.dz = ...
                                 dz(aa, ll, a0(end, 1), a0(end, 2));
-                            configTraj.complete.gHat = zeros(1, 3);
+                            configTraj.complete.gCirc = zeros(1, 3);
                             configTraj.parameters.Length = 0;
                             configTraj.parameters.disc = 1;
                             configTraj.discretized.t = refToff+tIC;
@@ -859,7 +859,7 @@ classdef Path2_Mobility
                             configTraj.discretized.r = a0(end, :);
                             configTraj.discretized.dz = ...
                                 dz(aa, ll, a0(end, 1), a0(end, 2));
-                            configTraj.discretized.gHat = zeros(1, 3);
+                            configTraj.discretized.gCirc = zeros(1, 3);
                             configTraj.status = 'point';
                         case 0 % none of the inputs are zero
                             % set the status to a path
@@ -888,7 +888,7 @@ classdef Path2_Mobility
                             configTraj.complete.r = solnY(:, 4:end);
                             configTraj.complete.dz = ...
                                 dz(aa, ll, solnY(:, 4), solnY(:, 5));
-                            configTraj.complete.gHat = cumtrapz(solnT, ...
+                            configTraj.complete.gCirc = cumtrapz(solnT, ...
                                                 configTraj.complete.dz);
                             % ... compute the length of the shape path and 
                             % ... the number of discretizations required to 
@@ -916,12 +916,24 @@ classdef Path2_Mobility
                             configTraj.discretized.r = solnHatY(:, 4:end);
                             configTraj.discretized.dz = ...
                                 dz(aa, ll, solnHatY(:, 4), solnHatY(:, 5));
-                            configTraj.discretized.gHat = ...
+                            configTraj.discretized.gCirc = ...
                                         cumtrapz(solnHatT, ...
                                                 configTraj.discretized.dz);
                     end
-                    
             end
+            % compute the commutative trajectory and net displacements
+            % estimates for each case:
+            % ... for the complete trajectory
+            configTraj.complete.z = configTraj.complete.g(end, :);
+            configTraj.complete.gHat = exponentiateLieAlgebraElement...
+                                (configTraj.complete.gCirc);
+            configTraj.complete.zHat = configTraj.complete.gHat(end, :);
+            % ... for the discretized trajectory
+            configTraj.discretized.z = configTraj.discretized.g(end, :);
+            configTraj.discretized.gHat = exponentiateLieAlgebraElement...
+                                (configTraj.discretized.gCirc);
+            configTraj.discretized.zHat = ...
+                                    configTraj.discretized.gHat(end, :);
         end
 
         % method to extract a specific parallel coordinate given the index
