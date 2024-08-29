@@ -807,16 +807,7 @@ classdef Path2_Mobility
             % unpack instance functions
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;
-            dz = thisPath2.dz;
-            % compute the time offset that is required at this location
-            % using the local parallel coordinates
-            % ... 1) find the euclidean distance between reference point
-            % ... and all the points in the parallel coordinates
-            % ... 2) using fmincon, find the time at which the smallest 
-            % ... difference (that might not be zero) occurs
-            % ... ... might not be zero because, the we interpolate to find
-            % ... ... the closest reference point
-            
+            dz = thisPath2.dz;            
             % check which case we are in and handle accordingly
             switch all(inputs == 0)
                 case 1 % if both inputs are zero
@@ -936,6 +927,84 @@ classdef Path2_Mobility
                                     configTraj.discretized.gHat(end, :);
         end
 
+        % this function computes the shape trajectory in the gait phase 
+        % when provided with a reference point, forward and backward 
+        % integration times, and the scaling and sliding inputs.
+        function [tau, beta, subgaitTraj] = computeSubgaitInCoordinates...
+                                                (ref, inputs, thisPath2)
+            % unpack reference
+            % ... 1. a reference point
+            % ... 2. integration times (taken togther with 1. provide the
+            % ... starting and ending points for the stance path)
+            % ... 3. the offset time to offset the time vectors for the
+            % ... stance trajectory, this helps relate them back to the 
+            % ... local parallel coordinates
+            refPt = ref.P; refT = ref.T;
+            % unpack instance parameters
+            aa = thisPath2.a; ll = thisPath2.l; 
+            dnum = size(thisPath2.ai, 1);
+            % unpack instance functions
+            dalpha = thisPath2.paraFdirn;
+            % check which case we are in and handle accordingly
+            switch all(inputs == 0)
+                case 1 % if both inputs are zero
+                    shapeStanceTraj = refPt;
+                    status = 'point';
+                otherwise % both inputs are not zero
+                    switch inputs(1) == 0
+                        case 1 % the first input is zero
+                            % integration times to the initial condition of
+                            % the shape path
+                            tIC = -inputs(1)*refT(1) + inputs(2);
+                            % integrate and obtain the solution
+                            [~, a0] = ode89( @(t, y)...
+                                dalpha(aa, ll, y(1), y(2)), ...
+                                [0, tIC], refPt ); % compute just shape IC
+                            % shape trajectory and status string
+                            shapeStanceTraj = a0(end, :);
+                            status = 'point';
+                        case 0 % none of the inputs are zero
+                            % set the status to a path
+                            status = 'path';
+                            % integration times to get to the initial and 
+                            % final conditions of the path
+                            tIC = -inputs(1)*refT(1) + inputs(2);
+                            tFC = +inputs(1)*refT(2) + inputs(2);
+                            % time array for the compute solution
+                            solnT = linspace(0, tFC-tIC, dnum+1);
+                            % integrate to obtain the solution
+                            [~, a0] = ode89( @(t, y)...
+                                dalpha(aa, ll, y(1), y(2)), ...
+                                [0, tIC], refPt );
+                            [~, solnY] = ode89( @(t, y) ...
+                                            dalpha(aa, ll, y(1), y(2)), ...
+                                                    solnT, a0(end, :) );
+                            % shape trajectory
+                            shapeStanceTraj = solnY;
+                    end
+            end
+            % Finally, we return the 
+            % 1) shape trajectory as a function of the
+            % ... gait phase: [0, 2*pi(-)] --> [r; flipud(r(2:end-1))]
+            % 2) contact vector during stance phase
+            % ... "beta" variable name for the discrete part of the shape 
+            % ... space
+            % ... the last poin the computed shape trajectory belongs to
+            % ... the swing phase btw because we have already included the
+            % ... first point
+            switch status
+                case 'point'
+                    subgaitTraj = repmat(shapeStanceTraj, 2*dnum, 1);
+                case 'path'
+                    subgaitTraj = [shapeStanceTraj; % stance (one point at the beginning of swing)
+                            flipud(shapeStanceTraj(2:end-1, :))]; % just swing
+                    % the last point is right before the new cycle starts
+            end
+            beta = [ones(dnum, 1); zeros(dnum, 1)];
+            % provide the normalized gait phase array
+            tau = linspace(0, 2*pi, 2*dnum+1); tau = tau(1:end-1)';
+        end
+
         % method to extract a specific parallel coordinate given the index
         % and parallel coordinate sweep
         function aParaOut = fetchParallCoordsFromIndex(aParaIn, idx)
@@ -1022,6 +1091,37 @@ classdef Path2_Mobility
             if abs(tOff) < 1e-6
                 tOff = 0;
             end
+        end
+
+        % For subgaits defined using the "computeSubgaitInCoordinates", we
+        % offset the periodic waveform by the requested phase offset
+        function [betaOut, subgaitOut] = offsetSubgait(tau, beta, subgait, ...
+                                                            phaseOffset)
+            % modulo the 'phaseOffset' to be between +pi and -pi; 
+            % simplest (braindead) way to do this is to go into the S^1 
+            % (circle) coordinates and then come back with the atan2 fxn
+            sinPhase = sin(phaseOffset); cosPhase = cos(phaseOffset);
+            phaseOffset = atan2(sinPhase, cosPhase);
+            % augment the inputs with two more cycles before and after to
+            % convert this phaseoffset problem into an interpolation
+            % problem which is well defined
+            tauA = [tau-2*pi; tau; tau+2*pi];
+            subgaitA = repmat(subgait, 3, 1);
+            % get the phase array to interpolate the solutions to
+            tauQ = tau + phaseOffset;
+            % interpolate the contact and limb angle trajectories
+            % ... 1) do "pchip" (structure preserving) interpolation for 
+            % ... the subgait 
+            subgaitOut = interp1(tauA, subgaitA, tauQ, "pchip");
+            % ... 2) an exact(ish) binary switch based on the location of 
+            % ... ("phaseOffset") + pi
+            betaOut = nan(size(beta));
+            tauQ(tauQ >= 2*pi) = tauQ(tauQ >= 2*pi) - 2*pi; 
+            tauQ(tauQ < 0) = tauQ(tauQ < 0) + 2*pi; % condition tauQ
+            stanceIdx = (  tauQ >= 0 & tauQ < pi  ); % get stance indices
+            % ... ... set the stance first and then the swing phase
+            betaOut(stanceIdx) = ones(size(betaOut(stanceIdx)));
+            betaOut(~stanceIdx) = zeros(size(betaOut(~stanceIdx)));
         end
         
         
