@@ -819,7 +819,7 @@ classdef Path2_Mobility
             if ~isfield(thisPath2.p_info, 'fAc')
                 thisPath2.p_info.fAc = fAc;
             end
-            domainPercentage = 5; arrowAngle = deg2rad(18);
+            domainPercentage = 3; arrowAngle = deg2rad(18);
             arrowSize = domainPercentage/100*...
                             mean(diff(thisPath2.aLimits, 1, 2), 1)*...
                                                 sum(thisPath2.intTime)/2;
@@ -869,7 +869,7 @@ classdef Path2_Mobility
                 'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
                 'LineWidth', lW);
             plotPathArrowV2(ax, stancePath(:, 1), stancePath(:, 2),... % arrow for direction 4(c)
-                arrowSize, arrowAngle, lW, stanceColor, 'mid');
+                arrowSize, arrowAngle, lW, 'k', 'mid'); % , stanceColor, 'mid'
             % .............................................................
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
