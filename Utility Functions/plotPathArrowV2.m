@@ -1,7 +1,8 @@
 % this function plots an arrow at the specified location in a path
 % ... this function accepts additional arguments like location on the path
 % ... we are not doing any arguments-check to remove overhead
-function h = plotPathArrowV2(ax, aX, aY, arrowSize, arrowAngle, lW, c, arrowLocation)
+function h = plotPathArrowV2(ax, aX, aY, arrowSize, arrowAngle, lW, c,...
+                                                            arrowLocation)
 
     % based on the arrow location, execute the following
     % ... 'mid' plots a forward-facing (in the discrete array start:end

@@ -668,12 +668,15 @@ classdef Path2_Mobility
             startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
             endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             domainPercentage = 5; arrowAngle = deg2rad(18);
-            arrowSize = domainPercentage/100*mean(diff(thisPath2.aLimits, 1, 2), 1);
+            arrowSize = domainPercentage/100*...
+                            mean(diff(thisPath2.aLimits, 1, 2), 1)*...
+                                                sum(thisPath2.intTime)/2;
             % ... setup a linealpha value to make the slip and nonslip axes
             % ... more visible
-            fAc = 0.5; % init
+            % ... lA: lineAlpha, c: contours
+            lAc = 0.5; % init
             if ~isfield(thisPath2.p_info, 'fAc')
-                thisPath2.p_info.fAc = fAc; % store if not present
+                thisPath2.p_info.fAc = lAc; % store if not present
             end
             % .............................................................
             figure('Visible', 'on', 'Units', 'pixels',...
@@ -695,21 +698,19 @@ classdef Path2_Mobility
             end
             for i = startIdx:endIdx
                 plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
-                    'Color', [thisPath2.aPerpF.color(i, :), fAc]);
+                    'Color', [thisPath2.aPerpF.color(i, :), lAc]);
             end
             % ... plot the slip axis
             % ... ... first plot the axis and then add an arrow
             plot(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2), 'LineWidth', lW,...
                 'Color', stanceColor);
             plotPathArrowV2(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2),...
-                arrowSize*sum(thisPath2.intTime)/2, arrowAngle,...
-                lW, stanceColor, 'front_end');
+                arrowSize, arrowAngle, lW, stanceColor, 'front_end');
             % ... plot the nonslip axis
             plot(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
                 'Color', stanceColor);
             plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2),...
-                arrowSize*sum(thisPath2.intTime)/2, arrowAngle,...
-                lW, stanceColor, 'front_end');
+                arrowSize, lW, stanceColor, 'front_end');
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
                 'FontSize', pInfo.cbarFS);
@@ -730,12 +731,10 @@ classdef Path2_Mobility
             % obtain the level-set at the requested point
             % ... we are creating a temporary instance because we don't
             % ... want to overwrite existing properties
-            thisPath2Now = ...
+            thisPath2Now = ... % copying the instance with new properties
                 Path2_Mobility.computeSpecificParallelCoordinates...
                                             ( thisPath2, refPtNow );
             aParaRefNow = thisPath2Now.aParaRef;
-            % unpack information for plotting
-            % ... basic plot info and instance props
             pInfo = thisPath2.p_info; 
             lW = pInfo.lW; 
             colLimits = [thisPath2.F_inf, thisPath2.F_sup];
@@ -743,12 +742,87 @@ classdef Path2_Mobility
             scatSingSize = pInfo.circS;
             startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
             endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
-            % ... setup a linealpha value to make the highlighted level-set
-            % ... more visible
-            fAc = 0.6; % init
+            lAc = 0.6;
             if ~isfield(thisPath2.p_info, 'fAc')
-                thisPath2.p_info.fAc = fAc; % store if not present
+                thisPath2.p_info.fAc = lAc;
             end
+            % .............................................................
+            figure('Visible', 'on', 'Units', 'pixels',...
+                'Position', [0 0 600 600]); ax = gca; box(ax, "on");
+            ax.XColor = stanceColor; ax.YColor = stanceColor;
+            axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
+            set(ax, 'Color',pInfo.col_backg);
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aSup)
+                scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(end, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aInf)
+                scatter(ax, thisPath2.aInf(1), thisPath2.aInf(2), 0.5*scatSingSize, ...
+                    'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
+                    'LineWidth', lW);
+            end
+            for i = startIdx:endIdx
+                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                    'Color', [thisPath2.aPerpF.color(i, :), lAc]);
+            end
+            % ... highlight the requested level-set
+            plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,...
+                'Color', stanceColor);
+            colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
+            colorbar(ax, 'TickLabelInterpreter', 'latex',...
+                'FontSize', pInfo.cbarFS);
+            set(get(ax, 'YLabel'),'rotation',0,'VerticalAlignment','middle');
+            xticks(ax, pInfo.xtickval); yticks(ax, pInfo.ytickval);
+            xticklabels(ax, pInfo.xticklab); yticklabels(ax, pInfo.yticklab);
+            xlabel(ax, pInfo.x_label_txt,FontSize=pInfo.labelFS); 
+                        ylabel(ax, pInfo.y_label_txt,FontSize=pInfo.labelFS);
+            ax.XAxis.FontSize = pInfo.tickFS; 
+                        ax.YAxis.FontSize = pInfo.tickFS;
+            xlim(pInfo.xlimits); ylim(pInfo.ylimits);
+            % .............................................................
+        end
+
+        % this function plots the requested stance phase path parameterized
+        % by the inputs (scaling and sliding) in the limb angle subspace as
+        % done by the visualization functions above
+        % this function plots highlights F level-set solution at the chosen 
+        % point
+        function plotStanceOnNonslipLevelSets(ref, inputs, thisPath2)
+            % .............................................................
+            % create a local instanace to highlight the current level-set
+            refPtNow = ref.P;
+            thisPath2Now = ... 
+                Path2_Mobility.computeSpecificParallelCoordinates...
+                                            ( thisPath2, refPtNow );
+            aParaRefNow = thisPath2Now.aParaRef;
+            % .............................................................
+            % create the stance path that needs to be plotted
+            [tau, ~, fullPath] = ...
+                Path2_Mobility.computeSubgaitInCoordinates...
+                                                (ref, inputs, thisPath2);
+            tauStanceQ = ... % phase during stance
+                linspace(0, pi, floor(size(tau, 1)/2)); 
+            stancePath = interp1(tau, fullPath, tauStanceQ, "pchip");
+            % .............................................................
+            % plotting related
+            pInfo = thisPath2.p_info; 
+            lW = pInfo.lW; lWc = pInfo.lW_contour;
+            colLimits = [thisPath2.F_inf, thisPath2.F_sup];
+            stanceColor = pInfo.gc_col;
+            scatSingSize = pInfo.circS;
+            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            fAc = 0.6; fAcSp = 0.8;
+            if ~isfield(thisPath2.p_info, 'fAc')
+                thisPath2.p_info.fAc = fAc;
+            end
+            domainPercentage = 5; arrowAngle = deg2rad(18);
+            arrowSize = domainPercentage/100*...
+                            mean(diff(thisPath2.aLimits, 1, 2), 1)*...
+                                                sum(thisPath2.intTime)/2;
             % .............................................................
             figure('Visible', 'on', 'Units', 'pixels',...
                 'Position', [0 0 600 600]); ax = gca; box(ax, "on");
@@ -771,9 +845,32 @@ classdef Path2_Mobility
                 plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
                     'Color', [thisPath2.aPerpF.color(i, :), fAc]);
             end
-            % ... highlight the requested level-set
-            plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,...
+            % ... plot the following
+            % ... ... 1) the current F level-set the stance path belongs to
+            % ... ... 2) the current stance path before plotting scatters
+            % ... ... 3) the reference point scatter
+            % ... ... 4) the stance path scatters: (a) a 'o' scatter at the 
+            % ... ... starting point, (b) an 'x' at the ending point, and 
+            % ... ... (c) an arrow in the middle of the path to denote its 
+            % ... ... direction.
+            plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,... % 1
+                'Color', [aParaRefNow.color, fAcSp]);
+            plot(ax, stancePath(:, 1), stancePath(:, 2), 'LineWidth', lW,... % stance path 2
                 'Color', stanceColor);
+            scatter(ax, refPtNow(1), refPtNow(2), scatSingSize, ... % reference point scatter 3
+                'Marker', 'pentagram', ...
+                'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                'LineWidth', lWc);
+            scatter(ax, stancePath(1, 1), stancePath(1, 2), 0.25*scatSingSize, ... % starting point scatter 4(a)
+                'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                'LineWidth', lWc);
+            scatter(ax, stancePath(end, 1), stancePath(end, 2), 0.25*scatSingSize, ... % ending point scatter 4(b)
+                'Marker', 'x', ...
+                'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                'LineWidth', lW);
+            plotPathArrowV2(ax, stancePath(:, 1), stancePath(:, 2),... % arrow for direction 4(c)
+                arrowSize, arrowAngle, lW, stanceColor, 'mid');
+            % .............................................................
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
                 'FontSize', pInfo.cbarFS);
