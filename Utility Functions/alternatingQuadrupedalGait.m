@@ -153,7 +153,93 @@ classdef alternatingQuadrupedalGait
             end
         end
 
-        function 
+        function thisAltGait = simulateAndEstimateConfigTrajectory(...
+                thisAltGait, inputModeArg, integrationLimitsArg)
+        end
+
+        function thisAltGait = simulateBodyTrajectory(thisAltGait, ...
+                                    inputModeArg, integrationLimitsArg)
+        end
+        
+        % this function computes the integration times for both subgaits
+        % that form the "thisAltGait" instance
+        function [tIC, tFC] = computeGaitIntegrationTimes...
+                                            (thisAltGait, inputs, T, Toff,...
+                                                                    Tmax)
+            % ensure that the variables are the correct sizes
+            if size(T, 1)
+                error(['ERROR! Only one set of integration times are ' ...
+                    'required.']);
+            end
+            if size(Toff, 1) ~= 1
+                error(['ERROR! There should only be one pair of values for ' ...
+                    'the offset time']);
+            end
+            if strcmp(thisAltGait.inputMode, 'path_limit_compliant') ...
+                                                && (nargin < 5)
+                error(['ERROR! For the "path_limit_compliant" input ' ...
+                       'method, we need the maximum forward and ' ...
+                       'backward integration times to appropriately ' ...
+                       'bound the sliding input contribution.']);
+            end
+            % unpack inputs, path integration times, and offset times
+            % ... the inputs are setup as column vectors ordered from left 
+            % ... to right as scaling, sliding for Si, and same for Sj 
+            ithInput = inputs(:, 1:2); jthInput = inputs(:, 3:4);
+            ithIntgTimes = T(1:2); jthIntgTimes = T(3:4);
+            ithOffTime = Toff(1); jthOffTime = Toff(2);
+            ithIntgMAXTimes = Tmax(1:2); jthIntgMAXTimes = Tmax(3:4);
+            % obtain the integration times individually for each subgait
+            [tICi, tFCi] = computeSubgaitIntegrationTimes...
+                                    (thisAltGait, ...
+                                    ithInput, ithIntgTimes, ithOffTime, ...
+                                    ithIntgMAXTimes);
+            [tICj, tFCj] = computeSubgaitIntegrationTimes...
+                                    (thisAltGait, ...
+                                    jthInput, jthIntgTimes, jthOffTime, ...
+                                    jthIntgMAXTimes);
+            tIC = [tICi, tICj]; 
+            tFC = [tFCi, tFCj]; % return columnwise concatenated arrays
+        end
+
+        % this function computes the integration time for a requested
+        % subgait
+        function [tIC, tFC] = ...
+                            computeSubgaitIntegrationTimes...
+                                    (thisAltGait, inputs, T, Toff, Tmax)
+            % Compute initial and final condition times based on the
+            % current input mode
+            u1 = inputs(:, 1); u2 = inputs(:, 2);
+            T0 = T(1); Tpi = T(2);
+            switch thisAltGait.inputMode
+                case 'std'
+                    tIC = -u1*T0  + u2 + Toff;
+                    tFC = +u1*Tpi + u2 + Toff;
+                case 'path_limit_compliant'
+                    % check the quadrant of the input to compute the
+                    % capping term associated with the sliding input
+                    Tminus = Tmax(1); Tplus = Tmax(2); 
+                    switch +u1*Tpi >= -u1*T0
+                        case 1
+                            switch u2 >= 0
+                                case 1
+                                    capTerm = Tplus - u1*Tpi;
+                                case 0
+                                    capTerm = -u1*T0 - Tminus;
+                            end
+                        case 0
+                            switch u2 >= 0
+                                case 1
+                                    capTerm = Tplus + u1*T0;
+                                case 0
+                                    capTerm = u1*Tpi - Tminus;
+                            end
+                    end
+                    % compute the initial and final condition integration
+                    % times
+                    tIC = -u1*T0  + capTerm.*u2 + Toff;
+                    tFC = +u1*Tpi + capTerm.*u2 + Toff;
+            end
         end
 
     end%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

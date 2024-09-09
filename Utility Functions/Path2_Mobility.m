@@ -801,7 +801,8 @@ classdef Path2_Mobility
         % done by the visualization functions above
         % this function plots highlights F level-set solution at the chosen 
         % point
-        function plotStanceOnNonslipLevelSets(ref, inputs, thisPath2)
+        function plotStanceOnNonslipLevelSets(ref, inputs, thisPath2, ...
+                                                        shapeStanceTraj)
             % .............................................................
             % create a local instanace to highlight the current level-set
             refPtNow = ref.P;
@@ -811,9 +812,18 @@ classdef Path2_Mobility
             aParaRefNow = thisPath2Now.aParaRef;
             % .............................................................
             % create the stance path that needs to be plotted
-            [tau, ~, fullPath] = ...
-                Path2_Mobility.computeSubgaitInCoordinates...
+            % ... 1) we dont have the stance path
+            % ... 2) we do have the stance path, and we pass it along to 
+            % ... compute the entire subgait
+            if nargin < 4
+                [tau, ~, fullPath] = ...
+                            Path2_Mobility.computeSubgaitInCoordinates...
                                                 (ref, inputs, thisPath2);
+            else
+                [tau, ~, fullPath] = ...
+                    Path2_Mobility.computeSubgaitInCoordinates...
+                                (ref, inputs, thisPath2, shapeStanceTraj);
+            end
             tauStanceQ = ... % phase during stance
                 linspace(0, pi, floor(size(tau, 1)/2)); 
             stancePath = interp1(tau, fullPath, tauStanceQ, "pchip");
@@ -1036,7 +1046,8 @@ classdef Path2_Mobility
             % ... if the 'plotFlag' is true, plot the subgait
             if plotFlag
                 Path2_Mobility.plotStanceOnNonslipLevelSets...
-                                                (ref, inputs, thisPath2);
+                                                (ref, inputs, thisPath2, ...
+                                                configTraj.complete.r);
             end
         end
 
@@ -1044,58 +1055,61 @@ classdef Path2_Mobility
         % when provided with a reference point, forward and backward 
         % integration times, and the scaling and sliding inputs.
         function [tau, beta, subgaitTraj] = computeSubgaitInCoordinates...
-                                                (ref, inputs, thisPath2)
-            % unpack reference
-            % ... 1. a reference point
-            % ... 2. integration times (taken togther with 1. provide the
-            % ... starting and ending points for the stance path)
-            % ... 3. the offset time to offset the time vectors for the
-            % ... stance trajectory, this helps relate them back to the 
-            % ... local parallel coordinates
-            refPt = ref.P; refT = ref.T;
-            % unpack instance parameters
-            aa = thisPath2.a; ll = thisPath2.l; 
-            dnum = size(thisPath2.ai, 1);
-            % unpack instance functions
-            dalpha = thisPath2.paraFdirn;
-            % check which case we are in and handle accordingly
-            switch all(inputs == 0)
-                case 1 % if both inputs are zero
-                    shapeStanceTraj = refPt;
-                    status = 'point';
-                otherwise % both inputs are not zero
-                    switch inputs(1) == 0
-                        case 1 % the first input is zero
-                            % integration times to the initial condition of
-                            % the shape path
-                            tIC = -inputs(1)*refT(1) + inputs(2);
-                            % integrate and obtain the solution
-                            [~, a0] = ode89( @(t, y)...
-                                dalpha(aa, ll, y(1), y(2)), ...
-                                [0, tIC], refPt ); % compute just shape IC
-                            % shape trajectory and status string
-                            shapeStanceTraj = a0(end, :);
-                            status = 'point';
-                        case 0 % none of the inputs are zero
-                            % set the status to a path
-                            status = 'path';
-                            % integration times to get to the initial and 
-                            % final conditions of the path
-                            tIC = -inputs(1)*refT(1) + inputs(2);
-                            tFC = +inputs(1)*refT(2) + inputs(2);
-                            % time array for the compute solution
-                            solnT = linspace(0, tFC-tIC, dnum+1);
-                            % integrate to obtain the solution
-                            [~, a0] = ode89( @(t, y)...
-                                dalpha(aa, ll, y(1), y(2)), ...
-                                [0, tIC], refPt );
-                            [~, solnY] = ode89( @(t, y) ...
-                                            dalpha(aa, ll, y(1), y(2)), ...
-                                                    solnT, a0(end, :) );
-                            % shape trajectory
-                            shapeStanceTraj = solnY;
-                    end
+                                (ref, inputs, thisPath2, shapeStanceTraj)
+            dnum = size(thisPath2.ai, 1); % discretization of shapes
+            if nargin < 4 % if only inputs and references are provided
+                % unpack reference
+                % ... 1. a reference point
+                % ... 2. integration times (taken togther with 1. provide the
+                % ... starting and ending points for the stance path)
+                % ... 3. the offset time to offset the time vectors for the
+                % ... stance trajectory, this helps relate them back to the 
+                % ... local parallel coordinates
+                refPt = ref.P; refT = ref.T;
+                % unpack instance parameters
+                aa = thisPath2.a; ll = thisPath2.l; 
+                % unpack instance functions
+                dalpha = thisPath2.paraFdirn;
+                % check which case we are in and handle accordingly
+                switch all(inputs == 0)
+                    case 1 % if both inputs are zero
+                        shapeStanceTraj = refPt;
+                        status = 'point';
+                    otherwise % both inputs are not zero
+                        switch inputs(1) == 0
+                            case 1 % the first input is zero
+                                % integration times to the initial condition of
+                                % the shape path
+                                tIC = -inputs(1)*refT(1) + inputs(2);
+                                % integrate and obtain the solution
+                                [~, a0] = ode89( @(t, y)...
+                                    dalpha(aa, ll, y(1), y(2)), ...
+                                    [0, tIC], refPt ); % compute just shape IC
+                                % shape trajectory and status string
+                                shapeStanceTraj = a0(end, :);
+                                status = 'point';
+                            case 0 % none of the inputs are zero
+                                % set the status to a path
+                                status = 'path';
+                                % integration times to get to the initial and 
+                                % final conditions of the path
+                                tIC = -inputs(1)*refT(1) + inputs(2);
+                                tFC = +inputs(1)*refT(2) + inputs(2);
+                                % time array for the compute solution
+                                solnT = linspace(0, tFC-tIC, dnum+1);
+                                % integrate to obtain the solution
+                                [~, a0] = ode89( @(t, y)...
+                                    dalpha(aa, ll, y(1), y(2)), ...
+                                    [0, tIC], refPt );
+                                [~, solnY] = ode89( @(t, y) ...
+                                                dalpha(aa, ll, y(1), y(2)), ...
+                                                        solnT, a0(end, :) );
+                                % shape trajectory
+                                shapeStanceTraj = solnY;
+                        end
+                end
             end
+            
             % Finally, we return the 
             % 1) shape trajectory as a function of the
             % ... gait phase: [0, 2*pi(-)] --> [r; flipud(r(2:end-1))]
@@ -1208,8 +1222,8 @@ classdef Path2_Mobility
 
         % For subgaits defined using the "computeSubgaitInCoordinates", we
         % offset the periodic waveform by the requested phase offset
-        function [betaOut, subgaitOut] = offsetSubgait(tau, beta, subgait, ...
-                                                            phaseOffset)
+        function [betaOut, subgaitOut] = phaseOffsetSubgait(tau, beta, ...
+                                                    subgait, phaseOffset)
             % modulo the 'phaseOffset' to be between +pi and -pi; 
             % simplest (braindead) way to do this is to go into the S^1 
             % (circle) coordinates and then come back with the atan2 fxn
