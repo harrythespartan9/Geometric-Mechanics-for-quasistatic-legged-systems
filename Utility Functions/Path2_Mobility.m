@@ -457,6 +457,17 @@ classdef Path2_Mobility
                                        intTime, refPt);
         end
 
+        % check if the provided stance submanifolds are complementary
+        function checkFlag = areComplementaryStances(thisPath2, thatPath2)
+            % compute the complimentary submanifold index
+            temp = zeros(1, 2); temp(thisPath2.sCol) = 1;
+            thatColEstimate = find(~temp);
+            % obtain the actual submanifold index
+            thatColActual = thatPath2.sCol;
+            % compare the two and return the flag
+            checkFlag = (thatColEstimate == thatColActual);
+        end
+
         % find the parallel coordinates specifically at a specific point
         % ... this function is setup to compute the nonslip directions for
         % ... the specified integration time about the refernce point and
@@ -889,7 +900,7 @@ classdef Path2_Mobility
         % reference point, forward and backward integration times, and the
         % scaling and sliding inputs.
         function configTraj = simulateConfigurationTrajectory...
-                                                (ref, inputs, thisPath2)
+                                        (ref, inputs, thisPath2, plotFlag)
             % unpack reference
             % ... 1. a reference point
             % ... 2. integration times (taken togther with 1. provide the
@@ -1022,6 +1033,11 @@ classdef Path2_Mobility
                                 (configTraj.discretized.gCirc);
             configTraj.discretized.zHat = ...
                                     configTraj.discretized.gHat(end, :);
+            % ... if the 'plotFlag' is true, plot the subgait
+            if plotFlag
+                Path2_Mobility.plotStanceOnNonslipLevelSets...
+                                                (ref, inputs, thisPath2);
+            end
         end
 
         % this function computes the shape trajectory in the gait phase 
