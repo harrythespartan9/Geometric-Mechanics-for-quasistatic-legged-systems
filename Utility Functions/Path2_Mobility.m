@@ -16,7 +16,7 @@ classdef Path2_Mobility
 
         kin       % kinematics of the system 
 
-        kinfunc   % kineamtics of level-2 contact submanifolds
+        kinfunc   % kinematics of level-2 contact submanifolds
 
         p_kin     % kinematics as a function of discretized shape space for 
                   % ... plotting
@@ -420,6 +420,29 @@ classdef Path2_Mobility
                                                                     ];
                     end
                 end
+                % ... integrate forward and backward again to find the
+                % ... limits of the F level-set in terms of path length 
+                % ... within the allowable shape space bounds and phase
+                % ... bounds as considered earlier
+                tMax = nan(1, 2);
+                % ... ... integrate backward and get the time bounds
+                [~, ~, teNow, ~, ~] = ...
+                ode89( @(t,y) -thisPath2.paraFdirn(...
+                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                [0, 1e2], y0now, optionsNow ); % for a long time,
+                                               % even will happen quicker
+                if ~isempty(teNow)
+                    tMax(1) = teNow;
+                end
+                % ... ... same for forward path
+                [~, ~, teNow, ~, ~] = ...
+                ode89( @(t,y) thisPath2.paraFdirn(...
+                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                [0, 1e2], y0now, optionsNow ); % for a long time, even will 
+                                               % happen quicker
+                if ~isempty(teNow)
+                    tMax(2) = teNow;
+                end
                 % ... offset the time array such that the reference point
                 % ... provided by 'aPerpF', 'y0now' is at time == 0
                 % ... do this for both 'tFull' (cutoff threshold) and the
@@ -428,6 +451,8 @@ classdef Path2_Mobility
                 % ... store the main solution
                 thisPath2.aParallF.y{i} = yNow(tNow <= tFull, :);
                 thisPath2.aParallF.t{i} = tNow(tNow <= tFull); % final solution
+                % ... store the maximum times until shape bounds
+                thisPath2.aParallF.tMax{i} = tMax;
                 % ... compute the stratified panel along this solution
                 thisPath2.aParallF.dz{i} = thisPath2.dz(...
                                         thisPath2.a, thisPath2.l,...
@@ -483,7 +508,7 @@ classdef Path2_Mobility
             elseif nargin < 2
                 refPt = thisPath2.refPt;
             elseif nargin > 3 || nargin == 0
-                error('ERROR! Incorrect number of inputs.');
+                error('ERROR! Incorrect number of arguments.');
             end
             tInt = 100*[1 1];
             [~, yNow] = ode23(@(t, y) -thisPath2.paraFdirn(...
@@ -568,9 +593,25 @@ classdef Path2_Mobility
                                                                 ];
                 end
             end
+            tMax = nan(1, 2);
+            [~, ~, teNow, ~, ~] = ...
+            ode89( @(t,y) -thisPath2.paraFdirn(...
+                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            [0, 1e2], refPt, options );
+            if ~isempty(teNow)
+                tMax(1) = teNow;
+            end
+            [~, ~, teNow, ~, ~] = ...
+            ode89( @(t,y) thisPath2.paraFdirn(...
+                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            [0, 1e2], refPt, options );
+            if ~isempty(teNow)
+                tMax(2) = teNow;
+            end
             tNow = tNow - tBwd; tFull = tFull - tBwd;
             thisPath2.aParaRef.y = yNow(tNow <= tFull, :);
             thisPath2.aParaRef.t = tNow(tNow <= tFull);
+            thisPath2.aParaRef.tMax = tMax;
             thisPath2.aParaRef.dz = thisPath2.dz(...
                                     thisPath2.a, thisPath2.l,...
                                     thisPath2.aParaRef.y(:, 1), ...
@@ -721,7 +762,7 @@ classdef Path2_Mobility
             plot(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
                 'Color', stanceColor);
             plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2),...
-                arrowSize, lW, stanceColor, 'front_end');
+                arrowSize, arrowAngle, lW, stanceColor, 'front_end');
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
                 'FontSize', pInfo.cbarFS);
@@ -797,12 +838,11 @@ classdef Path2_Mobility
         end
 
         % this function plots the requested stance phase path parameterized
-        % by the inputs (scaling and sliding) in the limb angle subspace as
-        % done by the visualization functions above
-        % this function plots highlights F level-set solution at the chosen 
-        % point
-        function plotStanceOnNonslipLevelSets(ref, inputs, thisPath2, ...
-                                                        shapeStanceTraj)
+        % by the starting and stopping times relative to a reference point 
+        % in the limb angle subspace as done by the visualization functions 
+        % defined earlier.
+        function plotStanceOnNonslipLevelSets...
+                (ref, startEndTimes, thisPath2, shapeStanceTraj, status)
             % .............................................................
             % create a local instanace to highlight the current level-set
             refPtNow = ref.P;
@@ -818,11 +858,20 @@ classdef Path2_Mobility
             if nargin < 4
                 [tau, ~, fullPath] = ...
                             Path2_Mobility.computeSubgaitInCoordinates...
-                                                (ref, inputs, thisPath2);
-            else
+                                                (ref, startEndTimes, thisPath2);
+            elseif nargin == 4
                 [tau, ~, fullPath] = ...
                     Path2_Mobility.computeSubgaitInCoordinates...
-                                (ref, inputs, thisPath2, shapeStanceTraj);
+                        (ref, startEndTimes, thisPath2, shapeStanceTraj);
+            elseif nargin == 5
+                [tau, ~, fullPath] = ...
+                    Path2_Mobility.computeSubgaitInCoordinates...
+                                        (ref, startEndTimes, thisPath2, ...
+                                                shapeStanceTraj, status);
+            else
+                error(['ERROR! This function only accepts 5 args. Refer to ' ...
+                    'usage in "se2_toyproblems_case_1_mobility.mlx" for ' ...
+                    'more details.'])
             end
             tauStanceQ = ... % phase during stance
                 linspace(0, pi, floor(size(tau, 1)/2)); 
@@ -905,12 +954,39 @@ classdef Path2_Mobility
             xlim(pInfo.xlimits); ylim(pInfo.ylimits);
             % .............................................................
         end
+
+        % this function computes the displacement of the body when provided
+        % with a reference point, forward and backward intehgration times,
+        % and scaling and sliding inputs.
+        % OUTPUT: "displacement"
+        % ... A more expanded version of this method is used in the 
+        % ... "simulateConfigurationTrajectory" method.
+        function z = simulateFinalBodyPosition...
+                                (ref, startEndTimes, thisPath2)
+            refPt = ref.P;
+            aa = thisPath2.a; ll = thisPath2.l;
+            dalpha = thisPath2.paraFdirn;
+            dQ = thisPath2.dQ;
+            if startEndTimes(1) ~= startEndTimes(2)
+                [~, a0] = ode89( @(t, y)...
+                        dalpha(aa, ll, y(1), y(2)), ...
+                        [0, startEndTimes(1)], refPt ); % get shape ic
+                [~, solnY] = ode89( @(t, y) dQ(aa, ll,... % body fc
+                                            y(1), y(2), y(3),...
+                                            y(4), y(5)),...
+                            [0, diff(startEndTimes)], ...
+                            [zeros(1, 3), a0(end, :)] );
+                z = solnY(end, 1:3);
+            else % no path, just point => no body trajectory/displacement
+                z = zeros(1, 3);
+            end
+        end
         
         % this function computes the body trajectory when provided with a
         % reference point, forward and backward integration times, and the
         % scaling and sliding inputs.
         function configTraj = simulateConfigurationTrajectory...
-                                        (ref, inputs, thisPath2, plotFlag)
+                                (ref, startEndTimes, thisPath2, plotFlag)
             % unpack reference
             % ... 1. a reference point
             % ... 2. integration times (taken togther with 1. provide the
@@ -918,17 +994,19 @@ classdef Path2_Mobility
             % ... 3. the offset time to offset the time vectors for the
             % ... stance trajectory, this helps relate them back to the 
             % ... local parallel coordinates
-            refPt = ref.P; refT = ref.T; refToff = ref.tOff;
+            refPt = ref.P; refToff = ref.tOff;
             % unpack instance parameters
             aa = thisPath2.a; ll = thisPath2.l; 
             dnum = size(thisPath2.ai, 1); intTime = thisPath2.intTime;
             % unpack instance functions
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;
-            dz = thisPath2.dz;            
+            dz = thisPath2.dz;
+            % unpack the stance path start and end times
+            tIC = startEndTimes(1); tFC = startEndTimes(2);
             % check which case we are in and handle accordingly
-            switch all(inputs == 0)
-                case 1 % if both inputs are zero
+            switch all(startEndTimes == 0)
+                case 1 % stance path a point at the shape subspace origin
                     configTraj.complete.t = refToff;
                     configTraj.complete.g = zeros(1, 3); 
                     configTraj.complete.r = refPt;
@@ -944,12 +1022,9 @@ classdef Path2_Mobility
                         dz(aa, ll, refPt(1), refPt(2));
                     configTraj.discretized.gCirc = zeros(1, 3);
                     configTraj.status = 'point';
-                otherwise % both inputs are not zero
-                    switch inputs(1) == 0
-                        case 1 % the first input is zero
-                            % integration times to the initial condition of
-                            % the shape path
-                            tIC = -inputs(1)*refT(1) + inputs(2);
+                case 0 % stance path NOT a point at the origin
+                    switch tIC == tFC % stance path a point elsewhere
+                        case 1
                             % integrate and obtain the solution
                             [~, a0] = ode89( @(t, y)...
                                 dalpha(aa, ll, y(1), y(2)), ...
@@ -970,13 +1045,9 @@ classdef Path2_Mobility
                                 dz(aa, ll, a0(end, 1), a0(end, 2));
                             configTraj.discretized.gCirc = zeros(1, 3);
                             configTraj.status = 'point';
-                        case 0 % none of the inputs are zero
+                        case 0 % stance path has actual length
                             % set the status to a path
                             configTraj.status = 'path';
-                            % integration times to get to the initial and 
-                            % final conditions of the path
-                            tIC = -inputs(1)*refT(1) + inputs(2);
-                            tFC = +inputs(1)*refT(2) + inputs(2);
                             % time array for the compute solution
                             solnT = linspace(0, tFC-tIC, dnum);
                             % integrate to obtain the solution
@@ -1045,9 +1116,16 @@ classdef Path2_Mobility
                                     configTraj.discretized.gHat(end, :);
             % ... if the 'plotFlag' is true, plot the subgait
             if plotFlag
+                % ... ... modify the shape trajectory with one more point
+                tMod = configTraj.complete.t;
+                rMod = configTraj.complete.r;
+                rMod = interp1...
+                        (tMod, rMod, ...
+                        linspace(tMod(1), tMod(end), dnum+1), ...
+                        "pchip");
                 Path2_Mobility.plotStanceOnNonslipLevelSets...
-                                                (ref, inputs, thisPath2, ...
-                                                configTraj.complete.r);
+                                (ref, startEndTimes, thisPath2, ...
+                                rMod, configTraj.status);
             end
         end
 
@@ -1055,32 +1133,28 @@ classdef Path2_Mobility
         % when provided with a reference point, forward and backward 
         % integration times, and the scaling and sliding inputs.
         function [tau, beta, subgaitTraj] = computeSubgaitInCoordinates...
-                                (ref, inputs, thisPath2, shapeStanceTraj)
+                (ref, startEndTimes, thisPath2, shapeStanceTraj, status)
             dnum = size(thisPath2.ai, 1); % discretization of shapes
             if nargin < 4 % if only inputs and references are provided
                 % unpack reference
                 % ... 1. a reference point
                 % ... 2. integration times (taken togther with 1. provide the
                 % ... starting and ending points for the stance path)
-                % ... 3. the offset time to offset the time vectors for the
-                % ... stance trajectory, this helps relate them back to the 
-                % ... local parallel coordinates
-                refPt = ref.P; refT = ref.T;
+                refPt = ref.P;
                 % unpack instance parameters
                 aa = thisPath2.a; ll = thisPath2.l; 
                 % unpack instance functions
                 dalpha = thisPath2.paraFdirn;
+                % unpack the
+                tIC = startEndTimes(1); tFC = startEndTimes(2);
                 % check which case we are in and handle accordingly
-                switch all(inputs == 0)
-                    case 1 % if both inputs are zero
+                switch all(startEndTimes == 0)
+                    case 1 % path just point at origin
                         shapeStanceTraj = refPt;
                         status = 'point';
-                    otherwise % both inputs are not zero
-                        switch inputs(1) == 0
-                            case 1 % the first input is zero
-                                % integration times to the initial condition of
-                                % the shape path
-                                tIC = -inputs(1)*refT(1) + inputs(2);
+                    otherwise % path NOT a point at origin
+                        switch tIC == tFC
+                            case 1 % path is a point elsewhere
                                 % integrate and obtain the solution
                                 [~, a0] = ode89( @(t, y)...
                                     dalpha(aa, ll, y(1), y(2)), ...
@@ -1088,13 +1162,9 @@ classdef Path2_Mobility
                                 % shape trajectory and status string
                                 shapeStanceTraj = a0(end, :);
                                 status = 'point';
-                            case 0 % none of the inputs are zero
+                            case 0 % path is actually 1D
                                 % set the status to a path
                                 status = 'path';
-                                % integration times to get to the initial and 
-                                % final conditions of the path
-                                tIC = -inputs(1)*refT(1) + inputs(2);
-                                tFC = +inputs(1)*refT(2) + inputs(2);
                                 % time array for the compute solution
                                 solnT = linspace(0, tFC-tIC, dnum+1);
                                 % integrate to obtain the solution
@@ -1150,9 +1220,10 @@ classdef Path2_Mobility
         end
 
         % method to compute the reference point along the perpendicular
-        % coordinate given another reference point and the time offset
-        function [tOff, thisPath2] = computeToffFromPerpCoord(refPt, ...
-                                                                thisPath2)
+        % coordinate given another reference point and the time offset,
+        % this also returns the offset maximum path lengths accordingly
+        function [tOff, tMax, thisPath2] = ...
+                                computeToffFromPerpCoord(refPt, thisPath2)
             % unpack
             a = thisPath2.kinfunc.aa;
             l = thisPath2.kinfunc.ll;
@@ -1165,7 +1236,7 @@ classdef Path2_Mobility
             % ... requested reference with that pre-computed point
             % ... 2) if the reference doesn't exist, then we interpolate to
             % ... find corresponding reference in the perp coords
-            switch min(vecnorm(perpCoords.y - refPt, 2, 2)) < 1e-6
+            switch abs(min(vecnorm(perpCoords.y - refPt, 2, 2))) < 1e-6
                 case 1
                     % find the index with the smallest value below the
                     % threshold and obtain the corresponding parallel
@@ -1198,7 +1269,8 @@ classdef Path2_Mobility
             end
             % Now, we compute the the time offset based on the difference
             % between the requested reference and the computed parallel
-            % coordinates
+            % coordinates. Again, we also offset the maximum times
+            % according to the tOff value.
             % ... again, if the time offset is smaller than 1e-6, just set
             % ... it to 0.
             refDiff = aParaNow.y - refPt;
@@ -1218,6 +1290,7 @@ classdef Path2_Mobility
             if abs(tOff) < 1e-6
                 tOff = 0;
             end
+            tMax = aParaNow.tMax + tOff*[1, -1];
         end
 
         % For subgaits defined using the "computeSubgaitInCoordinates", we
@@ -1229,7 +1302,7 @@ classdef Path2_Mobility
             % (circle) coordinates and then come back with the atan2 fxn
             sinPhase = sin(phaseOffset); cosPhase = cos(phaseOffset);
             phaseOffset = atan2(sinPhase, cosPhase);
-            % augment the inputs with two more cycles before and after to
+            % augment the args with two more cycles before and after to
             % convert this phaseoffset problem into an interpolation
             % problem which is well defined
             tauA = [tau-2*pi; tau; tau+2*pi];
