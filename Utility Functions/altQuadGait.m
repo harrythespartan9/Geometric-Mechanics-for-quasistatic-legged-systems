@@ -410,11 +410,110 @@ classdef altQuadGait
                     end
             end
         end
+        
+        function [pFS, subGT, subGTFS] = ...
+                    obtainGaitFSapproximation...
+                        (thisAltGait, refi, refj, inputs, ...
+                                    nOrderFS, pltFlag, packCSVflag)
+        %OBTAINGAITFSAPPROXIMATION approximate the limb fore-aft angles
+        %defined by the continuous shape space using Fourier series
+        %approximation
+            % because this function only supports one set of inputs, check to
+            % makre sure this is the case
+            if size(inputs, 1) ~= 1
+                error(['ERROR! Only one set of inputs are needed and the ' ...
+                '"inputs" variable should be a row vector of 4 elements']);
+            end
+            % unpack the subgait instances
+            stance_i = thisAltGait.ithStance;
+            stance_j = thisAltGait.jthStance;
+            % obtain offset times and max time references
+            [refi.tOff, refi.tMax, stance_i] = ...
+                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i);
+            [refj.tOff, refj.tMax, stance_j] = ...
+                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j);
+            % obtain the integration times to the stance path initial and 
+            % final conditions
+            [tIC, tFC] = ...
+                altQuadGait.computeGaitIntegrationTimes...
+                (    thisAltGait, ... % gait instance
+                     inputs, ... % scaling and sliding inputs concatenated
+                     [refi.T,    refj.T], ... % integration times
+                     [refi.tOff, refj.tOff], ... % offset times
+                     [refi.tMax, refj.tMax]   ); % max integration times
+            % ... unpack integration times for each subgait
+            tICi = tIC(1); tICj = tIC(2);
+            tFCi = tFC(1); tFCj = tFC(2);
+            % obtain the subgait trajectories
+            subGTi = []; 
+            [subGTi.tau, subGTi.beta, subGTi.subgait] = ...
+                        Path2_Mobility.computeSubgaitInCoordinates...
+                                        (refi, [tICi, tFCi], stance_i);
+            subGTj = [];
+            [subGTj.tau, subGTj.beta, subGTj.subgait] = ...
+                        Path2_Mobility.computeSubgaitInCoordinates...
+                                        (refj, [tICj, tFCj], stance_j);
+            subGT = {subGTi, subGTj};
+            % ... offset the jth subgait by +pi to make the gait 
+            % ... alternating in nature-- else the whole gait construction 
+            % ... would be wrong; '+pi' is the last argument
+            [subGTj.beta, subGTj.subgait] = ...
+                    Path2_Mobility.phaseOffsetSubgait...
+                        (subGTj.tau, subGTj.beta, subGTj.subgait, +pi);
+            % approximate the trajectories until the requested order
+            pFS = cell(1, 2); pFS{1} = []; pFS{2} = [];
+            [pFS{1}.a0, pFS{1}.a, pFS{1}.b, subGTFSi] = ...
+            generateFourierSeriesAppx...
+                                (subGTi.tau, subGTi.subgait, nOrderFS);
+            [pFS{2}.a0, pFS{2}.a, pFS{2}.b, subGTFSj] = ...
+            generateFourierSeriesAppx...
+                                (subGTj.tau, subGTj.subgait, nOrderFS);
+            subGTFS = {subGTFSi, subGTFSj};
+            % plot them together for comparison if neeeded
+            % ... first put each subgait and its Fourier series estimate
+            % ... into the correct plotting format
+            if pltFlag
+                plt_i = formatLimbSignalsForPlotting...
+                    (subGTi.tau, subGTi.beta, subGTi.subgait, stance_i);
+                plt_j = formatLimbSignalsForPlotting...
+                    (subGTj.tau, subGTj.beta, subGTj.subgait, stance_j);
+                pltFSi = formatLimbSignalsForPlotting...
+                    (subGTi.tau, subGTi.beta, subGTFSi, stance_i, ...
+                                                            false, ':');
+                pltFSj = formatLimbSignalsForPlotting...
+                    (subGTj.tau, subGTj.beta, subGTFSj, stance_j, ...
+                                                            false, ':');
+                plotLimbAngleSignals(...
+                                        {   plt_i, pltFSi; ...
+                                            plt_j, pltFSj      }...
+                                    );
+            end
+            % package the fore-aft angle into CSV if neeeded
+            % ... coefficients along rows with order a0, a, and then b
+            % ... which correspond to the DC offset term, Cosine
+            % ... components, and the Sine components.
+            if packCSVflag
+                iStance = [];
+                    iStance.cs = stance_i.cs;
+                        iStance.tau = subGTi.tau; 
+                            iStance.subgait = subGTi.subgait;
+                                iStance.nAppxOrder = nOrderFS;
+                jStance = [];
+                    jStance.cs = stance_j.cs;
+                        jStance.tau = subGTj.tau; 
+                            jStance.subgait = subGTj.subgait;
+                                jStance.nAppxOrder = nOrderFS;
+                compileWaveformsFromFSappx(... % generate .csv
+                    iStance, jStance, ...
+                    ['Data\rigidTrotGait_' num2str(inputs) '_' ...
+                    thisAltGait.inputMode '_FSparams' '.csv']);
+            end
+        end
 
         function plotBodyTrajectoryEstimates(discJointStancePath, zoomFlag)
-        %PLOTALTGAITBODYTRAJECTORYESTIMATES plot the body trajectory of the system
-        %when performing an alternating gait and its estimates using the BCH
-        %formula
+        %PLOTALTGAITBODYTRAJECTORYESTIMATES plot the body trajectory of the 
+        %system when performing an alternating gait and its estimates using 
+        %the BCH formula
             % check if the jointStancePath information is provided
             if ~isfield(discJointStancePath, 'g') ||...
                ~isfield(discJointStancePath, 'z') ||...
@@ -504,6 +603,61 @@ classdef altQuadGait
                 ax.FontSize = fS; ax.XTick = ''; ax.YTick = '';
             end
         
+        end
+        
+        % plot the body trajectory timeseries
+        % ... get the trajectory
+        function plotBodyTimeseries(thisAltGait, cTi, cTj)
+            % ... unpack the subgait instances
+            stance_i = thisAltGait.ithStance;
+            stance_j = thisAltGait.jthStance;
+            % ... obtain the complete trajectories from each subgait
+            g_i = cTi.complete.g; z_i = cTi.complete.z';
+            g_j = cTj.complete.g; z_j = cTj.complete.z';
+            [g, z] = stitchTwoSE2trajectories(g_i, z_i, g_j, z_j);
+            % ... obtain the plotting format and then plot the body
+            % ... timeseries in separate layouts
+        end
+        
+        % plot the shape trajectory from a gait cycle as a timeseries
+        % ...  this function is very similar to the method 
+        % ... "obtainGaitFSapproximation" (refer to this for more details)
+        function plotShapeTimeseries(thisAltGait, ...
+                                        refi, refj, inputs, pltFlag)
+            if size(inputs, 1) ~= 1
+                error(['ERROR! Only one set of inputs are needed and the ' ...
+                '"inputs" variable should be a row vector of 4 elements']);
+            end
+            stance_i = thisAltGait.ithStance;
+            stance_j = thisAltGait.jthStance;
+            [refi.tOff, refi.tMax, stance_i] = ...
+                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i);
+            [refj.tOff, refj.tMax, stance_j] = ...
+                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j);
+            [tIC, tFC] = ...
+                altQuadGait.computeGaitIntegrationTimes...
+                (    thisAltGait, ...
+                     inputs, ...
+                     [refi.T,    refj.T], ...
+                     [refi.tOff, refj.tOff], ...
+                     [refi.tMax, refj.tMax]   );
+            tICi = tIC(1); tICj = tIC(2);
+            tFCi = tFC(1); tFCj = tFC(2);
+            subGTi = []; 
+            [subGTi.tau, subGTi.beta, subGTi.subgait] = ...
+                        Path2_Mobility.computeSubgaitInCoordinates...
+                                        (refi, [tICi, tFCi], stance_i);
+            subGTj = [];
+            [subGTj.tau, subGTj.beta, subGTj.subgait] = ...
+                        Path2_Mobility.computeSubgaitInCoordinates...
+                                        (refj, [tICj, tFCj], stance_j);
+            if pltFlag
+                plt_i = formatLimbSignalsForPlotting...
+                    (subGTi.tau, subGTi.beta, subGTi.subgait, stance_i);
+                plt_j = formatLimbSignalsForPlotting...
+                    (subGTj.tau, subGTj.beta, subGTj.subgait, stance_j);
+                plotLimbAngleSignals({plt_i; plt_j});
+            end
         end
 
     end  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
