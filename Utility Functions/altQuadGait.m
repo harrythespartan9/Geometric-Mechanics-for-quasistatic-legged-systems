@@ -30,6 +30,15 @@ classdef altQuadGait
         integrationLimits   % forward and backward integration limits-- 
                             % this is only used when in "path_limit_compliant"
 
+        stanceSpace         % the stance space is an orthogonal 
+                            % representation of the stance phase paths 
+                            % during each subgait cycles; the panels in the
+                            % subgait cycles form the connection vector
+                            % fields in each direction and their
+                            % lie-bracket is the curvature; taken together
+                            % using this information, we can check the gait
+                            % controllability for this two-beat gait
+        
     end
     
     methods
@@ -167,6 +176,69 @@ classdef altQuadGait
                     end
             end
         end
+
+        % construct the stance space panels and lie-brackets for estimating
+        % the net displacement and checking gait controllability
+        function thisAltGait = stanceSpaceSweep(thisAltGait)
+            % make sure that you're in the origin-only leaf exploration
+            % mode, else error out as other modes aren't supported right
+            % now
+            if ~strcmp(thisAltGait.leafExplorationMode, 'origin-only')
+                error(['ERROR! Only origin exploration mode is supported ' ...
+                    'for now']);
+            end
+            % unpack the subgait instances
+            stanceI = thisAltGait.ithStance;
+            stanceJ = thisAltGait.jthStance;
+            % obtain the parallel or nonslip coordinates at the origin for
+            % the full level-set
+            stanceI = ...
+                Path2_Mobility.computeSpecificParallelCoordinates...
+                (stanceI, zeros(1, 2), [], true);
+            stanceJ = ...
+                Path2_Mobility.computeSpecificParallelCoordinates...
+                (stanceJ, zeros(1, 2), [], true);
+            % stance space properties
+            % ... get the stance-decoupled properties and store
+            aI  = stanceI.aParaRef.t;   aJ = stanceJ.aParaRef.t;
+            dzI = stanceI.aParaRef.dz; dzJ = stanceJ.aParaRef.dz;
+            thisAltGait.stanceSpace.a{1}  = aI;
+            thisAltGait.stanceSpace.a{2}  = aJ;
+            thisAltGait.stanceSpace.dz{1} = dzI;
+            thisAltGait.stanceSpace.dz{2} = dzJ;
+            % ... get the meshed properties as well
+            % ... ... first obtain the indices running along each
+            % ... ... direction, then map the properties accordingly
+            idxI = reshape( (1:size(aI, 1)), size(aI, 1), 1 );
+            idxJ = reshape( (1:size(aJ, 1)), size(aJ, 1), 1 );
+            [idxI, idxJ] = meshgrid(idxI, idxJ);
+            aI = aI(idxI); aJ = aJ(idxJ);
+            % ... ... iterate over each column corresponding to the panel
+            % ... ... directions and compute the grid
+            dzI  = permute(dzI, [1, 3, 2]); 
+            dzJ  = permute(dzJ, [1, 3, 2]);
+            dzI  = dzI( repmat(idxI, 1, 1, 3) );
+            dzJ  = dzJ( repmat(idxJ, 1, 1, 3) );
+            dzIJ = threeDizeColumnArray(...
+                computeLieBracketOfse2VectorFields...
+                (columnize3Darray(dzI), columnize3Darray(dzJ))...
+                                        );
+            % ... finally, compute the information to discuss the span of
+            % ... the involutive closure in the stance subspace
+            dzImagn = vecnorm(dzI, 2, 3); dzJmagn = vecnorm(dzJ, 2, 3);
+            dzIdotJ = dot(dzI, dzJ, 3);
+            idxNonzero = (dzIdotJ ~= 0); % nonzero indices
+            dzIdotJ = ...
+                dzIdotJ(idxNonzero)./...
+                (dzImagn(idxNonzero).*dzJmagn(idxNonzero)); % normalize
+            thisAltGait.stanceSpace.A{1} = aI;
+            thisAltGait.stanceSpace.A{2} = aJ;
+            thisAltGait.stanceSpace.DZ{1} = dzI;
+            thisAltGait.stanceSpace.DZ{2} = dzJ;
+            thisAltGait.stanceSpace.LBDZ = dzIJ;
+            thisAltGait.stanceSpace.dzIdotJ = dzIdotJ;
+            % we have all the data we need in the 'stanceSpace' struct
+        end
         
         % this function computes the integration times for both subgaits
         % that form the "thisAltGait" instance
@@ -248,9 +320,8 @@ classdef altQuadGait
             end
         end
 
-        % this function computes the full configuration trajectory when
-        % provided with individual configuration trajectories during each
-        % stance phase
+        % compute the full configuration trajectory when provided with 
+        % individual configuration trajectories during each stance phase
         function cT = fullCycleConfigTrajectory(thisAltGait, cTi, cTj, ...
                                                     nAppxOrder, zoomFlag)
             % ... unpack the subgait instances
@@ -305,8 +376,14 @@ classdef altQuadGait
                 gC_i = cT.(fieldNow).gCirc{1}(:, 1:3); 
                 gC_j = cT.(fieldNow).gCirc{1}(:, 4:6);
                 % ... obtain the piecewise commutative trajectory
-                [cT.(fieldNow).gHat{1}, cT.(fieldNow).zHat{1}] = ...
+                switch isempty(nAppxOrder)
+                    case 1
+                        cT.(fieldNow).gHat{1} = [];
+                        cT.(fieldNow).zHat{1} = [];
+                    case 0
+                        [cT.(fieldNow).gHat{1}, cT.(fieldNow).zHat{1}] = ...
                             altQuadGait.piecewiseBodyVelFlow(gC_i, gC_j);
+                end
                 % ... obtain approximations of piecewise trajectory to the
                 % ... first "nAppxOrder" orders of the BCH expansion get 
                 % ... the estimations of body velocities, trajectory, and 
@@ -351,6 +428,8 @@ classdef altQuadGait
             % for the requested orders, else we just output one timeseries
             % for each
             switch numel(n)
+                case 0 % return empty cells
+                    gCHat = cell(1, 1); gHat = gCHat; zHat = gHat;
                 case 1
                     for i = 1:n
                         switch i
@@ -376,8 +455,9 @@ classdef altQuadGait
                                 gC = gC + gC_j_i_i_j/24;
                         end
                     end
-                    gCHat = gC;
+                    gCHat = {gC};
                     [gHat, zHat] = exponentiateBodyVelocities(gC);
+                    gHat = {gHat}; zHat = {zHat}; % cellularize
                 otherwise
                     gCHat = cell(1, n(end)); 
                     gHat = gCHat; zHat = gCHat; % init
@@ -414,7 +494,7 @@ classdef altQuadGait
         function [pFS, subGT, subGTFS] = ...
                     obtainGaitFSapproximation...
                         (thisAltGait, refi, refj, inputs, ...
-                                    nOrderFS, pltFlag, packCSVflag)
+                         nOrderFS, pltStruct, packCSVflag)
         %OBTAINGAITFSAPPROXIMATION approximate the limb fore-aft angles
         %defined by the continuous shape space using Fourier series
         %approximation
@@ -423,6 +503,16 @@ classdef altQuadGait
             if size(inputs, 1) ~= 1
                 error(['ERROR! Only one set of inputs are needed and the ' ...
                 '"inputs" variable should be a row vector of 4 elements']);
+            end
+            % if the flags and mode is not provided, define default values
+            if nargin < 7
+                packCSVflag = false; % do not generate data if not required
+            elseif nargin < 6
+                pltStruct.flag = true;
+                pltStruct.mode = 'colored'; % modes- 'stance_colored', 'k'
+            elseif nargin > 7
+                error(['ERROR! The number of input arguments can not be ' ...
+                    'more than 7.']);
             end
             % unpack the subgait instances
             stance_i = thisAltGait.ithStance;
@@ -472,7 +562,7 @@ classdef altQuadGait
             % plot them together for comparison if neeeded
             % ... first put each subgait and its Fourier series estimate
             % ... into the correct plotting format
-            if pltFlag
+            if pltStruct.flag
                 plt_i = formatLimbSignalsForPlotting...
                     (subGTi.tau, subGTi.beta, subGTi.subgait, stance_i);
                 plt_j = formatLimbSignalsForPlotting...
@@ -485,7 +575,8 @@ classdef altQuadGait
                                                             false, ':');
                 plotLimbAngleSignals(...
                                         {   plt_i, pltFSi; ...
-                                            plt_j, pltFSj      }...
+                                            plt_j, pltFSj      }, ...
+                                            pltStruct.mode...
                                     );
             end
             % package the fore-aft angle into CSV if neeeded
@@ -550,13 +641,18 @@ classdef altQuadGait
             % plot the stancewise commutative estimate
             gHatb = discJointStancePath.gHat{1}; 
             zHatb = discJointStancePath.zHat{1}; % locally unpack
-            plot(ax, gHatb(:, 1), gHatb(:, 2), '-', 'LineWidth', 2.0,...
+            if ~isempty(gHatb)
+                plot(ax, gHatb(:, 1), gHatb(:, 2), '-', 'LineWidth', 2.0,...
                 'Color', [ appxPicewCol, 1.0 ], ...
                     'DisplayName', 'stancewise commutative');
-            p = scatter(ax, zHatb(1), zHatb(2), 100, 'o', "filled",...
-                    "MarkerFaceColor", appxPicewCol, 'MarkerFaceAlpha', 1.0, ...
-                    'MarkerEdgeColor', appxPicewCol, 'MarkerEdgeAlpha', 1.0);
-            set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+                p = scatter(ax, zHatb(1), zHatb(2), 100, 'o', "filled",...
+                        "MarkerFaceColor", appxPicewCol, ...
+                        'MarkerFaceAlpha', 1.0, ...
+                        'MarkerEdgeColor', appxPicewCol, ...
+                        'MarkerEdgeAlpha', 1.0);
+                set(get(get(p,'Annotation'),'LegendInformation'),...
+                    'IconDisplayStyle','off');
+            end
             % plot the single flow estimates
             for i = 2:numel(discJointStancePath.gHat)
                 gHatb = discJointStancePath.gHat{i}; 
@@ -607,23 +703,34 @@ classdef altQuadGait
         
         % plot the body trajectory timeseries
         % ... get the trajectory
-        function plotBodyTimeseries(thisAltGait, cTi, cTj)
+        function plotBodyTimeseries(thisAltGait, cTi, cTj, ...
+                                                    pltMode, scatterFlag)
             % ... unpack the subgait instances
             stance_i = thisAltGait.ithStance;
             stance_j = thisAltGait.jthStance;
             % ... obtain the complete trajectories from each subgait
             g_i = cTi.complete.g; z_i = cTi.complete.z';
             g_j = cTj.complete.g; z_j = cTj.complete.z';
-            [g, z] = stitchTwoSE2trajectories(g_i, z_i, g_j, z_j);
+            [g, ~] = stitchTwoSE2trajectories(g_i, z_i, g_j, z_j);
+            % ... contact trajectory
+            % ... ... because it is a alternating gait, there are only two
+            % ... ... stance phases dictated by the ordering of the
+            % ... ... subgaits ("Path2_Mobility" instances)
+            numPts = size(g, 1);
+            c = [ones([floor(numPts/2), 1]); 2*ones([ceil(numPts/2), 1])];
             % ... obtain the plotting format and then plot the body
             % ... timeseries in separate layouts
+            pltBody = formatBodyTimeseriesForPlotting...
+                (g, c, ...
+                pltMode, '-', scatterFlag, {stance_i, stance_j});
+            plotBodyTimeseriesGeneral( pltBody );
         end
         
         % plot the shape trajectory from a gait cycle as a timeseries
         % ...  this function is very similar to the method 
         % ... "obtainGaitFSapproximation" (refer to this for more details)
         function plotShapeTimeseries(thisAltGait, ...
-                                        refi, refj, inputs, pltFlag)
+                                        refi, refj, inputs, pltStruct)
             if size(inputs, 1) ~= 1
                 error(['ERROR! Only one set of inputs are needed and the ' ...
                 '"inputs" variable should be a row vector of 4 elements']);
@@ -651,12 +758,12 @@ classdef altQuadGait
             [subGTj.tau, subGTj.beta, subGTj.subgait] = ...
                         Path2_Mobility.computeSubgaitInCoordinates...
                                         (refj, [tICj, tFCj], stance_j);
-            if pltFlag
+            if pltStruct.flag
                 plt_i = formatLimbSignalsForPlotting...
                     (subGTi.tau, subGTi.beta, subGTi.subgait, stance_i);
                 plt_j = formatLimbSignalsForPlotting...
                     (subGTj.tau, subGTj.beta, subGTj.subgait, stance_j);
-                plotLimbAngleSignals({plt_i; plt_j});
+                plotLimbAngleSignals({plt_i; plt_j}, pltStruct.mode);
             end
         end
 
@@ -718,4 +825,27 @@ end
 % body displacement and trajectory
 function [g, z] = exponentiateBodyVelocities(gCirc)
     g = exponentiateLieAlgebraElement(gCirc); z = g(end, :);
+end
+
+% convert 3D (x,y,yaw ordered along the third direction) into 2D arrays
+% where each column corresponds to the components converted into a column
+% vector
+function xOut = columnize3Darray(x)
+    xOut = nan( [size(x, 1)*size(x, 2), size(x, 3)] ); % init
+    for i = 1:size(x, 3)
+        xi = x(:, :, i); xi = reshape(xi, numel(xi), 1); % reshape
+        xOut(:, i) = xi;
+    end
+end
+
+% convert a 2D array into a 3D array where the third dimension corresponds 
+% to each column and each column become a 2D array
+% ... note this is an invertible process only because we use reshape to
+% ... perform the array trickery
+function xOut = threeDizeColumnArray(x)
+    xOut = nan([sqrt(size(x, 1))*ones(1, 2), size(x, 2)]); % init
+    for i = 1:size(x, 2)
+        xOut(:, :, i) = reshape(x(:, i), ... % ith "page" of data
+            [size(xOut, 1), size(xOut, 2), 1]); % assignment size
+    end
 end

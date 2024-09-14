@@ -1,7 +1,7 @@
-function plotLimbAngleSignals(limbAngleStruct)
+function plotLimbAngleSignals(limbAngleStruct, mode)
 %PLOTLIMBANGLESIGNALS plot the limb angle signals in a tiledlayout
     % given structs holding the limb angle data, we extract relevant
-    % information and plot the signals in the column array of tiledlayouts
+    % information and plot the signals in a column array of tiledlayouts
 
     % set the fontsize here
     fS = 25;
@@ -26,9 +26,19 @@ function plotLimbAngleSignals(limbAngleStruct)
                 tau = limbAngleStruct{i, k}{j}.tau;
                 beta = limbAngleStruct{i, k}{j}.beta;
                 signal = limbAngleStruct{i, k}{j}.signal;
-                stanceColor = limbAngleStruct{i, k}{j}.stanceColor;
-                swingColor = limbAngleStruct{i, k}{j}.swingColor;
-                scatterFlag = limbAngleStruct{i, k}{j}.scatterFlag;
+                switch mode
+                    case 'stance_colored'
+                        stanceColor = limbAngleStruct{i, k}{j}.stanceColor;
+                        swingColor = limbAngleStruct{i, k}{j}.swingColor;
+                        scatterFlag = limbAngleStruct{i, k}{j}.scatterFlag;
+                    case 'k'
+                        stanceColor = zeros(1, 3);
+                        swingColor = zeros(1, 3);
+                        scatterFlag = false;
+                    otherwise
+                        error(['ERROR! Only "stance_colored" and "k" modes' ...
+                            ' are supported right now.']);
+                end
                 lineSty = limbAngleStruct{i, k}{j}.lineSty;
                 cs = limbAngleStruct{i, k}{j}.cs;
                 % plot

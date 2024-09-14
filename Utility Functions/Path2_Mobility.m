@@ -369,7 +369,30 @@ classdef Path2_Mobility
                     @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
                     eventList) ...
                     );
-                % ... integrate backward path
+                % ... integrate forward and backward to find the limits of
+                % ... the F level-set in terms of path length within the 
+                % ... allowable shape space bounds and phase bounds as 
+                % ... considered earlier
+                tMax = nan(1, 2);
+                % ... ... integrate backward and get the time bounds
+                [~, ~, teNow, ~, ~] = ...
+                ode89( @(t,y) -thisPath2.paraFdirn(...
+                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                [0, 1e2], y0now, optionsNow ); % for a long time,
+                                               % even will happen quicker
+                if ~isempty(teNow)
+                    tMax(1) = teNow;
+                end
+                % ... ... same for forward path
+                [~, ~, teNow, ~, ~] = ...
+                ode89( @(t,y) thisPath2.paraFdirn(...
+                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                [0, 1e2], y0now, optionsNow ); % for a long time, even will 
+                                               % happen quicker
+                if ~isempty(teNow)
+                    tMax(2) = teNow;
+                end
+                % ... integrate backward path for the main solution
                 [tNow, yNow, teNow, ~, ieNow] = ...
                 ode89( @(t,y) -thisPath2.paraFdirn(...
                             thisPath2.a, thisPath2.l, y(1), y(2)), ...
@@ -419,29 +442,6 @@ classdef Path2_Mobility
                                                             ' violation'...
                                                                     ];
                     end
-                end
-                % ... integrate forward and backward again to find the
-                % ... limits of the F level-set in terms of path length 
-                % ... within the allowable shape space bounds and phase
-                % ... bounds as considered earlier
-                tMax = nan(1, 2);
-                % ... ... integrate backward and get the time bounds
-                [~, ~, teNow, ~, ~] = ...
-                ode89( @(t,y) -thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                [0, 1e2], y0now, optionsNow ); % for a long time,
-                                               % even will happen quicker
-                if ~isempty(teNow)
-                    tMax(1) = teNow;
-                end
-                % ... ... same for forward path
-                [~, ~, teNow, ~, ~] = ...
-                ode89( @(t,y) thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                [0, 1e2], y0now, optionsNow ); % for a long time, even will 
-                                               % happen quicker
-                if ~isempty(teNow)
-                    tMax(2) = teNow;
                 end
                 % ... offset the time array such that the reference point
                 % ... provided by 'aPerpF', 'y0now' is at time == 0
@@ -501,13 +501,21 @@ classdef Path2_Mobility
         % ... corresponding property fields get updated and replaced
         % ... for more information on the exact computations performed,
         % ... refer to "computeParallelCoordinates" method defined above.
+        % ... The "fullFLvlSetFlag" argument chooses whether we want to 
+        % ... integrate for the path-lengths specified in "intTime" 
+        % ... argument or we want the entire level-set.
         function thisPath2 = computeSpecificParallelCoordinates...
-                                            ( thisPath2, refPt, intTime )
+                            ( thisPath2, refPt, intTime, fullFLvlSetFlag )
+            if nargin < 4
+                fullFLvlSetFlag = false;
+            end
             if nargin < 3
                 intTime = thisPath2.intTime;
-            elseif nargin < 2
+            end
+            if nargin < 2
                 refPt = thisPath2.refPt;
-            elseif nargin > 3 || nargin == 0
+            end
+            if nargin > 4 || nargin == 0
                 error('ERROR! Incorrect number of arguments.');
             end
             tInt = 100*[1 1];
@@ -544,6 +552,32 @@ classdef Path2_Mobility
                 @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
                 eventList) ...
                 );
+            tMax = nan(1, 2);
+            [~, ~, teNow, ~, ~] = ...
+            ode89( @(t,y) -thisPath2.paraFdirn(...
+                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                        [0, 1e2], refPt, options );
+            if ~isempty(teNow)
+                tMax(1) = teNow;
+            end
+            [~, ~, teNow, ~, ~] = ...
+            ode89( @(t,y) thisPath2.paraFdirn(...
+                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            [0, 1e2], refPt, options );
+            if ~isempty(teNow)
+                tMax(2) = teNow;
+            end
+            % ... % ... % ... % ... % ... % ... % ... % ... % ... % ... 
+            % ... if we need the whole level-set, then we modify the
+            % ... "intTime" with 99% of tMax's range (remove 0.5% on either
+            % ... end to not trigger the events)
+            % ... this is the only difference between the full parallel
+            % ... coordinates computation for each point in the slipping
+            % ... coordinates
+            if fullFLvlSetFlag
+                intTime = tMax - 1e-2/2*sum(tMax);
+            end
+            % ... % ... % ... % ... % ... % ... % ... % ... % ... % ... 
             [tNow, yNow, teNow, ~, ieNow] = ...
             ode89( @(t,y) -thisPath2.paraFdirn(...
                         thisPath2.a, thisPath2.l, y(1), y(2)), ...
@@ -592,21 +626,6 @@ classdef Path2_Mobility
                                                         ' violation'...
                                                                 ];
                 end
-            end
-            tMax = nan(1, 2);
-            [~, ~, teNow, ~, ~] = ...
-            ode89( @(t,y) -thisPath2.paraFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                        [0, 1e2], refPt, options );
-            if ~isempty(teNow)
-                tMax(1) = teNow;
-            end
-            [~, ~, teNow, ~, ~] = ...
-            ode89( @(t,y) thisPath2.paraFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
-            [0, 1e2], refPt, options );
-            if ~isempty(teNow)
-                tMax(2) = teNow;
             end
             tNow = tNow - tBwd; tFull = tFull - tBwd;
             thisPath2.aParaRef.y = yNow(tNow <= tFull, :);
