@@ -65,6 +65,8 @@ function plotLimbAngleSignals(limbAngleStruct, mode)
             axis(ax, "padded"); xlim(ax, [0, 2*pi]); grid(ax, "on");
             ylabel(['$$\alpha_{' num2str(cs) '}$$'], 'FontSize', fS, ...
                                                 'Interpreter', 'latex');
+            set(get(ax,'YLabel'), 'rotation', 0, ...
+                                            'VerticalAlignment', 'middle');
             ax.YColor = stanceColor;
             switch (i-1)*numStances + j < numPlotTiles
                 case 1 % not last tile

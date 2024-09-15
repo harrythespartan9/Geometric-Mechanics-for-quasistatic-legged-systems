@@ -68,6 +68,8 @@ function plotBodyTimeseriesGeneral( pltBody )
                 end
                 ylabel(ax, yLabelTxt{i}, 'FontSize', fS, ...
                                                 'Interpreter', 'latex');
+                % set(get(ax,'YLabel'), 'rotation', 0, ...
+                %                             'VerticalAlignment', 'middle');
             end
         case 0 % a cell array of trajectories as structs
             numObjs = numel(pltBody);
@@ -122,6 +124,8 @@ function plotBodyTimeseriesGeneral( pltBody )
                 end
                 ylabel(ax, yLabelTxt{i}, 'FontSize', fS, ...
                                                 'Interpreter', 'latex');
+                % set(get(ax,'YLabel'), 'rotation', 0, ...
+                %                             'VerticalAlignment', 'middle');
             end
     end
     %%%% END OF FUNCTION

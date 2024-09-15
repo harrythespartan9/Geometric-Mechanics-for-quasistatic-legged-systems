@@ -114,6 +114,11 @@ classdef altQuadGait
                     error(['ERROR! Other input descriptions are not ' ...
                         'supported.']);
             end
+            
+            % obtain the stance space description for this alternating gait
+            % cycle
+            thisAltGait = altQuadGait.stanceSpaceSweep(thisAltGait);
+
         end
 
     end  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,28 +214,19 @@ classdef altQuadGait
             % ... get the meshed properties as well
             % ... ... first obtain the indices running along each
             % ... ... direction, then map the properties accordingly
-            idxI = reshape( (1:size(aI, 1)), size(aI, 1), 1 );
-            idxJ = reshape( (1:size(aJ, 1)), size(aJ, 1), 1 );
-            [idxI, idxJ] = meshgrid(idxI, idxJ);
-            aI = aI(idxI); aJ = aJ(idxJ);
+            [aI, aJ] = meshgrid(aI, aJ);
             % ... ... iterate over each column corresponding to the panel
             % ... ... directions and compute the grid
-            dzI  = permute(dzI, [1, 3, 2]); 
-            dzJ  = permute(dzJ, [1, 3, 2]);
-            dzI  = dzI( repmat(idxI, 1, 1, 3) );
-            dzJ  = dzJ( repmat(idxJ, 1, 1, 3) );
-            dzIJ = threeDizeColumnArray(...
-                computeLieBracketOfse2VectorFields...
-                (columnize3Darray(dzI), columnize3Darray(dzJ))...
-                                        );
+            [dzI, dzJ, dzIJ] = stratifiedGridAndLieBracket(dzI, dzJ);
             % ... finally, compute the information to discuss the span of
             % ... the involutive closure in the stance subspace
             dzImagn = vecnorm(dzI, 2, 3); dzJmagn = vecnorm(dzJ, 2, 3);
             dzIdotJ = dot(dzI, dzJ, 3);
             idxNonzero = (dzIdotJ ~= 0); % nonzero indices
-            dzIdotJ = ...
-                dzIdotJ(idxNonzero)./...
-                (dzImagn(idxNonzero).*dzJmagn(idxNonzero)); % normalize
+            dzIdotJ =   reshape(...
+                dzIdotJ(idxNonzero)./... % normalize
+                (dzImagn(idxNonzero).*dzJmagn(idxNonzero)),...
+                        size(dzIdotJ)); 
             thisAltGait.stanceSpace.A{1} = aI;
             thisAltGait.stanceSpace.A{2} = aJ;
             thisAltGait.stanceSpace.DZ{1} = dzI;
@@ -674,6 +670,8 @@ classdef altQuadGait
             ax.FontSize = fS; ax.XTick = ''; ax.YTick = '';
             xlabel('$$x$$', 'FontSize', fS, 'Interpreter', 'latex');
             ylabel('$$y$$', 'FontSize', fS, 'Interpreter', 'latex');
+            % set(get(ax,'YLabel'), 'rotation', 0, ...
+            %                                 'VerticalAlignment', 'middle');
             %%% ADDITIONAL PLOT WITHOUT LEGEND FOR ZOOMING IN, ETC.
             % ... same shit as the last plot, except without the labels, legends,
             % ... and any other text
@@ -767,6 +765,150 @@ classdef altQuadGait
             end
         end
 
+        % plot the stance space panels
+        function plotStanceSpacePanels(thisAltGait)
+            % ... unpack plotting data
+            aI = thisAltGait.stanceSpace.A{1};
+            aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
+            aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
+            aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
+            dzI= thisAltGait.stanceSpace.DZ{1};
+            dzJ= thisAltGait.stanceSpace.DZ{2};
+            % ... unpack plotting params
+            p_info = thisAltGait.ithStance.p_info;
+            lW_Vector = p_info.lW_Vector;
+            skipV = 7.5; % in percentage
+            skipV = round((skipV/100)*2*floor(dnum/2)); 
+            idxQ = 1:skipV:dnum;
+            fS = 25;
+            A_title_txt = cell(1, 3); 
+            A_title_txt{1} = "$$-\vec{dz}^{x}$$"; 
+            A_title_txt{2} = "$$-\vec{dz}^{y}$$"; 
+            A_title_txt{3} = "$$-\vec{dz}^{\theta}$$";
+            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
+            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            % ... plot
+            f = figure('units', 'pixels', 'position', [0 0 450 1200], ...
+                'Color','w'); set(f,'Visible','on');
+            tiledlayout(3, 1, 'TileSpacing', 'tight', 'Padding', 'tight');
+            for i = 1:3
+                % ... ... unpack further
+                dzInow=reshape(dzI(:, :, i), [size(dzI, 1), size(dzI, 2)]);
+                dzJnow=reshape(dzJ(:, :, i), [size(dzJ, 1), size(dzJ, 2)]);
+                % ... plot
+                ax = nexttile();
+                quiver(ax, ...
+                    aI(idxQ,idxQ), aJ(idxQ,idxQ), ...
+                    dzInow(idxQ,idxQ), dzJnow(idxQ,idxQ),...
+                'LineWidth', lW_Vector, 'Color', 'k');
+                axis equal tight; hold on;
+                if i == 1
+                    xlabel(ax, xTxt, "FontSize", fS);
+                    ylabel(ax, yTxt, "FontSize", fS);
+                    ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
+                    ax.YColor = thisAltGait.jthStance.p_info.gc_col;
+                end
+                % set(get(ax,'YLabel'), 'rotation', 0, ...
+                    % 'VerticalAlignment', 'middle');
+                title(ax, A_title_txt{i}, 'Color', 'k', FontSize=fS);
+                ax.XAxis.FontSize = fS; ax.YAxis.FontSize = fS; 
+                xlim(aIlimits); ylim(aJlimits);
+            end
+        end
+
+        % plot the stance space curvature/lie-bracket
+        function plotStanceSpaceCurvature(thisAltGait)
+            aI = thisAltGait.stanceSpace.A{1}; 
+            aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
+            aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
+            aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
+            lbdz = thisAltGait.stanceSpace.LBDZ;
+            colLimits = [min(lbdz(:, :, 1:2), [], 'all'), ...
+                                        max(lbdz(:, :, 1:2), [], 'all')];
+            cfLvl = dnum; % number of color lvls
+            CUB = thisAltGait.ithStance.p_info.CUB;
+            fS = 25;
+            lb_title_txt = cell(1, 3); 
+            lb_title_txt{1} = ...
+                ['$$[\vec{dz}_{' ...
+                num2str(thisAltGait.ithStance.cs) ...
+                '}, \vec{dz}_{' ...
+                num2str(thisAltGait.jthStance.cs) '}]^{x}$$']; 
+            lb_title_txt{2} = ...
+                ['$$[\vec{dz}_{' ...
+                num2str(thisAltGait.ithStance.cs) ...
+                '}, \vec{dz}_{' ...
+                num2str(thisAltGait.jthStance.cs) '}]^{x}$$'];
+            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
+            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            % ... plot
+            f = figure('units', 'pixels', 'position', [0 0 600 900], ...
+                'Color','w'); set(f,'Visible','on');
+            tiledlayout(2, 1, 'TileSpacing', 'tight', 'Padding', 'tight');
+            for i = 1:2
+                lbdzNow=reshape(lbdz(:,:,i),[size(lbdz,1),size(lbdz,2)]);
+                ax = nexttile();
+                contourf(ax, aI, aJ, lbdzNow, cfLvl, 'LineStyle', 'none');
+                axis equal tight; hold on; colormap(CUB);
+                if i == 1
+                    xlabel(ax, xTxt, "FontSize", fS);
+                    ylabel(ax, yTxt, "FontSize", fS);
+                    ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
+                    ax.YColor = thisAltGait.jthStance.p_info.gc_col;
+                end
+                % set(get(ax,'YLabel'), 'rotation', 0, ...
+                %                             'VerticalAlignment', 'middle');
+                title(ax, lb_title_txt{i}, 'Color', 'k', FontSize=fS);
+                ax.XAxis.FontSize = fS; ax.YAxis.FontSize = fS; 
+                xlim(aIlimits); ylim(aJlimits); clim(colLimits);
+                if i == 2
+                    cb = colorbar(ax, 'FontSize', fS, ...
+                        'TickLabelInterpreter', 'latex');
+                    cb.Layout.Tile = 'east';
+                end
+            end
+        end
+
+        % plot the stance space curvature/lie-bracket
+        function plotStanceSpaceInterpanelDotProduct(thisAltGait)
+            aI = thisAltGait.stanceSpace.A{1}; 
+            aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
+            aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
+            aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
+            dzIdotJ = thisAltGait.stanceSpace.dzIdotJ;
+            colLimits = [min(dzIdotJ, [], 'all'), ...
+                         max(dzIdotJ, [], 'all')];
+            cfLvl = dnum; 
+            lW_contour = thisAltGait.ithStance.p_info.lW_contour;
+            CUB = thisAltGait.ithStance.p_info.CUB;
+            fS = 25;
+            dot_title_txt = ['$$\vec{dz}_{' ...
+                num2str(thisAltGait.ithStance.cs) ...
+                '} \cdot \vec{dz}_{' ...
+                num2str(thisAltGait.jthStance.cs) ...
+                '}$$']; 
+            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
+            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            f = figure('units', 'pixels', 'position', [0 0 600 600], ...
+                'Color','w'); set(f,'Visible','on'); ax = gca;
+            contourf(ax, aI, aJ, dzIdotJ, cfLvl, 'LineStyle', 'none');
+            axis equal tight; hold on; colormap(CUB);
+            thresh_value = 0.99; % 0.95 % 0.99 % 0.999
+            contour(ax, aI, aJ, dzIdotJ, thresh_value*ones(1, 2),...
+                'k--','LineWidth',lW_contour+1);
+            contour(ax, aI, aJ, dzIdotJ, -thresh_value*ones(1, 2),...
+                'k--','LineWidth',lW_contour+1);
+            xlabel(ax, xTxt, "FontSize", fS);
+            ylabel(ax, yTxt, "FontSize", fS);
+            ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
+            ax.YColor = thisAltGait.jthStance.p_info.gc_col;
+            title(ax, dot_title_txt, 'Color', 'k', FontSize=fS);
+            ax.XAxis.FontSize = fS; ax.YAxis.FontSize = fS; 
+            xlim(aIlimits); ylim(aJlimits); clim(colLimits);
+            colorbar(ax, 'FontSize', fS, 'TickLabelInterpreter', 'latex', ...
+                                                    'Ticks', [-1, 0, 1]);
+        end
+
     end  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 end
@@ -827,25 +969,24 @@ function [g, z] = exponentiateBodyVelocities(gCirc)
     g = exponentiateLieAlgebraElement(gCirc); z = g(end, :);
 end
 
-% convert 3D (x,y,yaw ordered along the third direction) into 2D arrays
-% where each column corresponds to the components converted into a column
-% vector
-function xOut = columnize3Darray(x)
-    xOut = nan( [size(x, 1)*size(x, 2), size(x, 3)] ); % init
-    for i = 1:size(x, 3)
-        xi = x(:, :, i); xi = reshape(xi, numel(xi), 1); % reshape
-        xOut(:, i) = xi;
-    end
-end
+% convert the startified panels into meshgrids and obtain their lie-bracket
+function [dzI, dzJ, dzIJ] = stratifiedGridAndLieBracket(dzI, dzJ)
 
-% convert a 2D array into a 3D array where the third dimension corresponds 
-% to each column and each column become a 2D array
-% ... note this is an invertible process only because we use reshape to
-% ... perform the array trickery
-function xOut = threeDizeColumnArray(x)
-    xOut = nan([sqrt(size(x, 1))*ones(1, 2), size(x, 2)]); % init
-    for i = 1:size(x, 2)
-        xOut(:, :, i) = reshape(x(:, i), ... % ith "page" of data
-            [size(xOut, 1), size(xOut, 2), 1]); % assignment size
-    end
+    % divide into components
+    dzIx = dzI(:, 1); dzIy = dzI(:, 2); dzIth = dzI(:, 3);
+    dzJx = dzJ(:, 1); dzJy = dzJ(:, 2); dzJth = dzJ(:, 3);
+    [dzIx,  dzJx]  = meshgrid(dzIx,  dzJx);
+    [dzIy,  dzJy]  = meshgrid(dzIy,  dzJy);
+    [dzIth, dzJth] = meshgrid(dzIth, dzJth);
+    numRows = size(dzIx, 1); numCols = size(dzIx, 2); % get sizes
+    dzI = nan([numRows, numCols, 3]); dzJ = dzI; % reinit dzI and dzJ
+    dzI(:, :, 1) = dzIx; dzI(:, :, 2) = dzIy; dzI(:, :, 3) = dzIth;
+    dzJ(:, :, 1) = dzJx; dzJ(:, :, 2) = dzJy; dzJ(:, :, 3) = dzJth;
+
+    % obtain the lie-bracket manually
+    dzIJ = nan(size(dzI));
+    dzIJ(:, :, 1) = dzI(:, :, 2).*dzJ(:, :, 3) -dzJ(:, :, 2).*dzI(:, :, 3);
+    dzIJ(:, :, 2) = dzJ(:, :, 1).*dzI(:, :, 3) -dzI(:, :, 1).*dzJ(:, :, 3);
+    dzIJ(:, :, 3) = zeros([numRows, numCols, 1]); % always zero
+    
 end
