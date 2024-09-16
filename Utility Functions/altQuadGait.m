@@ -226,26 +226,39 @@ classdef altQuadGait
             % ... get the meshed properties as well
             % ... ... first obtain the indices running along each
             % ... ... direction, then map the properties accordingly
-            [aI, aJ] = meshgrid(aI, aJ);
+            [AI, AJ] = meshgrid(aI, aJ);
             % ... ... iterate over each column corresponding to the panel
             % ... ... directions and compute the grid
-            [dzI, dzJ, dzIJ] = stratifiedGridAndLieBracket(dzI, dzJ);
+            [DZI, DZJ, DZIJ] = stratifiedGridAndLieBracket(dzI, dzJ);
             % ... compute the information to discuss the span of the
             % ... involutive closure in the stance subspace
-            dzImagn = vecnorm(dzI, 2, 3); dzJmagn = vecnorm(dzJ, 2, 3);
-            dzIdotJ = dot(dzI, dzJ, 3);
+            dzImagn = vecnorm(DZI, 2, 3); dzJmagn = vecnorm(DZJ, 2, 3);
+            dzIdotJ = dot(DZI, DZJ, 3);
             idxNonzero = (dzIdotJ ~= 0); % nonzero indices
             dzIdotJ =   reshape(...
                 dzIdotJ(idxNonzero)./... % normalize
                 (dzImagn(idxNonzero).*dzJmagn(idxNonzero)),...
                         size(dzIdotJ)); 
-            thisAltGait.stanceSpace.A{1} = aI;
-            thisAltGait.stanceSpace.A{2} = aJ;
-            thisAltGait.stanceSpace.DZ{1} = dzI;
-            thisAltGait.stanceSpace.DZ{2} = dzJ;
-            thisAltGait.stanceSpace.LBDZ = dzIJ;
+            thisAltGait.stanceSpace.A{1} = AI;
+            thisAltGait.stanceSpace.A{2} = AJ;
+            thisAltGait.stanceSpace.DZ{1} = DZI;
+            thisAltGait.stanceSpace.DZ{2} = DZJ;
+            thisAltGait.stanceSpace.LBDZ = DZIJ;
             thisAltGait.stanceSpace.dzIdotJ = dzIdotJ;
-            % we have all the data for the stance space
+            % ... compute the exact location where the theta component of 
+            % ... both panels are zero where the span would be 1
+            thetaSelect = 3;
+            thisAltGait.stanceSpace.dzThZeroLoc = ...
+                fmincon(   @(a) ...
+                abs(Path2_Mobility.interpThetaPanelFromIntTime...
+                                        (aI, dzI(:, thetaSelect), a(1))) ...
+                + abs(Path2_Mobility.interpThetaPanelFromIntTime...
+                                        (aJ, dzJ(:, thetaSelect), a(2))), ...
+                        [0, 0], [], [], [], [], ... % ic and no constraints
+                        [min(aI, [], "all"), min(aJ, [], "all")], ... % lb
+                        [max(aI, [], "all"), max(aJ, [], "all")], ... % ub
+                        [], ... % no nonlinear constraints and switch off display
+                        optimoptions("fmincon", "Display", "none"));
         end
 
         % generate the input-space neede to conduct the movility analysis
@@ -273,6 +286,7 @@ classdef altQuadGait
             end
             % initialize and declare input space properties
             thisAltGait.inputSpace = [];
+            thisAltGait.inputSpace.dNumU = dNumU;
             % ... input sweep in each direction: this is defined
             % ... irrespective of 'inputMode' as that only changes the
             % ... mapping of the inputs to the path integration times
@@ -290,6 +304,7 @@ classdef altQuadGait
             % ... ... obtain the gridded inputs
             % ... ... obtain integration times for the estimation procedure
             % ... ... obtain the number of discretizations for different
+            tIC = cell(1, 2); tFC = tIC; disc = tFC;
             for k = 1:2
                 kStart = 2*(k-1)+1; kEnd = 2*k; % mesh indices
                 [uGrid{kStart}, uGrid{kEnd}] = ...
@@ -312,7 +327,7 @@ classdef altQuadGait
                 % ... ... if the path length is zero => one point
                 % ... ... everything else atleast two points
                 pathLengthNow = abs(tFC{k} - tIC{k});
-                disc{k} = pathLengthNow/diff(tMaxNow)*dnumNow;
+                disc{k} = round(pathLengthNow/diff(tMaxNow)*dnumNow);
                 zeroPathLocs = pathLengthNow == 0; % zero path length locs
                 disc{k}(zeroPathLocs) = 1; % set those locs to 1 disc
                 illPathlocs = (~zeroPathLocs & (disc{k} < 2));
@@ -330,6 +345,94 @@ classdef altQuadGait
             thisAltGait.inputSpace.intParam.tIC  = tIC;
             thisAltGait.inputSpace.intParam.tFC  = tFC;
             thisAltGait.inputSpace.intParam.disc = discNum;
+        end
+
+        % simulate the input space to obtain ground-truth reachable sets
+        function thisAltGait = simulateInputSpace( thisAltGait )
+            % unpack
+            % ... subgaits from 'ithStance' and 'jthStance' props
+            stances = {thisAltGait.ithStance, thisAltGait.jthStance};
+            % ... integration params from 'inputSpace' prop
+            dNumU = thisAltGait.inputSpace.dNumU;
+            tIC = thisAltGait.inputSpace.intParam.tIC;
+            tFC = thisAltGait.inputSpace.intParam.tFC;
+            % ... simulate the body displacement from the first subgait
+            zSub = cell(1, 2); % cells for each subgait
+            for k = 1:numel(stances) % iterate over each subgait
+                zSub{k} = cell(1, 3); % subcells for each component
+                for i = 1:dNumU % iterate over the scaling input
+                    for j = 1:dNumU % over sliding input
+                        % displacement for current input pair in current
+                        % stance
+                        % ... obtain the displacement
+                        % ... split it componentwise and store
+                        zSubNow = ...
+                            Path2_Mobility.simulateFinalBodyPosition...
+                            (zeros(1, 2), ... % origin-only
+                            [tIC{k}(i, j) tFC{k}(i, j)], ... % bwd and fwd times
+                            stances{k}); % current "Path2_Mobility" instance
+                        for iComp = 1:3 % iterate and assign components
+                            zSub{k}{iComp}(i, j) = zSubNow(iComp);
+                        end
+                    end
+                end
+            end
+            % ... stitch the displacements together
+            % ... ... 1) iterate over the 4-dimensional input space and 
+            % ... ... obtain each displacement component as column vectors
+            % ... ... 2) compute the pagewise product
+            % ... ... 3) again iterate over the input space and assign it
+            % ... ... element by element
+            zSubI = zSub{1}; zSubJ = zSub{2};
+            zSubIcols = nan(0, 3); zSubJcols = zSubIcols;
+            % ... ... iterate and compile
+            for i = 1:dNumU % scaling for Ith subgait
+                for j = 1:dNumU % sliding for Ith subgait
+                    for k = 1:dNumU % scaling for Jth subgait
+                        for l = 1:dNumU % sliding for Jth subgait
+                            % current subgait displacements
+                            zSubIcols(end+1, :) = ...
+                                [zSubI{1}(i, j), ...
+                                zSubI{2}(i, j), zSubI{3}(i, j)];
+                            zSubJcols(end+1, :) = ...
+                                [zSubJ{1}(k, l), ...
+                                zSubJ{2}(k, l), zSubJ{3}(k, l)];
+                        end
+                    end
+                end
+            end
+            % ... ... stitch the displacements sequentially
+            % ... ...  also compute the average body velocity
+            zCols = stitchTwoSE2displacements( zSubIcols, zSubJcols );%%%%%
+            % gCircCols = logMapOfALieGroupElement( zCols );%%%%%%%%%%%%%%%%%
+            zCols = mat2cell(zCols, size(zCols, 1), ones(size(zCols,2),1));
+            % gCircCols = mat2cell(gCircCols, ...
+                            % size(gCircCols, 1), ones(size(gCircCols, 2)));
+            % ... ... iterate again and assign
+            z = cell(size(zCols)); 
+            % gCirc = cell(size(gCircCols));
+            for iComp = 1:numel(z)
+                z{iComp} = nan( dNumU*ones(1, 4) ); % init cells
+                % gCirc{iComp} = nan( dNumU*ones(1, 4) );
+                loopCount = 1; % init loop count
+                for i = 1:dNumU
+                    for j = 1:dNumU
+                        for k = 1:dNumU
+                            for l = 1:dNumU
+                                z{iComp}(i, j, k, l) = ...
+                                    zCols{iComp}(loopCount); % assign
+                                % gCirc{iComp}(i, j, k, l) = ...
+                                %     zCols{iComp}(loopCount);
+                                loopCount = loopCount + 1;
+                            end
+                        end
+                    end
+                end
+            end
+            % ... initialize the "sim"ulation field within 'inputSpace'
+            % ... property and assign the results
+            thisAltGait.inputSpace.sim.z = z;
+            % thisAltGait.inputSpace.sim.gCirc = gCirc;
         end
         
         % this function computes the integration times for both subgaits
@@ -934,7 +1037,7 @@ classdef altQuadGait
                 ['$$[\vec{dz}_{' ...
                 num2str(thisAltGait.ithStance.cs) ...
                 '}, \vec{dz}_{' ...
-                num2str(thisAltGait.jthStance.cs) '}]^{x}$$'];
+                num2str(thisAltGait.jthStance.cs) '}]^{y}$$'];
             xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
             yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
             % ... plot
@@ -972,6 +1075,7 @@ classdef altQuadGait
             aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
             aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
             dzIdotJ = thisAltGait.stanceSpace.dzIdotJ;
+            scatterLoc = thisAltGait.stanceSpace.dzThZeroLoc;
             cfLvl = dnum; 
             lW_contour = thisAltGait.ithStance.p_info.lW_contour;
             CUB = thisAltGait.ithStance.p_info.CUB;
@@ -992,6 +1096,8 @@ classdef altQuadGait
                 'k--','LineWidth',lW_contour+1); % , 'ShowText', 'on'
             contour(ax, aI, aJ, dzIdotJ, -thresh_value*ones(1, 2),...
                 'k--','LineWidth',lW_contour+1); % , 'ShowText', 'on'
+            scatter(ax, scatterLoc(1), scatterLoc(2), 100, "+",...
+                'MarkerEdgeColor','k', 'LineWidth', lW_contour+1);
             xlabel(ax, xTxt, "FontSize", fS);
             ylabel(ax, yTxt, "FontSize", fS);
             ax.XColor = thisAltGait.ithStance.p_info.gc_col; 

@@ -28,7 +28,7 @@ function g = exponentiateLieAlgebraElement( gCirc )
     if isa(gCirc, "sym") % if a symbol, error out
         error(errMsg);
     end
-    nTimeSteps = size(gCirc, 1);
+    nPoints = size(gCirc, 1);
     % ... ideally you would need more information on what caused the error,
     % ... something to flesh out later
 
@@ -41,7 +41,7 @@ function g = exponentiateLieAlgebraElement( gCirc )
     % ... case 1: just one element
     % ... case 2: rows of elements
     % ... subcases within each case handle no rotation and rotation cases
-    switch nTimeSteps
+    switch nPoints
         case 1
             switch gCirc(3) == 0
                 case 1
@@ -60,13 +60,18 @@ function g = exponentiateLieAlgebraElement( gCirc )
             end
             idxZero = (gCirc(3, :) == 0); % indices without rotational vel
             gCircPages = permute(gCirc, [1, 3, 2]); % convert velocities from 2D matrix into 3D pages 1)
-            Mpages = nan(2, 2, size(gCircPages, 3)); % init transformation matrix in NaN-valued pages 2)
+            Mpages = nan(2, 2, nPoints); % init transformation matrix in NaN-valued pages 2)
             Mpages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % unity transformation in the irrotational case 3)
             Mpages(:, :, ~idxZero) = ... % for the rotational velocity case 4)
                 computeTransVelPerturbMatrix(... % compute the transformation pages
-                reshape(gCircPages(:, :, ~idxZero), 3, 1, nnz(~idxZero))... % get it into [3 x 1 x "nPages"] format
+                reshape(gCircPages(3, :, ~idxZero), 1, 1, nnz(~idxZero))... % get it into [3 x 1 x "nPages"] format
                                             );
-            gPages = tensorprod(Mpages, gCircPages, 2, 1); % get the Lie group element pages
+            gPagesXY = pagemtimes(Mpages, ...
+                reshape(gCircPages(1:2, :, :), [2, 1, nPoints]) ... % extract the translational components
+                                ); % get the Lie group element pages
+            gPages = nan(3, 1, nPoints);
+            gPages(3, :, :) = gCircPages(3, :, :); % rotations transfer as such
+            gPages(1:2, :, :) = gPagesXY; % get the translational components
             g = permute(gPages, [1, 3, 2]); % permute dimensions into a matrix similar to gCirc (only 2D) 5)
             if transposeFlag
                 g = g'; % if transposed bring convert to original coords and return 6)

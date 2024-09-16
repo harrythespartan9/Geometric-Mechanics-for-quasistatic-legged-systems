@@ -5,7 +5,7 @@ function gCirc = logMapOfALieGroupElement( g )
 %   explicity compute this result based on the irrotational case and the
 %   rotational cases.
 
-    % input checks
+    % argument checks
     errMsg = ['ERROR! The input displacement or the Lie group element ' ...
             'should contain 3 columns of x, y, and theta displacement-' ...
             'numeric time series data (atlleast one timestep). Using that, ' ...
@@ -28,7 +28,7 @@ function gCirc = logMapOfALieGroupElement( g )
     if isa(g, "sym") % if a symbol, error out
         error(errMsg);
     end
-    nTimeSteps = size(g, 1);
+    nPoints = size(g, 1);
     % ... ideally you would need more information on what caused the error,
     % ... something to flesh out later
 
@@ -41,7 +41,7 @@ function gCirc = logMapOfALieGroupElement( g )
     % ... case 1: just one element
     % ... case 2: rows of elements
     % ... subcases within each case handle no rotation and rotation cases
-    switch nTimeSteps
+    switch nPoints
         case 1
             switch g(3) == 0
                 case 1
@@ -54,19 +54,23 @@ function gCirc = logMapOfALieGroupElement( g )
                              )';
             end
         otherwise
-            if size(gCirc, 1) ~= 3
+            if size(g, 1) ~= 3
                 transposeFlag = true;
-                gCirc = gCirc';
+                g = g';
             end
-            idxZero = (gCirc(3, :) == 0); % indices without rotational displacement
-            gPages = permute(gCirc, [1, 3, 2]); % convert displacement from 2D matrix into 3D pages 1)
-            MinvPages = nan(2, 2, size(gPages, 3)); % init transformation matrix in NaN-valued pages 2)
-            MinvPages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % unity transformation in the irrotational case 3)
+            idxZero = (g(3, :) == 0); % indices without rotational displacement
+            gPages = permute(g, [1, 3, 2]); % convert displacement from 2D matrix into 3D pages 1)
+            MinvPages = nan(2, 2, nPoints); % init transformation matrix in NaN-valued pages 2)
+            MinvPages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % Id transformation for irrotational case 3)
             MinvPages(:, :, ~idxZero) = ... % for the rotational velocity case 4)
                 computeInvOfTransVelPerturbMatrix(... % compute the transformation pages
-                reshape(gPages(:, :, ~idxZero), 3, 1, nnz(~idxZero))... % get it into [3 x 1 x "nPages"] format
+                reshape(gPages(3, :, ~idxZero), 1, 1, nnz(~idxZero))... % get it into [3 x 1 x "nPages"] format
                                             );
-            gCircPages = tensorprod(MinvPages, gPages, 2, 1); % get the Lie algebra element pages
+            gCircPagesXY = pagemtimes(MinvPages, ... % get the translational components of the Lie algebra elements
+                reshape(gPages(1:2, :, :), [2, 1, nPoints])); 
+            gCircPages = nan(3, 1, nPoints);
+            gCircPages(3, :, :) = gPages(3, :, :); % rotations transfer as such
+            gCircPages(1:2, :, :) = gCircPagesXY; % get the translational components
             gCirc = permute(gCircPages, [1, 3, 2]); % permute dimensions into a matrix similar to 'g' (only 2D) 5)
             if transposeFlag
                 gCirc = gCirc'; % if transposed bring convert to original coords and return 6)

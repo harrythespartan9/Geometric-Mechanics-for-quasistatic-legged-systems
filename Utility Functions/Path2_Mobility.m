@@ -986,9 +986,13 @@ classdef Path2_Mobility
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;
             if startEndTimes(1) ~= startEndTimes(2)
-                [~, a0] = ode89( @(t, y)...
+                if startEndTimes(1) ~= 0
+                    [~, a0] = ode89( @(t, y)...
                         dalpha(aa, ll, y(1), y(2)), ...
                         [0, startEndTimes(1)], refPt ); % get shape ic
+                else
+                    a0 = refPt; % same ic for final path if tIC == 0
+                end
                 [~, solnY] = ode89( @(t, y) dQ(aa, ll,... % body fc
                                             y(1), y(2), y(3),...
                                             y(4), y(5)),...
@@ -1341,9 +1345,23 @@ classdef Path2_Mobility
             betaOut(stanceIdx) = ones(size(betaOut(stanceIdx)));
             betaOut(~stanceIdx) = zeros(size(betaOut(~stanceIdx)));
         end
+
+        % compute the theta-panel value by interpolating between given an
+        % integration time using the specific parallel coordinates
+        function dzThetaHat = interpThetaPanelFromIntTime(t, dzTheta, tQ)
+            % because the panels are typically quite smooth, but some times
+            % have sharp features, we use 'pchip' interpolation method to
+            % preserve the overall structure
+            dzThetaHat = interp1(t, dzTheta, tQ, "pchip");
+        end
+
+        % compute all panel values through interpolation; similar to the
+        % setup in the previous function
+        function dzHat = interpPanelsFromIntTime(t, dz, tQ)
+            dzHat = interp1(t, dz, tQ, "pchip");
+        end
         
-        
-    end
+    end % END OF STATIC METHODS
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 end
