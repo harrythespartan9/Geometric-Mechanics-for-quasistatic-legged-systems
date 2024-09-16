@@ -38,6 +38,12 @@ classdef altQuadGait
                             % lie-bracket is the curvature; taken together
                             % using this information, we can check the gait
                             % controllability for this two-beat gait
+
+        inputSpace          % the system's body displacement and velocity 
+                            % information as a function of the input space
+                            % in two categories: 'simulation' and
+                            % 'estimation'. The inputs in this space are
+                            % obtained 
         
     end
     
@@ -117,7 +123,7 @@ classdef altQuadGait
             
             % obtain the stance space description for this alternating gait
             % cycle
-            thisAltGait = altQuadGait.stanceSpaceSweep(thisAltGait);
+            thisAltGait = altQuadGait.computeStanceSpace(thisAltGait);
 
         end
 
@@ -184,7 +190,7 @@ classdef altQuadGait
 
         % construct the stance space panels and lie-brackets for estimating
         % the net displacement and checking gait controllability
-        function thisAltGait = stanceSpaceSweep(thisAltGait)
+        function thisAltGait = computeStanceSpace(thisAltGait)
             % make sure that you're in the origin-only leaf exploration
             % mode, else error out as other modes aren't supported right
             % now
@@ -209,6 +215,12 @@ classdef altQuadGait
             dzI = stanceI.aParaRef.dz; dzJ = stanceJ.aParaRef.dz;
             thisAltGait.stanceSpace.a{1}  = aI;
             thisAltGait.stanceSpace.a{2}  = aJ;
+            thisAltGait.stanceSpace.aLimits{1} = [min(aI, [], "all"), 
+                                                    max(aI, [], "all")];
+            thisAltGait.stanceSpace.aLimits{2} = [min(aJ, [], "all"), 
+                                                    max(aJ, [], "all")];
+            thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
+            thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
             thisAltGait.stanceSpace.dz{1} = dzI;
             thisAltGait.stanceSpace.dz{2} = dzJ;
             % ... get the meshed properties as well
@@ -218,8 +230,8 @@ classdef altQuadGait
             % ... ... iterate over each column corresponding to the panel
             % ... ... directions and compute the grid
             [dzI, dzJ, dzIJ] = stratifiedGridAndLieBracket(dzI, dzJ);
-            % ... finally, compute the information to discuss the span of
-            % ... the involutive closure in the stance subspace
+            % ... compute the information to discuss the span of the
+            % ... involutive closure in the stance subspace
             dzImagn = vecnorm(dzI, 2, 3); dzJmagn = vecnorm(dzJ, 2, 3);
             dzIdotJ = dot(dzI, dzJ, 3);
             idxNonzero = (dzIdotJ ~= 0); % nonzero indices
@@ -233,7 +245,91 @@ classdef altQuadGait
             thisAltGait.stanceSpace.DZ{2} = dzJ;
             thisAltGait.stanceSpace.LBDZ = dzIJ;
             thisAltGait.stanceSpace.dzIdotJ = dzIdotJ;
-            % we have all the data we need in the 'stanceSpace' struct
+            % we have all the data for the stance space
+        end
+
+        % generate the input-space neede to conduct the movility analysis
+        % ... the second argument is the number of discretization points to
+        % ... divide each input dimension into. So, for "origin-only" mode,
+        % ... each dimension is sampled at ('dNumU') which makes the entire
+        % ... sweep have ('dNumU')^4
+        function thisAltGait = generateInputSpace( thisAltGait, dNumU, T )
+            % make sure we are in the 'origin-only' mode
+            if ~strcmp(thisAltGait.leafExplorationMode, 'origin-only')
+                error(['ERROR! Only origin exploration mode is supported ' ...
+                    'for now']);
+            end
+            % make sure the discretization number is atleast 3; and convert
+            % it to an odd number if possible
+            if dNumU < 3
+                error(['ERROR! The input discretization number should be ' ...
+                    'atleast 3 and preferably odd.']);
+            else
+                % ... if even, convert to odd by removing a dimension a
+                % discretization point
+                if rem(dNumU, 2) == 0
+                    dNumU = dNumU - 1;
+                end
+            end
+            % initialize and declare input space properties
+            thisAltGait.inputSpace = [];
+            % ... input sweep in each direction: this is defined
+            % ... irrespective of 'inputMode' as that only changes the
+            % ... mapping of the inputs to the path integration times
+            % ... u1, u2 are the scaling & sliding inputs for "ithStance"
+            % ... u3, u4 are the same for "jthStance"
+            u = cell(1, 4); uGrid = cell(1, 4);
+            for k = 1:4 % input discretizations in each dimension
+                if k == 1
+                    u{k} = linspace(-1, 1, dNumU);
+                else
+                    u{k} = u{k-1};
+                end
+            end
+            % ... data in gridded (subgaitwise) input subspaces
+            % ... ... obtain the gridded inputs
+            % ... ... obtain integration times for the estimation procedure
+            % ... ... obtain the number of discretizations for different
+            for k = 1:2
+                kStart = 2*(k-1)+1; kEnd = 2*k; % mesh indices
+                [uGrid{kStart}, uGrid{kEnd}] = ...
+                        meshgrid(u{kStart}, u{kEnd}); % meshed inputs
+                % ... unpack subgait integration times and max times
+                Tnow = T{k};
+                tMaxNow = thisAltGait.stanceSpace.aLimits{k};
+                % ... compute the initial and final times for the paths
+                [tIC{k}, tFC{k}] = ...
+                    altQuadGait.computeSubgaitIntegrationTimes...
+                    (thisAltGait, ...
+                    [uGrid{kStart}(:), uGrid{kEnd}(:)], ... % col inputs
+                    Tnow, [], tMaxNow);
+                tIC{k} = reshape(tIC{k}, size(uGrid{kStart}));
+                tFC{k} = reshape(tFC{k}, size(uGrid{kEnd})); % grid of times
+                % ... unpack
+                dnumNow = thisAltGait.stanceSpace.dnum{k};
+                % ... compute the discretizations for each path
+                % ... ... the max length path gets 'dNumNow' points
+                % ... ... if the path length is zero => one point
+                % ... ... everything else atleast two points
+                pathLengthNow = abs(tFC{k} - tIC{k});
+                disc{k} = pathLengthNow/diff(tMaxNow)*dnumNow;
+                zeroPathLocs = pathLengthNow == 0; % zero path length locs
+                disc{k}(zeroPathLocs) = 1; % set those locs to 1 disc
+                illPathlocs = (~zeroPathLocs & (disc{k} < 2));
+                disc{k}(illPathlocs) = 2; % finite paths with < 2 disc to 2
+            end
+            % obtain the discretization for the estimation paths
+            discNum(:, :, 1) = disc{1}; discNum(:, :, 2) = disc{2};
+            discNum = max(discNum, [], 3); % get the max disc for z
+            % ... store the inputs in their own fields
+            thisAltGait.inputSpace.u = u;
+            thisAltGait.inputSpace.uGrid = uGrid;
+            % ... init and store in 'intParam' field and return
+            % ... ... integration times for IC and FC poitns
+            % ... ... overall discretization number for the estimation path
+            thisAltGait.inputSpace.intParam.tIC  = tIC;
+            thisAltGait.inputSpace.intParam.tFC  = tFC;
+            thisAltGait.inputSpace.intParam.disc = discNum;
         end
         
         % this function computes the integration times for both subgaits
@@ -876,8 +972,6 @@ classdef altQuadGait
             aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
             aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
             dzIdotJ = thisAltGait.stanceSpace.dzIdotJ;
-            colLimits = [min(dzIdotJ, [], 'all'), ...
-                         max(dzIdotJ, [], 'all')];
             cfLvl = dnum; 
             lW_contour = thisAltGait.ithStance.p_info.lW_contour;
             CUB = thisAltGait.ithStance.p_info.CUB;
@@ -895,16 +989,16 @@ classdef altQuadGait
             axis equal tight; hold on; colormap(CUB);
             thresh_value = 0.99; % 0.95 % 0.99 % 0.999
             contour(ax, aI, aJ, dzIdotJ, thresh_value*ones(1, 2),...
-                'k--','LineWidth',lW_contour+1);
+                'k--','LineWidth',lW_contour+1); % , 'ShowText', 'on'
             contour(ax, aI, aJ, dzIdotJ, -thresh_value*ones(1, 2),...
-                'k--','LineWidth',lW_contour+1);
+                'k--','LineWidth',lW_contour+1); % , 'ShowText', 'on'
             xlabel(ax, xTxt, "FontSize", fS);
             ylabel(ax, yTxt, "FontSize", fS);
             ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
             ax.YColor = thisAltGait.jthStance.p_info.gc_col;
             title(ax, dot_title_txt, 'Color', 'k', FontSize=fS);
             ax.XAxis.FontSize = fS; ax.YAxis.FontSize = fS; 
-            xlim(aIlimits); ylim(aJlimits); clim(colLimits);
+            xlim(aIlimits); ylim(aJlimits); clim([-1, 1]);
             colorbar(ax, 'FontSize', fS, 'TickLabelInterpreter', 'latex', ...
                                                     'Ticks', [-1, 0, 1]);
         end

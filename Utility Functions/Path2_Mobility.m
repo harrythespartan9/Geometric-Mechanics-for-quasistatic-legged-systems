@@ -981,8 +981,7 @@ classdef Path2_Mobility
         % ... A more expanded version of this method is used in the 
         % ... "simulateConfigurationTrajectory" method.
         function z = simulateFinalBodyPosition...
-                                (ref, startEndTimes, thisPath2)
-            refPt = ref.P;
+                                (refPt, startEndTimes, thisPath2)
             aa = thisPath2.a; ll = thisPath2.l;
             dalpha = thisPath2.paraFdirn;
             dQ = thisPath2.dQ;

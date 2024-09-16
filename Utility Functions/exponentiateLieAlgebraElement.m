@@ -54,23 +54,42 @@ function g = exponentiateLieAlgebraElement( gCirc )
                              )';
             end
         otherwise
-            idxZero = (gCirc(:, 3) == 0); % indices without rotational vel
-            if any(idxZero) % if at least one case is present
-                g(idxZero, 1:2) = gCirc(idxZero, 1:2);
+            if size(gCirc, 1) ~= 3
+                transposeFlag = true;
+                gCirc = gCirc';
             end
-            if any(~idxZero) % if at least one rotational case is present
-                indNonZero = find(~idxZero); % get the index locations
-                for i = indNonZero'
-                    g(i, 1:2) = (...
-                        computeTransVelPerturbMatrix...
-                                (gCirc(i, 3))*...
-                                        gCirc(i, 1:2)'...
-                             )';
-                end
+            idxZero = (gCirc(3, :) == 0); % indices without rotational vel
+            gCircPages = permute(gCirc, [1, 3, 2]); % convert velocities from 2D matrix into 3D pages 1)
+            Mpages = nan(2, 2, size(gCircPages, 3)); % init transformation matrix in NaN-valued pages 2)
+            Mpages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % unity transformation in the irrotational case 3)
+            Mpages(:, :, ~idxZero) = ... % for the rotational velocity case 4)
+                computeTransVelPerturbMatrix(... % compute the transformation pages
+                reshape(gCircPages(:, :, ~idxZero), 3, 1, nnz(~idxZero))... % get it into [3 x 1 x "nPages"] format
+                                            );
+            gPages = tensorprod(Mpages, gCircPages, 2, 1); % get the Lie group element pages
+            g = permute(gPages, [1, 3, 2]); % permute dimensions into a matrix similar to gCirc (only 2D) 5)
+            if transposeFlag
+                g = g'; % if transposed bring convert to original coords and return 6)
             end
     end
 
 end
+
+% % % % %  OLD 'OTHERWISE' case logic-- preserve until verified
+% idxZero = (gCirc(:, 3) == 0); % indices without rotational vel
+% if any(idxZero) % if at least one case is present
+%     g(idxZero, 1:2) = gCirc(idxZero, 1:2);
+% end
+% if any(~idxZero) % if at least one rotational case is present
+%     indNonZero = find(~idxZero); % get the index locations
+%     for i = indNonZero'
+%         g(i, 1:2) = (...
+%             computeTransVelPerturbMatrix...
+%                     (gCirc(i, 3))*...
+%                             gCirc(i, 1:2)'...
+%                  )';
+%     end
+% end
 
 %% AUXILIARY FUNCTIONS
 
@@ -80,5 +99,5 @@ end
 % ... rotational velocity
 function M = computeTransVelPerturbMatrix(thDot)
     M = [sin(thDot),   cos(thDot)-1;
-         1-cos(thDot), sin(thDot)  ]/thDot;
+         1-cos(thDot), sin(thDot)  ]./thDot;
 end
