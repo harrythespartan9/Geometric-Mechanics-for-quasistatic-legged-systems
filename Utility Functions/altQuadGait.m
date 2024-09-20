@@ -434,6 +434,67 @@ classdef altQuadGait
             thisAltGait.inputSpace.sim.z = z;
             % thisAltGait.inputSpace.sim.gCirc = gCirc;
         end
+
+        % compute the cost associate with executing the alternating gait
+        function thisAltGait = computeGaitPathLength(thisAltGait)
+            % unpack the required path length components and input size
+            tIC = thisAltGait.inputSpace.intParam.tIC;
+            tFC = thisAltGait.inputSpace.intParam.tFC;
+            dNumU = thisAltGait.inputSpace.dNumU;
+            % compute the difference to obtain the length of the path for
+            % each input subspace
+            % ... get the difference and difference square in the
+            % ... respective input subspaces
+            pathLengthsIJ = cell(1, numel(tIC));
+            pathLengthsSqIJ = pathLengthsIJ;
+            for i = 1:numel(tIC)
+                pathLengthsIJ{i} = abs(tIC{i} - tFC{i});
+                pathLengthsSqIJ{i} = (tIC{i} - tFC{i}).^2;
+            end
+            % ... bring it into a single column form for the next step
+            costOneNorm = nan(dNumU*ones(1, 4)); costTwoNorm = costOneNorm;
+            for i = 1:dNumU
+                for j = 1:dNumU
+                    for k = 1:dNumU
+                        for l = 1:dNumU
+                            costOneNorm(i, j, k, l) = ...
+                                            pathLengthsIJ{1}(i, j) + ...
+                                            pathLengthsIJ{2}(k, l);
+                            costTwoNorm(i, j, k, l) = ...
+                                       sqrt(pathLengthsSqIJ{1}(i, j) + ...
+                                            pathLengthsSqIJ{2}(k, l));
+                        end
+                    end
+                end
+            end
+            %  assign the costs and return
+            thisAltGait.inputSpace.cost{1} = costOneNorm;
+            thisAltGait.inputSpace.cost{2} = costOneNorm;
+        end
+
+        % compute the cost associate with executing the alternating gait
+        function thisAltGait = computeMobility(thisAltGait, type)
+            switch type
+                case 'sim'
+                    % unpack everything needed
+                    z = thisAltGait.inputSpace.(type).z;
+                    cost = thisAltGait.inputSpace.cost;
+                    % iterate and obtain the efficiency formulation
+                    E = cell(size(cost));
+                    for iCost = 1:numel(cost) % for each type of cost
+                        E{iCost} = cell(1, numel(z)); % init for each component
+                        for iComponent = 1:numel(z)
+                            E{iCost}{iComponent} = ...
+                                            z{iComponent}./cost{iCost};
+                        end
+                    end
+                    % pack the efficiency formulation
+                    thisAltGait.inputSpace.(type).E = E;
+                otherwise
+                    error(['ERROR! Other methods apart from "sim" are not ' ...
+                        'supported right now.']);
+            end
+        end
         
         % this function computes the integration times for both subgaits
         % that form the "thisAltGait" instance
