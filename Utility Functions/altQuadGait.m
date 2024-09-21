@@ -1025,6 +1025,10 @@ classdef altQuadGait
             end
         end
 
+        % plot the trajectory on the stance space panels
+        function plotGaitInStanceSpace(thisAltGait)
+        end
+
         % plot the stance space panels
         function plotStanceSpacePanels(thisAltGait)
             % ... unpack plotting data
