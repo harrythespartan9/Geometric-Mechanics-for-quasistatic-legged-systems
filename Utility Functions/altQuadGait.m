@@ -485,11 +485,49 @@ classdef altQuadGait
                         E{iCost} = cell(1, numel(z)); % init for each component
                         for iComponent = 1:numel(z)
                             E{iCost}{iComponent} = ...
-                                            z{iComponent}./cost{iCost};
+                                        z{iComponent}./(cost{iCost} + 1);
+                            % added a constant offset cost for
+                            % to well-condition it
                         end
                     end
                     % pack the efficiency formulation
                     thisAltGait.inputSpace.(type).E = E;
+                otherwise
+                    error(['ERROR! Other methods apart from "sim" are not ' ...
+                        'supported right now.']);
+            end
+        end
+
+        % compute the boundaries for the set ('reachable' or 'mobility') 
+        % provided
+        function computeSetBoundaries(thisAltGait, type)
+            switch type
+                case 'sim'
+                    % unpack the reachable set
+                    z = thisAltGait.inputSpace.(type).z;
+                    zX = z{1}(:); zY = z{2}(:); zYaw = z{3}(:);
+                    % assign boundaries
+                    % ... first to the 3D set
+                    % ... next to the 2D projections
+                    % ... these things make the set easier to visualize
+                    fullyShrunkBoundary3D = boundary(zX, zY, zYaw, 1);
+                    fullyShrunkBoundary2D = cell(1, 3); idxCyclic = 1:3;
+                    for i = 1:3
+                        fullyShrunkBoundary2D{i} = boundary(z{idxCyclic(1)}(:), z{idxCyclic(2)}(:), 1);
+                        idxCyclic = circshift(idxCyclic, -1);
+                    end
+                    idxCyclic = circshift(idxCyclic, -1); % back to original ordering
+                    % define some strings for plotting
+                    dirnLabelTxt = {'Lateral (x)', ...
+                                    'Longitudinal (y)', ... 
+                                    'Rotational ($\theta$)'};
+                    % pack everything
+                    thisAltGait.inputSpace.(type).plot.idxCyclic = idxCyclic;
+                    thisAltGait.inputSpace.(type).plot.dirnLabelTxt = dirnLabelTxt;
+                    thisAltGait.inputSpace.(type).plot.zBounds3D = ...
+                                                    fullyShrunkBoundary3D;
+                    thisAltGait.inputSpace.(type).plot.zBounds2D = ...
+                                                    fullyShrunkBoundary2D;
                 otherwise
                     error(['ERROR! Other methods apart from "sim" are not ' ...
                         'supported right now.']);
@@ -1026,7 +1064,47 @@ classdef altQuadGait
         end
 
         % plot the trajectory on the stance space panels
-        function plotGaitInStanceSpace(thisAltGait)
+        function plotGaitInStanceSpace(thisAltGait, tIC, tFC, ...
+                jointPathFlag)
+            % unpack
+            stanceI = thisAltGait.ithStance; colI = stanceI.p_info.gc_col;
+            stanceJ = thisAltGait.jthStance; colJ = stanceJ.p_info.gc_col;
+            fS = 25;
+            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
+            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            % plot
+            % ... init setup
+            figure('Visible', 'on', 'Units', 'pixels',...
+                'Position', [0 0 600 600]); 
+            ax = gca; box(ax, "on");
+            ax.XColor = colI; ax.YColor = colJ; ax.FontSize = fS;
+            axis(ax, "equal", "tight"); hold(ax, "on");
+            % ... plot thin dotted lines to identify origin
+            xline(0, 'k:', 'LineWidth', 0.1);
+            yline(0, 'k:', 'LineWidth', 0.1);
+            % ... paths and ic scatters
+            plot(ax, [tIC(1), tFC(1)], tIC(2)*ones(1, 2),...
+                'LineWidth', 2.0, 'Color', colI);
+            scatter(ax, tIC(1), tIC(2), 100, colI, "filled", "o",...
+                "MarkerEdgeColor", 'k', 'LineWidth', 1.0);
+            plot(ax, tFC(1)*ones(1, 2), [tIC(2), tFC(2)],...
+                'LineWidth', 2.0, 'Color', colJ);
+            scatter(ax, tFC(1), tIC(2), 100, colJ, "filled", "o",...
+                "MarkerEdgeColor", 'k', 'LineWidth', 1.0);
+            % ... ... plot the holonomic joint stance path if needed
+            scatter(ax, tFC(1), tFC(2), 100, ...
+                'Marker', 'x', 'MarkerEdgeColor', 'k', 'LineWidth', 1.0);
+            % ... ... plot the joint path
+            if jointPathFlag
+                quiver(ax, tIC(1), tIC(2), tFC(1)-tIC(1), tFC(2)-tIC(2), ...
+                'LineWidth', 2.0, 'AutoScale', 'off', 'Color', 'k', ...
+                'LineStyle', '-','MaxHeadSize',0.3);
+            end
+            % ... final setup
+            ax.XLim = thisAltGait.stanceSpace.aLimits{1}; 
+            ax.YLim = thisAltGait.stanceSpace.aLimits{2};
+            xlabel(ax, xTxt, "FontSize", fS);
+            ylabel(ax, yTxt, "FontSize", fS);
         end
 
         % plot the stance space panels
