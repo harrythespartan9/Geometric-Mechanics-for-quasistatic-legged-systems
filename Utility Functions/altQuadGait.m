@@ -356,7 +356,7 @@ classdef altQuadGait
             dNumU = thisAltGait.inputSpace.dNumU;
             tIC = thisAltGait.inputSpace.intParam.tIC;
             tFC = thisAltGait.inputSpace.intParam.tFC;
-            % ... simulate the body displacement from the first subgait
+            % ... simulate the body displacement from both subgaits
             zSub = cell(1, 2); % cells for each subgait
             for k = 1:numel(stances) % iterate over each subgait
                 zSub{k} = cell(1, 3); % subcells for each component
@@ -436,58 +436,77 @@ classdef altQuadGait
         end
 
         % compute the cost associate with executing the alternating gait
-        function thisAltGait = computeGaitPathLength(thisAltGait)
-            % unpack the required path length components and input size
+        % ... there are two costs related to the shape velocity and
+        % ... acceleration, we want to compute both as a function of the
+        % ... input space
+        % ... NOTE: SETUP VERY SIMILAR TO SIMULATE INPUT SPACE
+        function thisAltGait = computeGaitCost( thisAltGait )
+            % general unpacking
+            stances = {thisAltGait.ithStance, thisAltGait.jthStance};
+            dNumU = thisAltGait.inputSpace.dNumU;
             tIC = thisAltGait.inputSpace.intParam.tIC;
             tFC = thisAltGait.inputSpace.intParam.tFC;
-            dNumU = thisAltGait.inputSpace.dNumU;
-            % compute the difference to obtain the length of the path for
-            % each input subspace
-            % ... get the difference and difference square in the
-            % ... respective input subspaces
-            pathLengthsIJ = cell(1, numel(tIC));
-            pathLengthsSqIJ = pathLengthsIJ;
-            for i = 1:numel(tIC)
-                pathLengthsIJ{i} = abs(tIC{i} - tFC{i});
-                pathLengthsSqIJ{i} = (tIC{i} - tFC{i}).^2;
+            % get the shape velocity and acceleration costs for each 
+            % subgait
+            cost = []; cost.aVel = cell(1, 2); cost.aAccln = cell(1, 2);
+            for k = 1:numel(stances)
+                tVelNow = stances{k}.aParaRef.t(1:end-1); 
+                aVelNow = stances{k}.aParaRef.aVel;
+                tAcclnNow = stances{k}.aParaRef.t(1:end-2); 
+                aAcclnNow = stances{k}.aParaRef.aAccln;
+                for i = 1:dNumU
+                    for j = 1:dNumU
+                        tQueryNow = linspace(tIC{k}(i, j), tFC{k}(i, j));
+                        cost.aVel{k}(i, j) = ...
+                            abs(trapz( tQueryNow, ...
+                                interp1(...
+                                    tVelNow, aVelNow, tQueryNow, "pchip"...
+                                         )...
+                                    ));
+                        cost.aAccln{k}(i, j) = ...
+                            abs(trapz( tQueryNow, ...
+                                interp1(...
+                                tAcclnNow, aAcclnNow, tQueryNow, "pchip"...
+                                         )...
+                                    ));
+                    end
+                end
             end
-            % ... bring it into a single column form for the next step
-            costOneNorm = nan(dNumU*ones(1, 4)); costTwoNorm = costOneNorm;
+            % get the stitched cost
+            J = []; J.vel = nan(dNumU*ones(1, 4)); J.accln = J.vel;
             for i = 1:dNumU
                 for j = 1:dNumU
                     for k = 1:dNumU
                         for l = 1:dNumU
-                            costOneNorm(i, j, k, l) = ...
-                                            pathLengthsIJ{1}(i, j) + ...
-                                            pathLengthsIJ{2}(k, l);
-                            costTwoNorm(i, j, k, l) = ...
-                                       sqrt(pathLengthsSqIJ{1}(i, j) + ...
-                                            pathLengthsSqIJ{2}(k, l));
+                            J.vel(i, j, k, l) = ... % shape velocity
+                                cost.aVel{1}(i, j) + cost.aVel{2}(k, l);
+                            J.accln(i, j, k, l) = ... % shape accleration
+                            cost.aAccln{1}(i, j) + cost.aAccln{2}(k, l);
                         end
                     end
                 end
             end
-            %  assign the costs and return
-            thisAltGait.inputSpace.cost{1} = costOneNorm;
-            thisAltGait.inputSpace.cost{2} = costOneNorm;
+            % pack and return
+            thisAltGait.inputSpace.J = J;
         end
 
         % compute the cost associate with executing the alternating gait
+        % ... right now we are just considering an offset cost of 1 for the
+        % ... lift amplitudes
         function thisAltGait = computeMobility(thisAltGait, type)
             switch type
                 case 'sim'
                     % unpack everything needed
                     z = thisAltGait.inputSpace.(type).z;
-                    cost = thisAltGait.inputSpace.cost;
+                    cost = thisAltGait.inputSpace.J;
+                    % define the "cost" types to iterate over
+                    costStr = {'vel', 'accln'};
                     % iterate and obtain the efficiency formulation
-                    E = cell(size(cost));
-                    for iCost = 1:numel(cost) % for each type of cost
-                        E{iCost} = cell(1, numel(z)); % init for each component
+                    for iCost = 1:numel(costStr)
+                        E.(costStr{iCost}) = cell(size(z));
                         for iComponent = 1:numel(z)
-                            E{iCost}{iComponent} = ...
-                                        z{iComponent}./(cost{iCost} + 1);
-                            % added a constant offset cost for
-                            % to well-condition it
+                            E.(costStr{iCost}){iComponent} = ...
+                                z{iComponent}./(cost.(costStr{iCost}) + 1);
                         end
                     end
                     % pack the efficiency formulation
