@@ -692,7 +692,7 @@ classdef altQuadGait
             % provided
             if nargin == 5
                 altQuadGait.plotBodyTrajectoryEstimates...
-                                            (cT.discretized, zoomFlag);
+                                    (cT.discretized, zoomFlag, stance_i.l);
             end
         end
 
@@ -895,7 +895,8 @@ classdef altQuadGait
             end
         end
 
-        function plotBodyTrajectoryEstimates(discJointStancePath, zoomFlag)
+        function plotBodyTrajectoryEstimates...
+                (discJointStancePath, zoomFlag, l)
         %PLOTALTGAITBODYTRAJECTORYESTIMATES plot the body trajectory of the 
         %system when performing an alternating gait and its estimates using 
         %the BCH formula
@@ -915,6 +916,22 @@ classdef altQuadGait
             % unpack
             b = discJointStancePath.g;
             zb = discJointStancePath.z;
+            % compute the locations of the body corners
+            % ... the body bounding box is plotted at the end of the
+            % ... trajectory to provide "visually" an estimate of the
+            % ... displacement in body-lengths (BLs)
+            xCorners = l*[1, -1, -1, 1];
+            yCorners = 2*circshift(xCorners, 1);
+            hbCorners = [xCorners; yCorners; zeros(size(xCorners))];
+            heCorners = nan(size(hbCorners));
+            for i = 1:size(hbCorners, 2)
+                heCorners(:, i) = seqSE2transformation(...
+                                            [zb(:), hbCorners(:, i)]...
+                                                        );
+            end
+            xCorners = heCorners(1, :); yCorners = heCorners(2, :);
+            uCorners = circshift(xCorners, -1) - xCorners; 
+            vCorners = circshift(yCorners, -1) - yCorners;
             % setups
             fS = 25; 
             appxPicewCol = [51,160,44]/255;
@@ -923,6 +940,7 @@ classdef altQuadGait
             figure('Visible', 'on', 'Units', 'pixels', 'Position', [0 0 900 900]); ax = gca; box(ax, "on");
             % plot the body trajectory, represent the net displacement, and the body
             % orientation
+            % ... also, plot body bounding box for body-length reference
             plot(ax, b(:, 1), b(:, 2), '-', 'LineWidth', 2.0, 'Color', gbCol, ...
                 'DisplayName', 'simulated trajectory');
             grid(ax, "on"); hold(ax, "on"); set(ax,'TickLabelInterpreter','latex');
@@ -931,6 +949,10 @@ classdef altQuadGait
             p = quiver(ax, zb(1),  zb(2), -sin(zb(3)), cos(zb(3)),...
                 'LineWidth', 3.0, 'Color', gbCol, 'LineStyle', '-',...
                 'AutoScaleFactor', 0.1, 'MaxHeadSize', 1);
+            set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
+                "AutoScale", "off", 'ShowArrowHead', 'off',...
+                'LineWidth', 1.2, 'LineStyle', '--', 'Color', gbCol);
             set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
             % plot the stancewise commutative estimate
             gHatb = discJointStancePath.gHat{1}; 
