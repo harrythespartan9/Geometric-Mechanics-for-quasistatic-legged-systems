@@ -446,6 +446,21 @@ classdef altQuadGait
             dNumU = thisAltGait.inputSpace.dNumU;
             tIC = thisAltGait.inputSpace.intParam.tIC;
             tFC = thisAltGait.inputSpace.intParam.tFC;
+            % recompute the specific level-set at the origin
+            % ... assumes that the only leaf-exploration mode is
+            % ... "origin-only"
+            switch strcmp(thisAltGait.leafExplorationMode, 'origin-only')
+                case 1
+                    for k = 1:numel(stances)
+                        stances{k} = ...
+                            Path2_Mobility...
+                                .computeSpecificParallelCoordinates...
+                                    ( stances{k}, zeros(1,2), [], true );
+                    end
+                otherwise
+                    error(['ERROR! Only "origin-only" exploration mode is ' ...
+                        'selected at the moment']);
+            end
             % get the shape velocity and acceleration costs for each 
             % subgait
             cost = []; cost.aVel = cell(1, 2); cost.aAccln = cell(1, 2);
