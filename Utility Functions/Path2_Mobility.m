@@ -928,11 +928,18 @@ classdef Path2_Mobility
                             mean(diff(thisPath2.aLimits, 1, 2), 1)*...
                                                 sum(thisPath2.intTime)/2;
             % .............................................................
-            figure('Visible', 'on', 'Units', 'pixels',...
-                'Position', [0 0 600 600]); ax = gca; box(ax, "on");
+            % ... 1) basic setup
+            % ... 2) plot the singularity at the sup(F) point if within the
+            % ... accessible shape space
+            % ... 3) do the same for the inf(F) point
+            % ... 4) iterate and plot each level-set in the slip-nonslip
+            % ... coordinate system
+            figure('Visible', 'on', 'Units', 'pixels', ...
+                'Position', [0 0 600 600]); 
+            ax = gca; box(ax, "on");
             ax.XColor = stanceColor; ax.YColor = stanceColor;
             axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
-            set(ax, 'Color',pInfo.col_backg);
+            set(ax, 'Color', pInfo.col_backg);
             if Path2_Mobility.checkInsideAccessibleShapeSpace...
                                                 (thisPath2, thisPath2.aSup)
                 scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), 0.5*scatSingSize, ...
@@ -949,14 +956,13 @@ classdef Path2_Mobility
                 plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
                     'Color', [thisPath2.aPerpF.color(i, :), fAc]);
             end
-            % ... plot the following
-            % ... ... 1) the current F level-set the stance path belongs to
-            % ... ... 2) the current stance path before plotting scatters
-            % ... ... 3) the reference point scatter
-            % ... ... 4) the stance path scatters: (a) a 'o' scatter at the 
-            % ... ... starting point, (b) an 'x' at the ending point, and 
-            % ... ... (c) an arrow in the middle of the path to denote its 
-            % ... ... direction.
+            % ... 1) the current F level-set the stance path belongs to
+            % ... 2) the current stance path before plotting scatters
+            % ... 3) the reference point scatter
+            % ... 4) the stance path scatters: (a) a 'o' scatter at the 
+            % ... starting point, (b) an 'x' at the ending point, and 
+            % ... (c) an arrow in the middle of the path to denote its 
+            % ... direction.
             plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,... % 1
                 'Color', [aParaRefNow.color, fAcSp]);
             plot(ax, stancePath(:, 1), stancePath(:, 2), 'LineWidth', lW,... % stance path 2
@@ -973,7 +979,7 @@ classdef Path2_Mobility
                 'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
                 'LineWidth', lW);
             plotPathArrowV2(ax, stancePath(:, 1), stancePath(:, 2),... % arrow for direction 4(c)
-                arrowSize, arrowAngle, lW, 'k', 'mid'); % , stanceColor, 'mid'
+                arrowSize, arrowAngle, lW-1, 'k', 'front_end'); % , stanceColor, 'mid'
             % .............................................................
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
@@ -987,6 +993,206 @@ classdef Path2_Mobility
                         ax.YAxis.FontSize = pInfo.tickFS;
             xlim(pInfo.xlimits); ylim(pInfo.ylimits);
             % .............................................................
+        end
+
+        % this function plots the requested stance phase path parameterized
+        % by the starting and stopping times relative to a reference point 
+        % in the limb angle subspace with panel heatmaps plotted as filled
+        % contours (similar to previous visualization functions).
+        % for specific details on how things are plotted, refer to the
+        % comments in the previous function: "plotStanceOnNonslipLevelSets"
+        function plotStanceOnPanels...
+            (ref, startEndTimes, thisPath2, shapeStanceTraj, status, mode)
+            % .............................................................
+            % create a local instanace to highlight the current level-set
+            refPtNow = ref.P;
+            thisPath2Now = ... 
+                Path2_Mobility.computeSpecificParallelCoordinates...
+                                            ( thisPath2, refPtNow );
+            aParaRefNow = thisPath2Now.aParaRef;
+            % .............................................................
+            % create the stance path that needs to be plotted
+            % ... 1) we dont have the stance path
+            % ... 2) we do have the stance path, and we pass it along to 
+            % ... compute the entire subgait
+            if nargin < 4
+                [tau, ~, fullPath] = ...
+                            Path2_Mobility.computeSubgaitInCoordinates...
+                                                (ref, startEndTimes, thisPath2);
+            elseif nargin == 4
+                [tau, ~, fullPath] = ...
+                    Path2_Mobility.computeSubgaitInCoordinates...
+                        (ref, startEndTimes, thisPath2, shapeStanceTraj);
+            elseif nargin == 5 || nargin == 6
+                [tau, ~, fullPath] = ...
+                    Path2_Mobility.computeSubgaitInCoordinates...
+                                        (ref, startEndTimes, thisPath2, ...
+                                                shapeStanceTraj, status);
+            else
+                error(['ERROR! This function only accepts 5 args. Refer to ' ...
+                    'usage in "se2_toyproblems_case_1_mobility.mlx" for ' ...
+                    'more details.'])
+            end
+            tauStanceQ = ... % phase during stance
+                linspace(0, pi, floor(size(tau, 1)/2)); 
+            stancePath = interp1(tau, fullPath, tauStanceQ, "pchip");
+            % .............................................................
+            % plotting related
+            pInfo = thisPath2.p_info; 
+            lW = pInfo.lW; lWc = pInfo.lW_contour;
+            stanceColor = pInfo.gc_col;
+            scatSingSize = pInfo.circS;
+            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            fAc = 0.6; fAcSp = 0.8; cfLvl = pInfo.cfLvl; fA = pInfo.fA;
+            if ~isfield(thisPath2.p_info, 'fAc')
+                thisPath2.p_info.fAc = fAc;
+            end
+            domainPercentage = 3; arrowAngle = deg2rad(18);
+            arrowSize = domainPercentage/100*...
+                            mean(diff(thisPath2.aLimits, 1, 2), 1)*...
+                                                sum(thisPath2.intTime)/2;
+            % ... panel sweeps related
+            ai = thisPath2.ai; aj = thisPath2.aj;
+            componentString = {'x', 'y', 'theta'};
+            panelSweeps = cell(1, numel(componentString));
+            panelSweepLimits = cell(1, numel(componentString));
+            minNow = []; maxNow = [];
+            % ... ... iterate over each component
+            for i = 1:numel(componentString)
+                % ... ... ... extract component
+                panelSweeps{i} = ...
+                    thisPath2.p_kin.(['dz__' componentString{i} '_sweep']);
+                % ... ... ... extract limits
+                switch i
+                    case numel(componentString)
+                        minNow = min(panelSweeps{i}, [], "all");
+                        maxNow = max(panelSweeps{i}, [], "all");
+                    otherwise
+                        minNow = [minNow, min(panelSweeps{i}, [], "all")];
+                        maxNow = [maxNow, max(panelSweeps{i}, [], "all")];
+                end
+                % ... ... ... assign limits
+                panelSweepLimits{i} = [min(minNow), max(maxNow)];
+                if i == 2
+                    panelSweepLimits{i-1} = panelSweepLimits{i};
+                end
+            end
+            panelSweepAlpha = 0.8;
+            % .............................................................
+            % iterate over each panel and plot things accordingly
+            switch mode
+                case 'all'
+                    f = figure('Visible', 'on', 'Units', 'pixels', ...
+                        'Position', [0 0 1800 600]); 
+                    tl = tiledlayout(f, 1, 3, ...
+                        "TileSpacing", "compact", "Padding", "compact");
+                    tlXY = tiledlayout(tl, 1, 2, ...
+                        "TileSpacing", "compact", "Padding", "compact");
+                    tlXY.Layout.Tile = 1; tlXY.Layout.TileSpan = [1, 2];
+                    tlTh = tiledlayout(tl, 1, 1, ...
+                        "TileSpacing", "compact", "Padding", "compact");
+                    tlTh.Layout.Tile = 3; tlTh.Layout.TileSpan = [1, 1];
+                    startCompIdx = 1; 
+                    endCompIdx = numel(panelSweeps);
+                case 'theta'
+                    figure('Visible', 'on', 'Units', 'pixels', ...
+                        'Position', [0 0 600 600]); 
+                    startCompIdx = numel(panelSweeps); 
+                    endCompIdx = startCompIdx;
+            end
+            for iComps = startCompIdx:endCompIdx
+                switch startCompIdx == endCompIdx
+                    case 1
+                        ax = gca;
+                    otherwise
+                        switch iComps
+                            case {1, 2}
+                                ax = nexttile(tlXY);
+                            otherwise
+                                ax = nexttile(tlTh);
+                        end
+                end
+                box(ax, "on"); 
+                ax.XColor =stanceColor; ax.YColor = stanceColor;
+                axis(ax, "equal", "tight"); hold(ax, "on"); view(2);
+                set(ax, 'Color', pInfo.col_backg);
+                % .........................................................
+                % plot the panels as filled contours
+                contourf(ax, ...
+                         ai, aj, ... % shape subspace discretization
+                         panelSweeps{iComps}, cfLvl, ... % panel
+                         'LineStyle', 'none', ... % no contour lines
+                         'FaceAlpha', panelSweepAlpha... % transparency
+                         ); 
+                % .........................................................
+                if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aSup)
+                    scatter(ax, thisPath2.aSup(1), thisPath2.aSup(2), ...
+                        0.5*scatSingSize, ...
+                        'MarkerEdgeColor', pInfo.jetDark(end, :), ...
+                        'MarkerFaceColor', 'none', ...
+                        'LineWidth', lW);
+                end
+                if Path2_Mobility.checkInsideAccessibleShapeSpace...
+                                                (thisPath2, thisPath2.aInf)
+                    scatter(ax, thisPath2.aInf(1), thisPath2.aInf(2), ...
+                        0.5*scatSingSize, ...
+                        'MarkerEdgeColor', pInfo.jetDark(1, :), ...
+                        'MarkerFaceColor', 'none', ...
+                        'LineWidth', lW);
+                end
+                plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), ...
+                    ':', ...
+                    'LineWidth', lW,... % 1
+                    'Color', [aParaRefNow.color, fAcSp]);
+                plot(ax, stancePath(:, 1), stancePath(:, 2), ...
+                    'LineWidth', lW,... % stance path 2
+                    'Color', stanceColor);
+                scatter(ax, refPtNow(1), refPtNow(2), ...
+                    scatSingSize, ... % reference point scatter 3
+                    'Marker', 'pentagram', ...
+                    'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                    'LineWidth', lWc);
+                scatter(ax, stancePath(1, 1), stancePath(1, 2), ...
+                    0.25*scatSingSize, ... % starting point scatter 4(a)
+                    'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                    'LineWidth', lWc);
+                scatter(ax, stancePath(end, 1), stancePath(end, 2), ...
+                    0.25*scatSingSize, ... % ending point scatter 4(b)
+                    'Marker', 'x', ...
+                    'MarkerEdgeColor', 'k', 'MarkerFaceColor', stanceColor, ...
+                    'LineWidth', lW);
+                plotPathArrowV2(ax, ... % arrow for direction 4(c)
+                    stancePath(:, 1), stancePath(:, 2),... 
+                    arrowSize, arrowAngle, lW-1, 'k', 'front_end');
+                % .............................................................
+                colormap(ax, pInfo.CUB); clim(ax, panelSweepLimits{iComps});
+                switch startCompIdx == endCompIdx
+                    case 1
+                        colorbar(ax, ...
+                            'TickLabelInterpreter', 'latex',...
+                            'FontSize', pInfo.cbarFS);
+                    otherwise
+                        if iComps ~= 1
+                            cb = colorbar(ax, ...
+                                'TickLabelInterpreter', 'latex',...
+                                'FontSize', pInfo.cbarFS);
+                            cb.Layout.Tile = 'east';
+                        end
+                end
+                set(get(ax, 'YLabel'),'rotation',0,...
+                                            'VerticalAlignment','middle');
+                xticks(ax, pInfo.xtickval); yticks(ax, pInfo.ytickval);
+                xticklabels(ax, pInfo.xticklab); 
+                yticklabels(ax, pInfo.yticklab);
+                xlabel(ax, pInfo.x_label_txt,FontSize=pInfo.labelFS); 
+                ylabel(ax, pInfo.y_label_txt,FontSize=pInfo.labelFS);
+                ax.XAxis.FontSize = pInfo.tickFS; 
+                ax.YAxis.FontSize = pInfo.tickFS;
+                xlim(pInfo.xlimits); ylim(pInfo.ylimits);
+                % .............................................................
+            end
         end
 
         % this function computes the displacement of the body when provided
@@ -1023,7 +1229,7 @@ classdef Path2_Mobility
         % reference point, forward and backward integration times, and the
         % scaling and sliding inputs.
         function configTraj = simulateConfigurationTrajectory...
-                                (ref, startEndTimes, thisPath2, plotFlag)
+                    (ref, startEndTimes, thisPath2, plotFlags, panelsMode)
             % unpack reference
             % ... 1. a reference point
             % ... 2. integration times (taken togther with 1. provide the
@@ -1151,18 +1357,36 @@ classdef Path2_Mobility
                                 (configTraj.discretized.gCirc);
             configTraj.discretized.zHat = ...
                                     configTraj.discretized.gHat(end, :);
-            % ... if the 'plotFlag' is true, plot the subgait
-            if plotFlag
-                % ... ... modify the shape trajectory with one more point
-                tMod = configTraj.complete.t;
-                rMod = configTraj.complete.r;
-                rMod = interp1...
-                        (tMod, rMod, ...
-                        linspace(tMod(1), tMod(end), dnum+1), ...
-                        "pchip");
-                Path2_Mobility.plotStanceOnNonslipLevelSets...
-                                (ref, startEndTimes, thisPath2, ...
-                                rMod, configTraj.status);
+            % ... if the 'plotFlag' doesn't exist, do not plot anything,
+            % ... else based on the case plot
+            if isempty(plotFlags)
+                plotFlags = false(1, 2);
+            end
+            for i = 1:numel(plotFlags)
+                if plotFlags(i)
+                    % ... ... shape trajectory with an additional point
+                    if ~exist('tMod', 'var') % compute mods only once!!
+                        tMod = configTraj.complete.t;
+                        rMod = configTraj.complete.r;
+                        rMod = interp1...
+                                (tMod, rMod, ...
+                                linspace(tMod(1), tMod(end), dnum+1), ...
+                                "pchip");
+                    end
+                    switch i
+                        case 1
+                            Path2_Mobility.plotStanceOnNonslipLevelSets...
+                                    (ref, startEndTimes, thisPath2, ...
+                                    rMod, configTraj.status);
+                        case 2
+                            if isempty(panelsMode)
+                                panelsMode = 'all';
+                            end
+                            Path2_Mobility.plotStanceOnPanels...
+                                    (ref, startEndTimes, thisPath2, ...
+                                    rMod, configTraj.status, panelsMode);
+                    end
+                end
             end
         end
 
