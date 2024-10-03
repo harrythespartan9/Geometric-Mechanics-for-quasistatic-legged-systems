@@ -23,7 +23,7 @@ function plotBodyTimeseriesGeneral( pltBody )
 
     % iterate, unpack, and plot
     switch isstruct(pltBody)
-        case 1 % a single trajectory struct
+        case 1 % a single trajectory struct (WORKS!)
             % .. unpack
             g = pltBody.g;
             startIdx = pltBody.startIdx; 
@@ -71,7 +71,7 @@ function plotBodyTimeseriesGeneral( pltBody )
                 % set(get(ax,'YLabel'), 'rotation', 0, ...
                 %                             'VerticalAlignment', 'middle');
             end
-        case 0 % a cell array of trajectories as structs
+        case 0 % a cell array of trajectories as structs (UNTESTED)
             numObjs = numel(pltBody);
             for j = 1:numObjs
                 if ~isstruct(pltBody{j})
