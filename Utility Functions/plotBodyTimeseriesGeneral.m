@@ -79,11 +79,12 @@ function plotBodyTimeseriesGeneral( pltBody )
                         'a cell array of body timeseries structures.']);
                 else
                     g{j} = pltBody{j}.g;
-                    z{j} = pltBody{j}.z;
                     startIdx{j} = pltBody{j}.startIdx; 
                     endIdx{j} = pltBody{j}.endIdx;
                     stanceChangeLocs{j} = pltBody{j}.stanceChangeIdx;
                     stanceColors{j} = pltBody{j}.stanceColors;
+                    % ... ideally, "trajSegmentColors" is the same for all
+                    % ... trajectories
                     trajSegmentColors{j} = pltBody{j}.trajSegmentColors;
                     lineSty{j} = pltBody{j}.lineSty;
                     scatterFlag{j} = pltBody{j}.scatterFlag;
@@ -124,9 +125,21 @@ function plotBodyTimeseriesGeneral( pltBody )
                 end
                 ylabel(ax, yLabelTxt{i}, 'FontSize', fS, ...
                                                 'Interpreter', 'latex');
-                % set(get(ax,'YLabel'), 'rotation', 0, ...
-                %                             'VerticalAlignment', 'middle');
+                % set(get(ax,'YLabel'), 'rotation', 0, ...  
+                %                           'VerticalAlignment', 'middle');
             end
+            % add the colorbar on the outside
+            % ... first obtain the colormap from the segmented data
+            colorMapNow = nan(numel(trajSegmentColors), 3);
+            for j = 1:size(colorMapNow, 1)
+                colorMapNow(j ,:) = mean(trajSegmentColors{j});
+            end
+            % ... add the map and assign the colorbar
+            colormap(f, colorMapNow); 
+            cb = colorbar(ax, ...
+                'TickLabelInterpreter', 'latex',...
+                'FontSize', fS);
+            cb.Layout.Tile = 'east';
     end
     %%%% END OF FUNCTION
 end

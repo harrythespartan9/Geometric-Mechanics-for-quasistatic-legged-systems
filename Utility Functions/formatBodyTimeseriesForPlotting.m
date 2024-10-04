@@ -68,7 +68,7 @@ function pltBody = formatBodyTimeseriesForPlotting...
     % get the colors at the points of change and at the different
     % trajectory segments
     stanceColors = nan(numChange, 3); % remains NaN for case 'k'
-    switch pltMode
+    switch ischar(pltMode)
         case 'stance_colored'
             % ... need colors when the stance phase or contact state
             % ... changes and the colors for each segment

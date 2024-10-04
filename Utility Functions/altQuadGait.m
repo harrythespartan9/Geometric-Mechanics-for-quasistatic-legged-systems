@@ -1085,19 +1085,63 @@ classdef altQuadGait
         % ... once these computations are performed, then the function
         % ... above "altQuadGait.plotBodyTimeseries" is called in a loop
         % ... for each input value
-        function plotBodyTimeseriesFromInputs(thisAltGait, inputs, ref, ...
-                                                    pltMode, scatterFlag)
+        function plotBodyTimeseriesFromInputs(thisAltGait, ...
+                                                inputs, ref, traceColors)
             % ... unpack the references
             refI = ref{1}; refJ = ref{2};
-            % ... compute the gait integration times when provided with
-            % ... inputs and references
-            [tIC, tFC] = ...
+            % ... unpack the stance phase instances
+            stanceI = thisAltGait.ithStance; 
+            stanceJ = thisAltGait.jthStance;
+            % ... init "pltBody" cell array to store structs at each input
+            % ... value
+            pltBodyStructs = cell(size(inputs, 1), 1);
+            % ... iterate over each input and compute the the configuration
+            % ... trajectory
+            for i = 1:size(inputs, 1)
+                % ... ... inputs
+                uNow = inputs(i, :); 
+                % ... ... compute the gait integration times when provided 
+                % ... ... with inputs and references
+                [tICnow, tFCnow] = ...
                 altQuadGait.computeGaitIntegrationTimes...
-                (    rigidTrot, ... % gait instance
-                     inputs, ... % scaling and sliding inputs concatenated
+                (    thisAltGait, ... % gait instance
+                     uNow, ... % scaling and sliding inputs concatenated
                     [refI.T,    refJ.T], ... % integration times
                     [refI.tOff, refJ.tOff], ... % offset times
                     [refI.tMax, refJ.tMax]   ); % max integration times
+                % ... ... compute the configuration trajectories for each
+                % ... ... stance phase
+                cTi = ...
+                    Path2_Mobility.simulateConfigurationTrajectory...
+                            (refI, ...
+                            [tICnow(1), tFCnow(1)], ...
+                             stanceI);
+                cTj = ...
+                    Path2_Mobility.simulateConfigurationTrajectory...
+                            (refJ, ...
+                            [tICnow(2), tFCnow(2)], ...
+                             stanceJ);
+                % ... ... extract the overall trajectory
+                g_i = cTi.complete.g; z_i = cTi.complete.z';
+                g_j = cTj.complete.g; z_j = cTj.complete.z';
+                [gNow, ~] = stitchTwoSE2trajectories(g_i, z_i, g_j, z_j);
+                % ... ... extract the current contact trajectory
+                numPts = size(gNow, 1);
+                cNow = [    ones([floor(numPts/2), 1]); 
+                          2*ones([ ceil(numPts/2), 1])   ];
+                % ... obtain the plotting format
+                pltBodyStructs{i} = ...
+                    formatBodyTimeseriesForPlotting...
+                    (...
+                        gNow, cNow, ... % trajectories for current input
+                        traceColors(i, :), ... % traj color
+                        '-', ... % linestyle
+                        false, ... % no scatters at contact change
+                        {stanceI, stanceJ}... % stance instances
+                    );
+            end
+            % ... call the plotting function for each struct
+            plotBodyTimeseriesGeneral( pltBodyStructs );
         end
         
         % plot the shape trajectory from a gait cycle as a timeseries

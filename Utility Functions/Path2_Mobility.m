@@ -1359,7 +1359,7 @@ classdef Path2_Mobility
                                     configTraj.discretized.gHat(end, :);
             % ... if the 'plotFlag' doesn't exist, do not plot anything,
             % ... else based on the case plot
-            if isempty(plotFlags)
+            if nargin < 4 || isempty(plotFlags)
                 plotFlags = false(1, 2);
             end
             for i = 1:numel(plotFlags)
@@ -1379,7 +1379,7 @@ classdef Path2_Mobility
                                     (ref, startEndTimes, thisPath2, ...
                                     rMod, configTraj.status);
                         case 2
-                            if isempty(panelsMode)
+                            if nargin < 5 || isempty(panelsMode)
                                 panelsMode = 'all';
                             end
                             Path2_Mobility.plotStanceOnPanels...
