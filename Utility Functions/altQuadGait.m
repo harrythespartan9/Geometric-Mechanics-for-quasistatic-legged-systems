@@ -1053,8 +1053,8 @@ classdef altQuadGait
         
         end
         
-        % plot the body trajectory timeseries
-        % ... get the trajectory
+        % plot the body trajectory timeseries if the configuration
+        % trajectories are already available
         function plotBodyTimeseries(thisAltGait, cTi, cTj, ...
                                                     pltMode, scatterFlag)
             % ... unpack the subgait instances
@@ -1076,6 +1076,28 @@ classdef altQuadGait
                 (g, c, ...
                 pltMode, '-', scatterFlag, {stance_i, stance_j});
             plotBodyTimeseriesGeneral( pltBody );
+        end
+
+        % plot the body trajectory timeseries from inputs and references
+        % ... this performs computations similar to the "noncommutative
+        % ... approximation of net displacement" section in the
+        % ... "se2_toyproblems_case_1_mobility.mlx" livescript;
+        % ... once these computations are performed, then the function
+        % ... above "altQuadGait.plotBodyTimeseries" is called in a loop
+        % ... for each input value
+        function plotBodyTimeseriesFromInputs(thisAltGait, inputs, ref, ...
+                                                    pltMode, scatterFlag)
+            % ... unpack the references
+            refI = ref{1}; refJ = ref{2};
+            % ... compute the gait integration times when provided with
+            % ... inputs and references
+            [tIC, tFC] = ...
+                altQuadGait.computeGaitIntegrationTimes...
+                (    rigidTrot, ... % gait instance
+                     inputs, ... % scaling and sliding inputs concatenated
+                    [refI.T,    refJ.T], ... % integration times
+                    [refI.tOff, refJ.tOff], ... % offset times
+                    [refI.tMax, refJ.tMax]   ); % max integration times
         end
         
         % plot the shape trajectory from a gait cycle as a timeseries

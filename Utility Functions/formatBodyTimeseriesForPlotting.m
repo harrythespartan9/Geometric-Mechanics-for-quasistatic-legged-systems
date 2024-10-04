@@ -84,6 +84,22 @@ function pltBody = formatBodyTimeseriesForPlotting...
         case 'k'
             % ... default case, so we use the default color
             trajSegmentColors = repmat(zeros(1, 3), [numSegmts, 1]);
+        otherwise
+            % ... check if the provided variable is a numeric color array 
+            % ... (with or without the alpha value)
+            if ~isnumeric(pltMode)
+                error(['ERROR! The "pltMode" array has to be a numeric ' ...
+                    'color array.']);
+            elseif numel(pltMode) < 3 || numel(pltMode) > 4
+                error(['The "pltMode" numeric color array can only have ' ...
+                    '3 or 4 elements (with or without the plot alpha ' ...
+                    'value).']);
+            elseif ~all(pltMode >= 0 & pltMode <= 1) % all within 0 and 1
+                error(['ERROR! The "pltMode" numeric color array must have ' ...
+                    'all elements between 0 and 1.']);
+            end
+            % ... assign the colors and return
+            trajSegmentColors = repmat(pltMode, [numSegmts, 1]);
     end
 
     % directly init and assign return struct
