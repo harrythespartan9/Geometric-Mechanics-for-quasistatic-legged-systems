@@ -4,6 +4,9 @@ function g = exponentiateLieAlgebraElement( gCirc )
 %   Given a lie-algebra element, we compute the exponential map-- we
 %   explicity compute this result based on the irrotational case and the
 %   rotational case
+    
+    % SET the threshold for zeroing out the rotational velocity here
+    rotThresh = 1e-10;
 
     % input checks
     errMsg = ['ERROR! The input velocity or the lie algebra element ' ...
@@ -43,7 +46,7 @@ function g = exponentiateLieAlgebraElement( gCirc )
     % ... subcases within each case handle no rotation and rotation cases
     switch nPoints
         case 1
-            switch gCirc(3) == 0
+            switch abs(gCirc(3)) < rotThresh
                 case 1
                     g(1:2) = gCirc(1:2);
                 otherwise
@@ -58,7 +61,7 @@ function g = exponentiateLieAlgebraElement( gCirc )
                 transposeFlag = true;
                 gCirc = gCirc';
             end
-            idxZero = (gCirc(3, :) == 0); % indices without rotational vel
+            idxZero = (abs(gCirc(3, :)) < rotThresh); % indices without rotational vel
             gCircPages = permute(gCirc, [1, 3, 2]); % convert velocities from 2D matrix into 3D pages 1)
             Mpages = nan(2, 2, nPoints); % init transformation matrix in NaN-valued pages 2)
             Mpages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % unity transformation in the irrotational case 3)

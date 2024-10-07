@@ -1,4 +1,4 @@
-function plotBodyTimeseriesGeneral( pltBody )
+function plotBodyTimeseriesGeneral( pltBody, pltType, traceTickLabels )
 %PLOTBODYTIMESERIESGENERAL plot the body timeseries
 %   Given a structure of different body cell arrays, we plot them in order
 %   prescribed by the linestyle within the struct, "pltBody".
@@ -10,14 +10,22 @@ function plotBodyTimeseriesGeneral( pltBody )
 
     % define the ylabels
     xLabelTxt = '$$\tau$$';
-    yLabelTxt = {'$$x$$', '$$y$$', '$$\theta$$'};
+    if nargin < 2
+        pltType = 'g'; % set it to body position timeseries by default
+    end
+    switch pltType
+        case 'g' % just body position trajectory
+            yLabelTxt = {'$$x$$', '$$y$$', '$$\theta$$'};
+        case 'gCirc' % just body average velocity trajectory
+            yLabelTxt = {'$$\xi^{x}$$', '$$\xi^{y}$$', '$$\xi^{\theta}$$'};
+    end
 
     % setup
     % ... set the fontsize here
     fS = 25;
     % ... initialize figure and tiledlayouts
     f = figure('Visible', 'on', 'Units', 'pixels',...
-                                                'Position', [0 0 900 700]);
+                                                'Position', [0 0 900 900]);
     tl = tiledlayout(f, 3, 1, "TileSpacing", "tight",...
                                                     "Padding", "tight");
 
@@ -26,6 +34,7 @@ function plotBodyTimeseriesGeneral( pltBody )
         case 1 % a single trajectory struct (WORKS!)
             % .. unpack
             g = pltBody.g;
+            gLimits = pltBody.gLimits;
             startIdx = pltBody.startIdx; 
             endIdx = pltBody.endIdx;
             stanceChangeLocs = pltBody.stanceChangeIdx;
@@ -59,7 +68,10 @@ function plotBodyTimeseriesGeneral( pltBody )
                             "LineWidth", 1.2);
                     end
                 end
-                axis(ax, "padded"); xlim(ax, [0, 2*pi]); grid(ax, "on");
+                gLimitsComp = gLimits(i, :);
+                gLimitsComp = gLimitsComp + 0.15*diff(gLimitsComp)*[-1 +1];
+                axis(ax, "padded"); grid(ax, "on");
+                xlim(ax, [0, 2*pi]); ylim(ax, gLimitsComp);
                 if i == 3
                     xlabel(ax, xLabelTxt, 'FontSize', fS,...
                                                 'Interpreter', 'latex');
@@ -72,13 +84,22 @@ function plotBodyTimeseriesGeneral( pltBody )
                 %                             'VerticalAlignment', 'middle');
             end
         case 0 % a cell array of trajectories as structs (UNTESTED)
+            % iterate and plot over each object
             numObjs = numel(pltBody);
+            % get the ticklabels, else create it along the way
+            if nargin < 2
+                getLabelFlag = true;
+                traceTickLabels = cell(1, numObjs);
+            else
+                getLabelFlag = false;
+            end
             for j = 1:numObjs
                 if ~isstruct(pltBody{j})
                     error(['ERROR! The "pltBody" input argument should be ' ...
                         'a cell array of body timeseries structures.']);
                 else
                     g{j} = pltBody{j}.g;
+                    gLimits{j} = pltBody{j}.gLimits;
                     startIdx{j} = pltBody{j}.startIdx; 
                     endIdx{j} = pltBody{j}.endIdx;
                     stanceChangeLocs{j} = pltBody{j}.stanceChangeIdx;
@@ -115,8 +136,20 @@ function plotBodyTimeseriesGeneral( pltBody )
                                 "LineWidth", 1.2);
                         end
                     end
+                    if getLabelFlag
+                        traceTickLabels{j} = num2str(j);
+                    end
+                    switch j
+                        case 1
+                            ithAxLim = gLimits{j}(i, :);
+                        otherwise
+                            ithAxLim = [ithAxLim; gLimits{j}(i, :)];
+                    end
                 end
-                axis(ax, "padded"); xlim(ax, [0, 2*pi]); grid(ax, "on");
+                gLimitsComp = [min(ithAxLim(:, 1)), max(ithAxLim(:, 2))];
+                gLimitsComp = gLimitsComp + 0.15*diff(gLimitsComp)*[-1 +1];
+                axis(ax, "padded"); grid(ax, "on");
+                xlim(ax, [0, 2*pi]); ylim(ax, gLimitsComp);
                 if i == 3
                     xlabel(ax, xLabelTxt, 'FontSize', fS,...
                                                 'Interpreter', 'latex');
@@ -135,10 +168,15 @@ function plotBodyTimeseriesGeneral( pltBody )
                 colorMapNow(j ,:) = mean(trajSegmentColors{j});
             end
             % ... add the map and assign the colorbar
+            tempArr = linspace(0, 1, numObjs+1);
+            traceTickLocations = tempArr(1:end-1) + 0.5*diff(tempArr);
             colormap(f, colorMapNow); 
             cb = colorbar(ax, ...
                 'TickLabelInterpreter', 'latex',...
-                'FontSize', fS);
+                'FontSize', fS, ...
+                'Ticks', traceTickLocations, ...
+                'TickLabels', traceTickLabels, ...
+                'TickDirection', 'in');
             cb.Layout.Tile = 'east';
     end
     %%%% END OF FUNCTION

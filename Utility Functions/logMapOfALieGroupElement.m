@@ -4,7 +4,9 @@ function gCirc = logMapOfALieGroupElement( g )
 %   Given a Lie group element, we compute the logarithmic map-- we
 %   explicity compute this result based on the irrotational case and the
 %   rotational cases.
-
+    
+    % SET the threshold for zeroing out the rotational velocity here
+    rotThresh = 1e-10;
     % argument checks
     errMsg = ['ERROR! The input displacement or the Lie group element ' ...
             'should contain 3 columns of x, y, and theta displacement-' ...
@@ -43,7 +45,7 @@ function gCirc = logMapOfALieGroupElement( g )
     % ... subcases within each case handle no rotation and rotation cases
     switch nPoints
         case 1
-            switch g(3) == 0
+            switch abs(g(3)) < rotThresh
                 case 1
                     gCirc(1:2) = g(1:2);
                 otherwise
@@ -53,12 +55,12 @@ function gCirc = logMapOfALieGroupElement( g )
                                     g(1:2)'... % transform them
                              )';
             end
-        otherwise
+        otherwise %%%%% UNTESTED
             if size(g, 1) ~= 3
                 transposeFlag = true;
                 g = g';
             end
-            idxZero = (g(3, :) == 0); % indices without rotational displacement
+            idxZero = (abs(g(3, :)) < rotThresh); % indices without rotational (or arbitrarily small ones)
             gPages = permute(g, [1, 3, 2]); % convert displacement from 2D matrix into 3D pages 1)
             MinvPages = nan(2, 2, nPoints); % init transformation matrix in NaN-valued pages 2)
             MinvPages(:, :, idxZero) = repmat(eye(2, 2), 1, 1, nnz(idxZero)); % Id transformation for irrotational case 3)

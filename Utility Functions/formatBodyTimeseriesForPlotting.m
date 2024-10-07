@@ -69,21 +69,25 @@ function pltBody = formatBodyTimeseriesForPlotting...
     % trajectory segments
     stanceColors = nan(numChange, 3); % remains NaN for case 'k'
     switch ischar(pltMode)
-        case 'stance_colored'
-            % ... need colors when the stance phase or contact state
-            % ... changes and the colors for each segment
-            for i = 1:numChange
-                stanceColors(i, :) = ...
-                    stanceObjs{c(stanceChangeLocs(i))}.p_info.gc_col;
+        case 1
+            switch pltMode
+                case 'stance_colored'
+                    % ... need colors when the stance phase or contact 
+                    % ... state changes and the colors for each segment
+                    for i = 1:numChange
+                        stanceColors(i, :) = ...
+                            stanceObjs...
+                                {c(stanceChangeLocs(i))}.p_info.gc_col;
+                    end
+                    trajSegmentColors = nan(numSegmts, 3);
+                    for i = 1:numSegmts
+                        trajSegmentColors(i, :) = ...
+                            stanceObjs{c(startIdx(i))}.p_info.gc_col;
+                    end
+                case 'k'
+                    % ... default case, so we use the default color
+                    trajSegmentColors = repmat(zeros(1, 3),[numSegmts, 1]);
             end
-            trajSegmentColors = nan(numSegmts, 3);
-            for i = 1:numSegmts
-                trajSegmentColors(i, :) = ...
-                    stanceObjs{c(startIdx(i))}.p_info.gc_col;
-            end
-        case 'k'
-            % ... default case, so we use the default color
-            trajSegmentColors = repmat(zeros(1, 3), [numSegmts, 1]);
         otherwise
             % ... check if the provided variable is a numeric color array 
             % ... (with or without the alpha value)
@@ -104,6 +108,12 @@ function pltBody = formatBodyTimeseriesForPlotting...
 
     % directly init and assign return struct
     pltBody.g = g;
+    pltBody.gLimits = ...
+        [ repmat(...
+            [min(g(:, 1:2), [], "all"), max(g(:, 1:2), [], "all")]...
+                    , 2, 1);
+            [min(g(:, 3), [], "all"), max(g(:, 3), [], "all")] ...
+        ];
     pltBody.startIdx = startIdx;
     pltBody.endIdx = endIdx;
     pltBody.stanceChangeIdx = stanceChangeLocs;

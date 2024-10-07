@@ -1085,8 +1085,12 @@ classdef altQuadGait
         % ... once these computations are performed, then the function
         % ... above "altQuadGait.plotBodyTimeseries" is called in a loop
         % ... for each input value
+        % ... also, have the option to choose between the body trajectory
+        % ... or average velocity trajectory
         function plotBodyTimeseriesFromInputs(thisAltGait, ...
-                                                inputs, ref, traceColors)
+                            inputs, ref, ...
+                            trajType, ... % for body avg vel or pos traj
+                            traceColors, traceLabels) % trace related
             % ... unpack the references
             refI = ref{1}; refJ = ref{2};
             % ... unpack the stance phase instances
@@ -1125,6 +1129,11 @@ classdef altQuadGait
                 g_i = cTi.complete.g; z_i = cTi.complete.z';
                 g_j = cTj.complete.g; z_j = cTj.complete.z';
                 [gNow, ~] = stitchTwoSE2trajectories(g_i, z_i, g_j, z_j);
+                % ... ... convert the body trajectory to average velocity
+                % ... ... if needed
+                if strcmp(trajType, 'gCirc') % 'g'
+                    gNow = logMapOfALieGroupElement( gNow );
+                end
                 % ... ... extract the current contact trajectory
                 numPts = size(gNow, 1);
                 cNow = [    ones([floor(numPts/2), 1]); 
@@ -1141,7 +1150,7 @@ classdef altQuadGait
                     );
             end
             % ... call the plotting function for each struct
-            plotBodyTimeseriesGeneral( pltBodyStructs );
+            plotBodyTimeseriesGeneral(pltBodyStructs,trajType,traceLabels);
         end
         
         % plot the shape trajectory from a gait cycle as a timeseries
