@@ -98,7 +98,7 @@ classdef altQuadGait
             switch inputModeArg
                 case 'std'
                     thisAltGait.inputMode = 'std';
-                    thisAltGait.integrationLimits = inf*[-1, 1];
+                    thisAltGait.integrationLimits = inf*[1, 1];
                 case 'path_limit_compliant'
                     if nargin < 5
                         error(['ERROR! For the "path_limit_compliant" input ' ...
@@ -211,14 +211,25 @@ classdef altQuadGait
                 (stanceJ, zeros(1, 2), [], true);
             % stance space properties
             % ... get the stance-decoupled properties and store
+            % ... for the limits, if the input-mode is 
+            % ... "path_limit_compliant", we want the limits store in the
+            % ... gait instance as "integrationLimits"
             aI  = stanceI.aParaRef.t;   aJ = stanceJ.aParaRef.t;
             dzI = stanceI.aParaRef.dz; dzJ = stanceJ.aParaRef.dz;
             thisAltGait.stanceSpace.a{1}  = aI;
             thisAltGait.stanceSpace.a{2}  = aJ;
-            thisAltGait.stanceSpace.aLimits{1} = [min(aI, [], "all"), 
-                                                    max(aI, [], "all")];
-            thisAltGait.stanceSpace.aLimits{2} = [min(aJ, [], "all"), 
-                                                    max(aJ, [], "all")];
+            switch strcmp(thisAltGait.inputMode, 'path_limit_compliant')
+                case 1
+                    thisAltGait.stanceSpace.aLimits{1} = ...
+                                            thisAltGait.integrationLimits;
+                    thisAltGait.stanceSpace.aLimits{2} = ...
+                                            thisAltGait.integrationLimits;
+                case 0
+                    thisAltGait.stanceSpace.aLimits{1} = ...
+                        [min(aI, [], "all"), max(aI, [], "all")];
+                    thisAltGait.stanceSpace.aLimits{2} = ...
+                        [min(aJ, [], "all"), max(aJ, [], "all")];
+            end
             thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
             thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
             thisAltGait.stanceSpace.dz{1} = dzI;
@@ -248,7 +259,7 @@ classdef altQuadGait
             % ... compute the exact location where the theta component of 
             % ... both panels are zero where the span would be 1
             thetaSelect = 3;
-            thisAltGait.stanceSpace.dzThZeroLoc = ...
+            thisAltGait.stanceSpace.a_dzThNull = ...
                 fmincon(   @(a) ...
                 abs(Path2_Mobility.interpThetaPanelFromIntTime...
                                         (aI, dzI(:, thetaSelect), a(1))) ...
@@ -581,29 +592,39 @@ classdef altQuadGait
                 error(['ERROR! There should only be one pair of values for ' ...
                     'the offset time']);
             end
-            if strcmp(thisAltGait.inputMode, 'path_limit_compliant') ...
-                                                && (nargin < 5)
-                error(['ERROR! For the "path_limit_compliant" input ' ...
-                       'method, we need the maximum forward and ' ...
-                       'backward integration times to appropriately ' ...
-                       'bound the sliding input contribution.']);
-            end
             % unpack inputs, path integration times, and offset times
             % ... the inputs are setup as column vectors ordered from left 
             % ... to right as scaling, sliding for Si, and same for Sj 
             ithInput = inputs(:, 1:2); jthInput = inputs(:, 3:4);
             ithIntgTimes = T(1:2); jthIntgTimes = T(3:4);
             ithOffTime = Toff(1); jthOffTime = Toff(2);
-            ithIntgMAXTimes = Tmax(1:2); jthIntgMAXTimes = Tmax(3:4);
             % obtain the integration times individually for each subgait
-            [tICi, tFCi] = altQuadGait.computeSubgaitIntegrationTimes...
-                                    (thisAltGait, ...
-                                    ithInput, ithIntgTimes, ithOffTime, ...
-                                    ithIntgMAXTimes);
-            [tICj, tFCj] = altQuadGait.computeSubgaitIntegrationTimes...
-                                    (thisAltGait, ...
-                                    jthInput, jthIntgTimes, jthOffTime, ...
-                                    jthIntgMAXTimes);
+            % ... if the max times are provided use that
+            % ... else just pass the rest and limits are computed inside
+            switch nargin == 5
+                case 1
+                    ithIntgMAXTimes = Tmax(1:2); 
+                    jthIntgMAXTimes = Tmax(3:4);
+                    [tICi, tFCi] = ...
+                        altQuadGait.computeSubgaitIntegrationTimes...
+                                (thisAltGait, ...
+                                ithInput, ithIntgTimes, ithOffTime, ...
+                                ithIntgMAXTimes);
+                    [tICj, tFCj] = ...
+                        altQuadGait.computeSubgaitIntegrationTimes...
+                                (thisAltGait, ...
+                                jthInput, jthIntgTimes, jthOffTime, ...
+                                jthIntgMAXTimes);
+                case 0
+                    [tICi, tFCi] = ...
+                        altQuadGait.computeSubgaitIntegrationTimes...
+                                (thisAltGait, ...
+                                ithInput, ithIntgTimes, ithOffTime);
+                    [tICj, tFCj] = ...
+                        altQuadGait.computeSubgaitIntegrationTimes...
+                                (thisAltGait, ...
+                                jthInput, jthIntgTimes, jthOffTime);
+            end
             tIC = [tICi, tICj]; 
             tFC = [tFCi, tFCj]; % return columnwise concatenated arrays
         end
@@ -615,36 +636,46 @@ classdef altQuadGait
                                     (thisAltGait, inputs, T, ~, Tmax)
             % Compute initial and final condition times based on the
             % current input mode
-            u1 = inputs(:, 1); u2 = inputs(:, 2);
-            T0 = T(1); Tpi = T(2);
+            u1 = inputs(1); u2  = inputs(2);
+            T0 =      T(1); Tpi =      T(2);
+            % assign the initial and final times as they remain unchanged
+            initTime = -u1*T0 ;
+            finTime  = +u1*Tpi;
             switch thisAltGait.inputMode
                 case 'std'
-                    tIC = -u1*T0  + u2;
-                    tFC = +u1*Tpi + u2;
+                    tIC = initTime + u2;
+                    tFC = finTime  + u2;
                 case 'path_limit_compliant'
+                    % first, if the Tmax is not provided, obtain it from
+                    % the "altQuadGait" instance: "thisAltGait"
+                    % if limits are provided, use that
+                    if nargin < 5
+                        Tmax = thisAltGait.integrationLimits;
+                    end
                     % check the quadrant of the input to compute the
                     % capping term associated with the sliding input
+                    % ... we negate Tminus because we are moving backwards
                     Tminus = Tmax(1); Tplus = Tmax(2); 
-                    switch +u1*Tpi >= -u1*T0
-                        case 1
-                            switch u2 >= 0
-                                case 1
-                                    capTerm = Tplus - u1*Tpi;
-                                case 0
-                                    capTerm = -u1*T0 - Tminus;
+                    switch u2 < 0 
+                        case 1 % MOVING LEFT
+                            switch initTime <= finTime
+                                case 1 % initTime closer to Tminus
+                                    capTerm = initTime - Tminus;
+                                case 0 % finTime  closer to Tminus
+                                    capTerm = finTime - Tminus;
                             end
-                        case 0
-                            switch u2 >= 0
-                                case 1
-                                    capTerm = Tplus + u1*T0;
-                                case 0
-                                    capTerm = u1*Tpi - Tminus;
+                        case 0 % MOVING RIGHT
+                            switch finTime >= initTime
+                                case 1 % finTime  closer to Tplus
+                                    capTerm = Tplus - finTime;
+                                case 0 % initTime closer to Tplus
+                                    capTerm = Tplus - initTime;
                             end
                     end
                     % compute the initial and final condition integration
                     % times
-                    tIC = -u1*T0  + capTerm.*u2;
-                    tFC = +u1*Tpi + capTerm.*u2;
+                    tIC = initTime + capTerm*u2;
+                    tFC = finTime  + capTerm*u2;
             end
         end
 
@@ -1106,13 +1137,23 @@ classdef altQuadGait
                 uNow = inputs(i, :); 
                 % ... ... compute the gait integration times when provided 
                 % ... ... with inputs and references
-                [tICnow, tFCnow] = ...
-                altQuadGait.computeGaitIntegrationTimes...
-                (    thisAltGait, ... % gait instance
-                     uNow, ... % scaling and sliding inputs concatenated
-                    [refI.T,    refJ.T], ... % integration times
-                    [refI.tOff, refJ.tOff], ... % offset times
-                    [refI.tMax, refJ.tMax]   ); % max integration times
+                switch thisAltGait.inputMode
+                    case 'std'
+                        [tICnow, tFCnow] = ...
+                            altQuadGait.computeGaitIntegrationTimes...
+                            (    thisAltGait, ... % gait instance
+                                 uNow, ... % [scale, slide] inputs
+                                [refI.T,    refJ.T], ... % int times
+                                [refI.tOff, refJ.tOff], ... % offset times
+                                [refI.tMax, refJ.tMax]   ); % int lim
+                    case 'path_limit_compliant'
+                        [tICnow, tFCnow] = ...
+                            altQuadGait.computeGaitIntegrationTimes...
+                            (    thisAltGait, ...
+                                 uNow, ...
+                                [refI.T,    refJ.T], ...
+                                [refI.tOff, refJ.tOff]);
+                end
                 % ... ... compute the configuration trajectories for each
                 % ... ... stance phase
                 cTi = ...
@@ -1349,7 +1390,7 @@ classdef altQuadGait
             aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
             aJlimits = [ min(aJ, [], "all"), max(aJ, [], "all") ];
             dzIdotJ = thisAltGait.stanceSpace.dzIdotJ;
-            scatterLoc = thisAltGait.stanceSpace.dzThZeroLoc;
+            scatterLoc = thisAltGait.stanceSpace.a_dzThNull;
             cfLvl = dnum; 
             lW_contour = thisAltGait.ithStance.p_info.lW_contour;
             CUB = thisAltGait.ithStance.p_info.CUB;
