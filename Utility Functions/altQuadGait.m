@@ -1237,13 +1237,21 @@ classdef altQuadGait
 
         % plot the trajectory on the stance space panels
         function plotGaitInStanceSpace(thisAltGait, tIC, tFC, ...
-                jointPathFlag)
+                jointPathFlag, numReq)
             % unpack
             stanceI = thisAltGait.ithStance; colI = stanceI.p_info.gc_col;
             stanceJ = thisAltGait.jthStance; colJ = stanceJ.p_info.gc_col;
             fS = 25;
-            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
-            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            switch numReq
+                case 'cs'
+                    xTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.ithStance.cs) '}$$'];
+                    yTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.jthStance.cs) '}$$'];
+                case '12'
+                    xTxt = '$$t_{1}$$';
+                    yTxt = '$$t_{2}$$';
+            end
             % plot
             % ... init setup
             figure('Visible', 'on', 'Units', 'pixels',...
@@ -1280,7 +1288,7 @@ classdef altQuadGait
         end
 
         % plot the stance space panels
-        function plotStanceSpacePanels(thisAltGait)
+        function plotStanceSpacePanels(thisAltGait, titleReq, numReq)
             % ... unpack plotting data
             aI = thisAltGait.stanceSpace.A{1};
             aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
@@ -1295,12 +1303,52 @@ classdef altQuadGait
             skipV = round((skipV/100)*2*floor(dnum/2)); 
             idxQ = 1:skipV:dnum;
             fS = 25;
-            A_title_txt = cell(1, 3); 
-            A_title_txt{1} = "$$-\vec{dz}^{x}$$"; 
-            A_title_txt{2} = "$$-\vec{dz}^{y}$$"; 
-            A_title_txt{3} = "$$-\vec{dz}^{\theta}$$";
-            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
-            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            A_title_txt = cell(1, 3);
+            switch titleReq
+                case 'panel'
+                    A_txt = '\vec{dz}';
+                    parallTxt = '';
+                case 'connProj'
+                    A_txt = '(\vec{A}';
+                    parallTxt = '^{\parallel})';
+            end
+            switch numReq
+                case 'cs'
+                    A_title_txt{1} = ['$$', A_txt, ...
+                        '_{', ...
+                        num2str(thisAltGait.ithStance.cs), ...
+                        '\leftrightarrow ', ...
+                        num2str(thisAltGait.jthStance.cs), ...
+                        '}', parallTxt, '^{x}$$']; 
+                    A_title_txt{2} = ['$$', A_txt, ...
+                        '_{', ...
+                        num2str(thisAltGait.ithStance.cs), ...
+                        '\leftrightarrow ', ...
+                        num2str(thisAltGait.jthStance.cs), ...
+                        '}', parallTxt, '^{y}$$'];
+                    A_title_txt{3} = ['$$', A_txt, ...
+                        '_{', ...
+                        num2str(thisAltGait.ithStance.cs), ...
+                        '\leftrightarrow ', ...
+                        num2str(thisAltGait.jthStance.cs), ...
+                        '}', parallTxt, '^{\theta}$$'];
+                    xTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.ithStance.cs) '}$$'];
+                    yTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.jthStance.cs) '}$$'];
+                case '12'
+                    A_title_txt{1} = ['$$', A_txt, ...
+                        '_{1 \leftrightarrow 2}', parallTxt, ...
+                        '^{x}$$']; 
+                    A_title_txt{2} = ['$$', A_txt, ...
+                        '_{1 \leftrightarrow 2}', parallTxt, ...
+                        '^{y}$$'];
+                    A_title_txt{3} = ['$$', A_txt, ...
+                        '_{1 \leftrightarrow 2}', parallTxt, ...
+                        '^{\theta}$$'];
+                    xTxt = '$$t_{1}$$';
+                    yTxt = '$$t_{2}$$';
+            end
             % ... plot
             f = figure('units', 'pixels', 'position', [0 0 450 1200], ...
                 'Color','w'); set(f,'Visible','on');
@@ -1319,9 +1367,9 @@ classdef altQuadGait
                 if i == 1
                     xlabel(ax, xTxt, "FontSize", fS);
                     ylabel(ax, yTxt, "FontSize", fS);
-                    ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
-                    ax.YColor = thisAltGait.jthStance.p_info.gc_col;
                 end
+                ax.XColor = thisAltGait.ithStance.p_info.gc_col; 
+                ax.YColor = thisAltGait.jthStance.p_info.gc_col;
                 % set(get(ax,'YLabel'), 'rotation', 0, ...
                     % 'VerticalAlignment', 'middle');
                 title(ax, A_title_txt{i}, 'Color', 'k', FontSize=fS);
@@ -1331,7 +1379,7 @@ classdef altQuadGait
         end
 
         % plot the stance space curvature/lie-bracket
-        function plotStanceSpaceCurvature(thisAltGait)
+        function plotStanceSpaceCurvature(thisAltGait, titleReq, numReq)
             aI = thisAltGait.stanceSpace.A{1}; 
             aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
             aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
@@ -1342,19 +1390,44 @@ classdef altQuadGait
             cfLvl = dnum; % number of color lvls
             CUB = thisAltGait.ithStance.p_info.CUB;
             fS = 25;
-            lb_title_txt = cell(1, 3); 
-            lb_title_txt{1} = ...
-                ['$$[\vec{dz}_{' ...
-                num2str(thisAltGait.ithStance.cs) ...
-                '}, \vec{dz}_{' ...
-                num2str(thisAltGait.jthStance.cs) '}]^{x}$$']; 
-            lb_title_txt{2} = ...
-                ['$$[\vec{dz}_{' ...
-                num2str(thisAltGait.ithStance.cs) ...
-                '}, \vec{dz}_{' ...
-                num2str(thisAltGait.jthStance.cs) '}]^{y}$$'];
-            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
-            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            lb_title_txt = cell(1, 2);
+            % ... 
+            % ... legacy stuff, plots 13 and 24 for the panel
+            % ... components; commented out for now.
+            % ... 
+            % lb_title_txt{1} = ...
+            %     ['$$[\vec{dz}_{' ...
+            %     num2str(thisAltGait.ithStance.cs) ...
+            %     '}, \vec{dz}_{' ...
+            %     num2str(thisAltGait.jthStance.cs) '}]^{x}$$']; 
+            % lb_title_txt{2} = ...
+            %     ['$$[\vec{dz}_{' ...
+            %     num2str(thisAltGait.ithStance.cs) ...
+            %     '}, \vec{dz}_{' ...
+            %     num2str(thisAltGait.jthStance.cs) '}]^{y}$$'];
+            switch numReq
+                case 'cs'
+                    numStrI = num2str(thisAltGait.ithStance.cs);
+                    numStrJ = num2str(thisAltGait.jthStance.cs);
+                    xTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.ithStance.cs) '}$$'];
+                    yTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.jthStance.cs) '}$$'];
+                case '12'
+                    numStrI = num2str(1); numStrJ = num2str(2);
+                    xTxt = '$$t_{1}$$';
+                    yTxt = '$$t_{2}$$';
+            end
+            switch titleReq
+                case 'panel'
+                    lb_txt = ['[\vec{dz}_{' numStrI '}, ' ...
+                               '\vec{dz}_{' numStrJ '}]'];
+                case 'connProj'
+                    lb_txt = ['[\vec{A}_{' numStrI '}^{\parallel}, ' ...
+                               '\vec{A}_{' numStrJ '}^{\parallel}]'];
+            end
+            lb_title_txt{1} = ['$$', lb_txt, '^{x}$$']; 
+            lb_title_txt{2} = ['$$', lb_txt, '^{y}$$']; 
             % ... plot
             f = figure('units', 'pixels', 'position', [0 0 600 900], ...
                 'Color','w'); set(f,'Visible','on');
@@ -1384,7 +1457,8 @@ classdef altQuadGait
         end
 
         % plot the stance space curvature/lie-bracket
-        function plotStanceSpaceInterpanelDotProduct(thisAltGait)
+        function plotStanceSpaceInterpanelDotProduct(thisAltGait, titleReq, ...
+                numReq)
             aI = thisAltGait.stanceSpace.A{1}; 
             aJ = thisAltGait.stanceSpace.A{2}; dnum = size(aI, 1);
             aIlimits = [ min(aI, [], "all"), max(aI, [], "all") ]; 
@@ -1395,13 +1469,32 @@ classdef altQuadGait
             lW_contour = thisAltGait.ithStance.p_info.lW_contour;
             CUB = thisAltGait.ithStance.p_info.CUB;
             fS = 25;
-            dot_title_txt = ['$$\hat{dz}_{' ...
-                num2str(thisAltGait.ithStance.cs) ...
-                '} \cdot \hat{dz}_{' ...
-                num2str(thisAltGait.jthStance.cs) ...
-                '}$$']; 
-            xTxt = ['$$\alpha_{' num2str(thisAltGait.ithStance.cs) '}$$'];
-            yTxt = ['$$\alpha_{' num2str(thisAltGait.jthStance.cs) '}$$'];
+            switch titleReq
+                case 'panel'
+                    dotTxt = '\hat{dz}';
+                    parallTxt = '';
+                case 'connProj'
+                    dotTxt = '\vec{A}';
+                    parallTxt = '^{\parallel}';
+            end
+            switch numReq
+                case 'cs'
+                    dot_title_txt = ['$$', dotTxt, parallTxt, '_{' ...
+                        num2str(thisAltGait.ithStance.cs), ...
+                        '} \cdot ', dotTxt, parallTxt, '_{', ...
+                        num2str(thisAltGait.jthStance.cs), ...
+                        '}$$']; 
+                    xTxt = ['$$\alpha_{', ... 
+                        num2str(thisAltGait.ithStance.cs), '}$$'];
+                    yTxt = ['$$\alpha_{', ... 
+                        num2str(thisAltGait.jthStance.cs), '}$$'];
+                case '12'
+                    dot_title_txt = ['$$', dotTxt, parallTxt, ...
+                        '_{1} \cdot ', ...
+                        dotTxt, parallTxt, '_{2}$$']; 
+                    xTxt = '$$t_{1}$$';
+                    yTxt = '$$t_{2}$$';
+            end
             f = figure('units', 'pixels', 'position', [0 0 600 600], ...
                 'Color','w'); set(f,'Visible','on'); ax = gca;
             contourf(ax, aI, aJ, dzIdotJ, cfLvl, 'LineStyle', 'none');
