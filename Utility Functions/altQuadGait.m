@@ -26,6 +26,10 @@ classdef altQuadGait
                             % in each method, there are two inputs per
                             % stance phase called the scaling and sliding
                             % inputs \in \[-1,1\].
+
+        bodyLimbTransforms  % functions to compute the transforms from the 
+                            % world frame to the body and then from the 
+                            % body to each limb
         
         integrationLimits   % forward and backward integration limits-- 
                             % this is only used when in "path_limit_compliant"
@@ -50,8 +54,9 @@ classdef altQuadGait
     methods
 
         function thisAltGait = altQuadGait(stance1, stance2, ...
-                                                leafModeArg, inputModeArg, ...
-                                                integrationLimitsArg)
+                                            leafModeArg, inputModeArg, ...
+                                            integrationLimitsArg, ...
+                                            se2Transforms)
             %ALTERNATINGQUADRUPEDALGAIT Construct an instance of this class
             %   mostly we setup the properties here and make some back
             %   checks to see if tha "Path2_Mobility" instances are
@@ -120,7 +125,11 @@ classdef altQuadGait
                     error(['ERROR! Other input descriptions are not ' ...
                         'supported.']);
             end
-            
+
+            % assign the SE(2) transforms from world frame to the body and
+            % then from the body to each foot location
+            thisAltGait.bodyLimbTransforms = se2Transforms;
+
             % obtain the stance space description for this alternating gait
             % cycle
             thisAltGait = altQuadGait.computeStanceSpace(thisAltGait);
@@ -756,8 +765,33 @@ classdef altQuadGait
             % purposes if needed-- only happens if a "zoomFlag" option is
             % provided
             if nargin == 5
+                figure('Visible', 'on', 'Units', 'pixels', ...
+                    'Position', [0 0 900 900]); ax = gca;
+                hold(ax, "on"); box(ax, "on");
+                % unpack the body trajectory here
+                b = cT.discretized.g;
+                % compute the locations of the body corners
+                % ... the body bounding box is plotted at the end of the
+                % ... trajectory to provide "visually" an estimate of the
+                % ... displacement in body-lengths (BLs)
+                xCorners = l*[1, -1, -1, 1];
+                yCorners = 2*circshift(xCorners, 1);
+                hbCorners = [xCorners; yCorners; zeros(size(xCorners))];
+                heCorners = nan(size(hbCorners));
+                for i = 1:size(hbCorners, 2)
+                    heCorners(:, i) = seqSE2transformation(...
+                                                [zb(:), hbCorners(:, i)]...
+                                                            );
+                end
+                xCorners = heCorners(1, :); yCorners = heCorners(2, :);
+                uCorners = circshift(xCorners, -1) - xCorners; 
+                vCorners = circshift(yCorners, -1) - yCorners;
+                p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
+                "AutoScale", "off", 'ShowArrowHead', 'off',...
+                'LineWidth', 1.2, 'LineStyle', '--', 'Color', gbCol);
+                set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
                 altQuadGait.plotBodyTrajectoryEstimates...
-                                    (cT.discretized, zoomFlag, stance_i.l);
+                                (ax, cT.discretized, zoomFlag, stance_i.l);
             end
         end
 
@@ -961,7 +995,7 @@ classdef altQuadGait
         end
 
         function plotBodyTrajectoryEstimates...
-                (discJointStancePath, zoomFlag, l)
+                (ax, discJointStancePath, zoomFlag, l)
         %PLOTALTGAITBODYTRAJECTORYESTIMATES plot the body trajectory of the 
         %system when performing an alternating gait and its estimates using 
         %the BCH formula
@@ -1002,7 +1036,7 @@ classdef altQuadGait
             appxPicewCol = [51,160,44]/255;
             appxCol = [31,120,180]/255; appxfA = 0.2*(1:4);
             gbCol = [0, 0, 0]/255;
-            figure('Visible', 'on', 'Units', 'pixels', 'Position', [0 0 900 900]); ax = gca; box(ax, "on");
+            
             % plot the body trajectory, represent the net displacement, and the body
             % orientation
             % ... also, plot body bounding box for body-length reference
@@ -1237,7 +1271,7 @@ classdef altQuadGait
 
         % plot the trajectory on the stance space panels
         function plotGaitInStanceSpace(thisAltGait, tIC, tFC, ...
-                jointPathFlag, numReq)
+                jointPathFlag, numReq, limReq)
             % unpack
             stanceI = thisAltGait.ithStance; colI = stanceI.p_info.gc_col;
             stanceJ = thisAltGait.jthStance; colJ = stanceJ.p_info.gc_col;
@@ -1281,8 +1315,14 @@ classdef altQuadGait
                 'LineStyle', '-','MaxHeadSize',0.3);
             end
             % ... final setup
-            ax.XLim = thisAltGait.stanceSpace.aLimits{1}; 
-            ax.YLim = thisAltGait.stanceSpace.aLimits{2};
+            switch limReq
+                case 'full'
+                    ax.XLim = thisAltGait.ithStance.aParaRef.tMax.*[-1, 1];
+                    ax.YLim = thisAltGait.jthStance.aParaRef.tMax.*[-1, 1];
+                case 'limits'
+                    ax.XLim = thisAltGait.stanceSpace.aLimits{1}; 
+                    ax.YLim = thisAltGait.stanceSpace.aLimits{2};
+            end
             xlabel(ax, xTxt, "FontSize", fS);
             ylabel(ax, yTxt, "FontSize", fS);
         end
