@@ -27,9 +27,8 @@ classdef altQuadGait
                             % stance phase called the scaling and sliding
                             % inputs \in \[-1,1\].
 
-        bodyLimbTransforms  % functions to compute the transforms from the 
-                            % world frame to the body and then from the 
-                            % body to each limb
+        bodyLimbTransform   % function to compute the transforms from the 
+                            % body frame to each limb
         
         integrationLimits   % forward and backward integration limits-- 
                             % this is only used when in "path_limit_compliant"
@@ -128,7 +127,7 @@ classdef altQuadGait
 
             % assign the SE(2) transforms from world frame to the body and
             % then from the body to each foot location
-            thisAltGait.bodyLimbTransforms = se2Transforms;
+            thisAltGait.bodyLimbTransform = se2Transforms;
 
             % obtain the stance space description for this alternating gait
             % cycle
@@ -765,31 +764,49 @@ classdef altQuadGait
             % purposes if needed-- only happens if a "zoomFlag" option is
             % provided
             if nargin == 5
+                % init figure
                 figure('Visible', 'on', 'Units', 'pixels', ...
-                    'Position', [0 0 900 900]); ax = gca;
-                hold(ax, "on"); box(ax, "on");
-                % unpack the body trajectory here
+                    'Position', [0 0 900 900]);
+                ax = gca; hold(ax, "on"); box(ax, "on");
+                % get the body trajectory
                 b = cT.discretized.g;
-                % compute the locations of the body corners
-                % ... the body bounding box is plotted at the end of the
-                % ... trajectory to provide "visually" an estimate of the
-                % ... displacement in body-lengths (BLs)
-                xCorners = l*[1, -1, -1, 1];
-                yCorners = 2*circshift(xCorners, 1);
-                hbCorners = [xCorners; yCorners; zeros(size(xCorners))];
-                heCorners = nan(size(hbCorners));
-                for i = 1:size(hbCorners, 2)
-                    heCorners(:, i) = seqSE2transformation(...
-                                                [zb(:), hbCorners(:, i)]...
+                % get the transforms to the legs
+                bodyLimbTransform
+                % iterate and plot the body bounding box and leg locations
+                for ctr = 1:size(b, 1)
+                    % current body locations
+                    currBodyPos = b(ctr, :)';
+                    % compute and plot the locations of the body corners
+                    % ... the body bounding box is plotted at the end of 
+                    % ... the trajectory to provide "visually" an estimate 
+                    % ... of the displacement in body-lengths (BLs)
+                    xCorners = l*[1, -1, -1, 1];
+                    yCorners = 2*circshift(xCorners, 1);
+                    hbCorners = [xCorners; 
+                                 yCorners; 
+                                 zeros(size(xCorners))];
+                    heCorners = nan(size(hbCorners));
+                    for i = 1:size(hbCorners, 2)
+                        heCorners(:, i) = seqSE2transformation(...
+                                        [currBodyPos, hbCorners(:, i)]...
+                                                                );
+                    end
+                    xCorners = heCorners(1, :); yCorners = heCorners(2, :);
+                    uCorners = circshift(xCorners, -1) - xCorners; 
+                    vCorners = circshift(yCorners, -1) - yCorners;
+                    p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
+                    "AutoScale", "off", 'ShowArrowHead', 'off',...
+                    'LineWidth', 1.2, 'LineStyle', '-', 'Color', gbCol);
+                    set(get(get(p,'Annotation'),'LegendInformation'),...
+                            'IconDisplayStyle','off');
+                    % compute and plot the leg locations in the respective
+                    % colors
+                    for i = 1:4 % iterate over each limb and plot locs
+                        currLimbPos = seqSE2transformation(...
+                            [currBodyPos]...
                                                             );
+                    end
                 end
-                xCorners = heCorners(1, :); yCorners = heCorners(2, :);
-                uCorners = circshift(xCorners, -1) - xCorners; 
-                vCorners = circshift(yCorners, -1) - yCorners;
-                p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
-                "AutoScale", "off", 'ShowArrowHead', 'off',...
-                'LineWidth', 1.2, 'LineStyle', '--', 'Color', gbCol);
-                set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
                 altQuadGait.plotBodyTrajectoryEstimates...
                                 (ax, cT.discretized, zoomFlag, stance_i.l);
             end
