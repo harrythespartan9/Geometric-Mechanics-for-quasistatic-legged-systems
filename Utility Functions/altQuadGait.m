@@ -27,7 +27,7 @@ classdef altQuadGait
                             % stance phase called the scaling and sliding
                             % inputs \in \[-1,1\].
 
-        bodyLimbTransform   % function to compute the transforms from the 
+        bodyToLimbTransform % function to compute the transforms from the 
                             % body frame to each limb
         
         integrationLimits   % forward and backward integration limits-- 
@@ -127,7 +127,7 @@ classdef altQuadGait
 
             % assign the SE(2) transforms from world frame to the body and
             % then from the body to each foot location
-            thisAltGait.bodyLimbTransform = se2Transforms;
+            thisAltGait.bodyToLimbTransform = se2Transforms;
 
             % obtain the stance space description for this alternating gait
             % cycle
@@ -730,8 +730,8 @@ classdef altQuadGait
                 end
                 % compute everything needed -------------------------------
                 % ... setup body velocity for the full trajectory
-                cT = dzAndGcircForConfigTrjectory(cT, cTi, fieldNow,dnum);
-                cT = dzAndGcircForConfigTrjectory(cT, cTj, fieldNow,dnum);
+                cT = dzAndGcircForConfigTrajectory(cT, cTi, fieldNow,dnum);
+                cT = dzAndGcircForConfigTrajectory(cT, cTj, fieldNow,dnum);
                 % ... obtain the simulated trajectories in each stance phase
                 % ... and stitch it together
                 g_i = cTi.(fieldNow).g; z_i = cTi.(fieldNow).z';
@@ -764,51 +764,105 @@ classdef altQuadGait
             % purposes if needed-- only happens if a "zoomFlag" option is
             % provided
             if nargin == 5
+                % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+                % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
                 % init figure
                 figure('Visible', 'on', 'Units', 'pixels', ...
                     'Position', [0 0 900 900]);
                 ax = gca; hold(ax, "on"); box(ax, "on");
-                % get the body trajectory
-                b = cT.discretized.g;
-                % get the transforms to the legs
-                bodyLimbTransform
-                % iterate and plot the body bounding box and leg locations
-                for ctr = 1:size(b, 1)
-                    % current body locations
-                    currBodyPos = b(ctr, :)';
-                    % compute and plot the locations of the body corners
-                    % ... the body bounding box is plotted at the end of 
-                    % ... the trajectory to provide "visually" an estimate 
-                    % ... of the displacement in body-lengths (BLs)
-                    xCorners = l*[1, -1, -1, 1];
-                    yCorners = 2*circshift(xCorners, 1);
-                    hbCorners = [xCorners; 
-                                 yCorners; 
-                                 zeros(size(xCorners))];
-                    heCorners = nan(size(hbCorners));
-                    for i = 1:size(hbCorners, 2)
-                        heCorners(:, i) = seqSE2transformation(...
-                                        [currBodyPos, hbCorners(:, i)]...
-                                                                );
+                % compile the two configuration trajectories into cells
+                cTcomp = {cTi, cTj};
+                for cTidx = 1:numel(cTcomp)
+                    % get the current config trajectory
+                    cTnow = cTcomp{cTidx};
+                    % get the body and limb angle trajectory
+                    bodyTraj = cTnow.complete.g;
+                    if cTidx > 1
+                        zPre = cTcomp{cTidx-1}.complete.z';
+                        bodyTraj = (repmat(zPre, 1, size(bodyTraj, 1)) + ...
+                            rot_SE2(zPre(3))*bodyTraj')';
                     end
-                    xCorners = heCorners(1, :); yCorners = heCorners(2, :);
-                    uCorners = circshift(xCorners, -1) - xCorners; 
-                    vCorners = circshift(yCorners, -1) - yCorners;
-                    p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
-                    "AutoScale", "off", 'ShowArrowHead', 'off',...
-                    'LineWidth', 1.2, 'LineStyle', '-', 'Color', gbCol);
-                    set(get(get(p,'Annotation'),'LegendInformation'),...
-                            'IconDisplayStyle','off');
-                    % compute and plot the leg locations in the respective
-                    % colors
-                    for i = 1:4 % iterate over each limb and plot locs
-                        currLimbPos = seqSE2transformation(...
-                            [currBodyPos]...
-                                                            );
+                    limbAngles = cTnow.complete.r;
+                    % field to get stuff from
+                    switch cTidx
+                        case 1
+                            fieldNow = 'ithStance';
+                        case 2
+                            fieldNow = 'jthStance';
+                    end
+                    % get the current limb indices
+                    cs = thisAltGait.(fieldNow).cs;
+                    % get the transforms to the legs, limb to body hip sprawl
+                    % ratio, and hip sprawl length
+                    h_b__i = thisAltGait.bodyToLimbTransform;
+                    a = thisAltGait.(fieldNow).a; 
+                    l = thisAltGait.(fieldNow).l;
+                    % plotting params
+                    % ... body outline color and swing phase color
+                    gbCol = 189/255*ones(1, 3);
+                    % ... color for each stance phase
+                    gcCol = thisAltGait.(fieldNow).p_info.gc_col;
+                    % ... scatter size for the foot locations
+                    circS = thisAltGait.ithStance.p_info.circS;
+                    % iterate and plot every 10%th body bounding box and 
+                    % leg locations
+                    % every 10%th point because else, it is too cluttered
+                    for ctr = 1:floor(0.1*size(bodyTraj, 1)):size(bodyTraj, 1)
+                        % current body locations
+                        currBodyPos = bodyTraj(ctr, :)';
+                        % current limb angles
+                        currLimbAngles = limbAngles(ctr, :);
+                        % compute and plot the locations of the body corners
+                        % ... the body bounding box is plotted at the end of 
+                        % ... the trajectory to provide "visually" an estimate 
+                        % ... of the displacement in body-lengths (BLs)
+                        xCorners = l*[1, -1, -1, 1];
+                        yCorners = 2*circshift(xCorners, 1);
+                        hbCorners = [xCorners; 
+                                     yCorners; 
+                                     zeros(size(xCorners))];
+                        heCorners = nan(size(hbCorners));
+                        for i = 1:size(hbCorners, 2)
+                            heCorners(:, i) = seqSE2transformation(...
+                                            [currBodyPos, hbCorners(:, i)]...
+                                                                    );
+                        end
+                        xCorners = heCorners(1, :); yCorners = heCorners(2, :);
+                        uCorners = circshift(xCorners, -1) - xCorners; 
+                        vCorners = circshift(yCorners, -1) - yCorners;
+                        % p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
+                        %     "AutoScale", "off", 'ShowArrowHead', 'off',...
+                        %     'LineWidth', 0.1, 'LineStyle', '-', ...
+                        %     'Color', gbCol); % plot grey-outline 
+                        % set(get(get(p,'Annotation'),'LegendInformation'),...
+                        %         'IconDisplayStyle','off');
+                        p = quiver(ax, xCorners, yCorners, uCorners, vCorners, ...
+                            "AutoScale", "off", 'ShowArrowHead', 'off',...
+                            'LineWidth', 0.05, 'LineStyle', '-', ...
+                            'Color', gcCol); % plot stance colored dots
+                        set(get(get(p,'Annotation'),'LegendInformation'),...
+                                'IconDisplayStyle','off');
+                        % compute and plot the foot locations in the respective
+                        % colors
+                        % ... iterate over each limb
+                        for i = 1:size(limbAngles, 2)
+                            currLimbPos = seqSE2transformation(...
+                                [currBodyPos, ...
+                                h_b__i{cs(i)}(a, l, currLimbAngles(i))]...
+                                                                );
+                            limbCol = gcCol;
+                            markerType = "o";
+                            p = scatter(ax, currLimbPos(1), currLimbPos(2), ...
+                                circS, limbCol, "filled", ...
+                                markerType, ... 
+                                "MarkerEdgeColor", "k"); % gbCol
+                            set(get(get(p,'Annotation'),'LegendInformation'),...
+                                    'IconDisplayStyle','off');
+                        end
                     end
                 end
                 altQuadGait.plotBodyTrajectoryEstimates...
-                                (ax, cT.discretized, zoomFlag, stance_i.l);
+                        (ax, cT.discretized, zoomFlag, stance_i.l);
             end
         end
 
@@ -1293,15 +1347,23 @@ classdef altQuadGait
             stanceI = thisAltGait.ithStance; colI = stanceI.p_info.gc_col;
             stanceJ = thisAltGait.jthStance; colJ = stanceJ.p_info.gc_col;
             fS = 25;
+            if ~exist("numReq", "var")
+                numReq = [];
+            end
             switch numReq
+                case '12'
+                    xTxt = '$$t_{1}$$';
+                    yTxt = '$$t_{2}$$';
                 case 'cs'
                     xTxt = ['$$\alpha_{' 
                         num2str(thisAltGait.ithStance.cs) '}$$'];
                     yTxt = ['$$\alpha_{' 
                         num2str(thisAltGait.jthStance.cs) '}$$'];
-                case '12'
-                    xTxt = '$$t_{1}$$';
-                    yTxt = '$$t_{2}$$';
+                otherwise
+                    xTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.ithStance.cs) '}$$'];
+                    yTxt = ['$$\alpha_{' 
+                        num2str(thisAltGait.jthStance.cs) '}$$'];
             end
             % plot
             % ... init setup
@@ -1331,15 +1393,22 @@ classdef altQuadGait
                 'LineWidth', 2.0, 'AutoScale', 'off', 'Color', 'k', ...
                 'LineStyle', '-','MaxHeadSize',0.3);
             end
-            % ... final setup
+            % ... limit requirement overrides the input mode
+            if ~exist("limReq", "var")
+                limReq = [];
+            end
             switch limReq
-                case 'full'
+                case 'full' % use the full level set if requested
                     ax.XLim = thisAltGait.ithStance.aParaRef.tMax.*[-1, 1];
                     ax.YLim = thisAltGait.jthStance.aParaRef.tMax.*[-1, 1];
-                case 'limits'
+                case 'limits' % use the limits if requested
+                    ax.XLim = thisAltGait.stanceSpace.aLimits{1}; 
+                    ax.YLim = thisAltGait.stanceSpace.aLimits{2};
+                otherwise % use the limits default
                     ax.XLim = thisAltGait.stanceSpace.aLimits{1}; 
                     ax.YLim = thisAltGait.stanceSpace.aLimits{2};
             end
+            % ... final setup
             xlabel(ax, xTxt, "FontSize", fS);
             ylabel(ax, yTxt, "FontSize", fS);
         end
@@ -1584,13 +1653,13 @@ end
 % trajectory for use by the static methods defined above
 % ... "CT" : full configuration trajectory
 % ... "cts": configuration trajectory for one of the subgaits
-function CT = dzAndGcircForConfigTrjectory(CT, cts, fieldName, dnum)
+function CT = dzAndGcircForConfigTrajectory(CT, cts, fieldName, dnum)
     % check if the fields already exist, and append data accordingly
     tIdx = 1; rIdx = 1:2; vIdx = 1:3; % init column indices
     iIdx = 1;
     if isfield(CT.(fieldName), 't') % if already exist, append
         tIdx=tIdx+tIdx(end); rIdx=rIdx+rIdx(end); vIdx=vIdx+vIdx(end);
-        iIdx = iIdx+1;
+        iIdx=iIdx+1;
     end
     % iterate the extract the data
     switch cts.parameters.disc
