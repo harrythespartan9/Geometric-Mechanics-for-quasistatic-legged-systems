@@ -87,6 +87,9 @@ classdef Path2_Mobility
                   % ... the constructor initializes this with the refernce
                   % ... point provided for computing the new coordinates
 
+        phaseReq  % whether phase bounds are used to stop integration when 
+                  % the F levelsets connect back on themselves
+
     end
     
     % just constructor %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,7 +98,7 @@ classdef Path2_Mobility
         % Constructor
         function thisPath2 = Path2_Mobility(sIdx, ...
                                         kin, kinfunc, p_kin, p_info, ...
-                                            intTime, refPt)
+                                            intTime, refPt, phaseReq)
             % assign the props
             thisPath2.sIdx = sIdx;
             thisPath2.kin = kin;
@@ -103,6 +106,11 @@ classdef Path2_Mobility
             thisPath2.p_kin = p_kin{sIdx};
             thisPath2.p_info = p_info{sIdx};
             thisPath2.intTime = intTime;
+            if ~exist("phaseReq", "var")
+                thisPath2.phaseReq = [];
+            else
+                thisPath2.phaseReq = phaseReq;
+            end
             % general reference for the limb position subspace as provided
             thisPath2.refPt = refPt;
             % get the leg indices that for the current contact state
@@ -352,7 +360,12 @@ classdef Path2_Mobility
             thisPath2.aParallF.y = cell(size(thisPath2.aPerpF.t)); 
                             thisPath2.aParallF.t = thisPath2.aParallF.y;
             thisPath2.aParallF.dz = thisPath2.aParallF.y;
-            eventList = {'shape_bounds', 'phase_bounds'};
+            switch thisPath2.phaseReq
+                case "NoPhaseLimits"
+                    eventList = {'shape_bounds'};
+                otherwise
+                    eventList = {'shape_bounds', 'phase_bounds'};
+            end
             argStruct = []; argStruct.functions = []; % struct init
             argStruct.bounds.alphaLimits = thisPath2.aLimits; % bounds
                         argStruct.bounds.angleThreshold = deg2rad(5);
@@ -379,7 +392,7 @@ classdef Path2_Mobility
                 ode89( @(t,y) -thisPath2.paraFdirn(...
                             thisPath2.a, thisPath2.l, y(1), y(2)), ...
                 [0, 1e2], y0now, optionsNow ); % for a long time,
-                                               % even will happen quicker
+                                               % event will happen quicker
                 if ~isempty(teNow)
                     tMax(1) = teNow;
                 end
@@ -471,7 +484,7 @@ classdef Path2_Mobility
         % ... and calls the constructor creating the new object
         function [ thatPath2 ] = constructComplementaryStance(thisPath2,...
                                         kin, kinfunc, p_kin, p_info, ...
-                                                        intTime, refPt)
+                                                intTime, refPt, phaseReq)
             % compute the complimentary submanifold index
             temp = zeros(1, 2); temp(thisPath2.sCol) = 1;
             thatCol = find(~temp);
@@ -479,7 +492,7 @@ classdef Path2_Mobility
             % construct the complimentary submanifold "Path2_Mobility" obj
             thatPath2 = Path2_Mobility(sThatIdx,...
                                        kin, kinfunc, p_kin, p_info,...
-                                       intTime, refPt);
+                                       intTime, refPt, phaseReq);
         end
 
         % check if the provided stance submanifolds are complementary
@@ -544,7 +557,12 @@ classdef Path2_Mobility
             thisPath2.aParaRef.refPt = refPt;
             thisPath2.aParaRef.isValid = true;
             thisPath2.aParaRef.eventInfo = cell(1, 2);
-            eventList = {'shape_bounds', 'phase_bounds'};
+            switch thisPath2.phaseReq
+                case "NoPhaseLimits"
+                    eventList = {'shape_bounds'};
+                otherwise
+                    eventList = {'shape_bounds', 'phase_bounds'};
+            end
             argStruct = []; argStruct.functions = []; 
             argStruct.bounds.alphaLimits = thisPath2.aLimits; 
                         argStruct.bounds.angleThreshold = deg2rad(5);
