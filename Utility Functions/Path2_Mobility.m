@@ -63,6 +63,8 @@ classdef Path2_Mobility
         F_bounds  % bounds on the accessible values of F and is a 
                   % ... subinterval of [F_inf, F_sup]
 
+        slipMode  % mode for slipping axis construction: 'legacy' and 'branched'
+
         perpFdirn % unit vector field generator for paths along the 
                   % gradient of F
 
@@ -98,7 +100,7 @@ classdef Path2_Mobility
         % Constructor
         function thisPath2 = Path2_Mobility(sIdx, ...
                                         kin, kinfunc, p_kin, p_info, ...
-                                            intTime, refPt, phaseReq)
+                                        intTime, refPt, phaseReq, slipMode)
             % assign the props
             thisPath2.sIdx = sIdx;
             thisPath2.kin = kin;
@@ -106,6 +108,7 @@ classdef Path2_Mobility
             thisPath2.p_kin = p_kin{sIdx};
             thisPath2.p_info = p_info{sIdx};
             thisPath2.intTime = intTime;
+            thisPath2.slipMode = slipMode;
             if ~exist("phaseReq", "var")
                 thisPath2.phaseReq = [];
             else
@@ -196,8 +199,8 @@ classdef Path2_Mobility
             % ... below
             % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
             thisPath2 = Path2_Mobility.computePerpendicularCoordinates...
-                                                            ( thisPath2 );
-                thisPath2.aPerpF.color = interpColorAndCondition...
+                                                    ( thisPath2, slipMode );
+            thisPath2.aPerpF.color = interpColorAndCondition...
                 ( ...
                 linspace(F_inf, F_sup, size(thisPath2.p_info.jetDark, 1))', ...
                 thisPath2.p_info.jetDark, thisPath2.aPerpF.F ...
@@ -238,68 +241,459 @@ classdef Path2_Mobility
         % ... this is the path along the gradient of F that helps us select 
         % ... a specific level-set of F
         function thisPath2 = computePerpendicularCoordinates...
-                                                            ( thisPath2 )
-            % unpack properties and pack 
-            % ... first required parameters followed by the bounds needed
-            % ... and finally the functions needed
-            % ... this argument structure is used to stop the ODE
-            % ... integration process when shape space constraints are
-            % ... violated
-            % ... an event will choose the necessary EVENTs to check for to
-            % ... stop the ODE integration process: we specifically need
-            % ... shape bounds check and F bounds check as we have hard
-            % ... constraints on those
-            % ... for more information, see: "nonslipShapeCoordsEvents.m"
-            argStruct = [];
-            argStruct.parameters.a = thisPath2.a; 
-                argStruct.parameters.l = thisPath2.l; % params
-            argStruct.bounds.alphaLimits = thisPath2.aLimits; % bounds
-            argStruct.bounds.F_bounds = thisPath2.F_bounds;
-            argStruct.functions.F_fxn = thisPath2.F_fxn; % function
-            eventList = {'shape_bounds', 'F_bounds'};
-            % ... set the ode EVENT options
-            odeOptions = odeset('Events', ...
-            @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, eventList));
-            % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-            % compute the 'perp' coordinate
-            % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-            % ... we integrate for 100 duration because we want to stop
-            % ... using events, and exact stopping duration is almost
-            % ... always unknown
-            % ... finally, we integrate from the backward position all the
-            % ... way till the forward position to obtain the solution
-            [~, ~, teNow, ~, ~] = ...
-                ode89( @(t, y) +thisPath2.perpFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                        [0 100], ... 
-                        thisPath2.refPt, ... % go FORWARD from reference
-                        odeOptions ); 
-            tFwd = teNow;
-            [~, ~, teNow, yeNow, ~] = ...
-                ode89( @(t, y) -thisPath2.perpFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                        [0 100], ... 
-                        thisPath2.refPt, ... % go BACKWARD from reference
-                        odeOptions );
-            tBwd = teNow; yBwd = yeNow;
-            tMain = tFwd + tBwd; % integration duration for MAIN solution
-            [tNow, yNow, teNow, ~, ~] = ...
-                ode89( @(t, y) +thisPath2.perpFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                        linspace(0, tMain, size(thisPath2.ai, 1)), ... 
-                        yBwd, ... % MAIN solution: integrate b/w ends
-                        odeOptions );
-            % ... check if an event occured and condition the solution
-            % ... before storing
-            if ~isempty(teNow)
-                yNow = yNow(tNow <= teNow, :);
-                tNow = tNow(tNow <= teNow);
+                                                    ( thisPath2, method )
+            % if the method is not provided, execute the legacy method by
+            % default
+            if nargin < 2
+                method = 'legacy';
             end
-            % ... store the solution and return
-            thisPath2.aPerpF.t = tNow;
-            thisPath2.aPerpF.y = yNow;
-            thisPath2.aPerpF.F = thisPath2.F_fxn...
-                (thisPath2.a, thisPath2.l, yNow(:, 1), yNow(:, 2));
+            % do the computation based on the method requested
+            switch method
+                case 'legacy'
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    % unpack properties and pack 
+                    % ... first required parameters followed by the bounds 
+                    % ... needed and finally the functions needed
+                    % ... this argument structure is used to stop the ODE
+                    % ... integration process when shape space constraints 
+                    % ... are violated
+                    % ... an event will choose the necessary EVENTs to check for to
+                    % ... stop the ODE integration process: we specifically need
+                    % ... shape bounds check and F bounds check as we have hard
+                    % ... constraints on those
+                    % ... for more information, see: "nonslipShapeCoordsEvents.m"
+                    argStruct = [];
+                    argStruct.parameters.a = thisPath2.a; 
+                        argStruct.parameters.l = thisPath2.l; % params
+                    argStruct.bounds.alphaLimits = thisPath2.aLimits; % bounds
+                    argStruct.bounds.F_bounds = thisPath2.F_bounds;
+                    argStruct.functions.F_fxn = thisPath2.F_fxn; % function
+                    eventList = {'shape_bounds', 'F_bounds'};
+                    % ... set the ode EVENT options
+                    odeOptions = odeset('Events', ...
+                    @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, eventList));
+                    % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+                    % compute the 'perp' coordinate
+                    % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+                    % ... we integrate for 100 duration because we want to stop
+                    % ... using events, and exact stopping duration is almost
+                    % ... always unknown
+                    % ... finally, we integrate from the backward position all the
+                    % ... way till the forward position to obtain the solution
+                    [~, ~, teNow, ~, ~] = ...
+                        ode89( @(t, y) +thisPath2.perpFdirn(...
+                                thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                                [0 100], ... 
+                                thisPath2.refPt, ... % go FORWARD from reference
+                                odeOptions ); 
+                    tFwd = teNow;
+                    [~, ~, teNow, yeNow, ~] = ...
+                        ode89( @(t, y) -thisPath2.perpFdirn(...
+                                thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                                [0 100], ... 
+                                thisPath2.refPt, ... % go BACKWARD from reference
+                                odeOptions );
+                    tBwd = teNow; yBwd = yeNow;
+                    tMain = tFwd + tBwd; % integration duration for MAIN solution
+                    [tNow, yNow, teNow, ~, ~] = ...
+                        ode89( @(t, y) +thisPath2.perpFdirn(...
+                                thisPath2.a, thisPath2.l, y(1), y(2)), ...
+                                linspace(0, tMain, size(thisPath2.ai, 1)), ... 
+                                yBwd, ... % MAIN solution: integrate b/w ends
+                                odeOptions );
+                    % ... check if an event occured and condition the solution
+                    % ... before storing
+                    if ~isempty(teNow)
+                        yNow = yNow(tNow <= teNow, :);
+                        tNow = tNow(tNow <= teNow);
+                    end
+                    % ... store the solution and return
+                    thisPath2.aPerpF.t = tNow;
+                    thisPath2.aPerpF.y = yNow;
+                    thisPath2.aPerpF.F = thisPath2.F_fxn...
+                        (thisPath2.a, thisPath2.l, yNow(:, 1), yNow(:, 2));
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'branched'
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    % obtain stuff needed to obtain the branches
+                    aa = thisPath2.kinfunc.aa;
+                    ll = thisPath2.kinfunc.ll;
+                    aInf = thisPath2.aInf;
+                    aSup = thisPath2.aSup;
+                    r = thisPath2.refPt;
+                    ankX = thisPath2.aLimits(1, :); ankXr = diff(ankX);
+                    ankY = thisPath2.aLimits(2, :); ankYr = diff(ankY);
+                    ankr = mean([ankXr, ankYr]);
+                    F_fxn = thisPath2.F_fxn;
+                    F_bounds_full = [thisPath2.F_inf, thisPath2.F_sup];
+                    F_bounds = thisPath2.F_bounds;
+                    numPtsTotal = size(thisPath2.ai, 1);
+                    % arrange the points a certain way
+                    pts = {aInf, r, aSup};
+                    % iterate over each ordered pair and get the intervals of interest
+                    slipAxisPoints = [];
+                    % check which iteration a branch belongs to
+                    % ... is it from the infimum to the reference
+                    % ... is it from the reference to the supremum
+                    branchDirn = [];
+                    % ... we do not know how many branches might exist
+                    % ... beforehand: anywhere between 2 to 4
+                    for i = 1:(numel(pts)-1)
+                        % get a vector from point 1 (tail of arrow above) to point 2 (head)
+                        vec = pts{i+1} - pts{i};
+                        % ensure that this vector is not too small
+                        % ... for now I'm setting the threshold to 1% of the allowable
+                        % ... symmetric range that we have assumed
+                        % ... if the threshold is not cleared, use the next vector or the
+                        % ... previous vector
+                        if norm(vec) - 2*ankr*1e-2 < 0
+                            switch i
+                                case 1
+                                    vec = pts{i+2} - pts{i+1};
+                                case 2
+                                    vec = pts{i} - pts{i-1};
+                            end
+                        end
+                        % get the phasor info
+                        phasorAngle1 = atan2(vec(2), vec(1));
+                        % get the x and y components for the line generator
+                        delX = cos(phasorAngle1);
+                        delY = sin(phasorAngle1);
+                        % find the a value at which the next point occurs
+                        aTemp = vec./[delX, delY]; 
+                        aTemp(isinf(aTemp)) = nan; % nan INF values
+                        aPtNext = mean(aTemp, "omitnan"); % omit nans
+                        % current pt is at 0
+                        aPtCurr = 0;
+                        % find the intersection to actual shape space bounds
+                        aAnkX = (ankX - repmat(pts{i}(1), 1, 2))/delX;
+                        aAnkX(isinf(aAnkX)) = nan; % NaNize
+                        aAnkY = (ankY - repmat(pts{i}(2), 1, 2))/delY;
+                        aAnkY(isinf(aAnkY)) = nan; % NaNize
+                        % accessible shape space and allowable points
+                        % ... find the "ank" on the boundary
+                        aAnk = [aAnkX, aAnkY];
+                        % ... get the points on the boundary
+                        % ... ... do this for the x and y points separately
+                        ptAnk = returnPtAlongLineFromIC(pts{i}, ...
+                                                [delX, delY], ...
+                                                aAnk);
+                        ptAnkX = ptAnk(1, :); ptAnkY = ptAnk(2, :);
+                        validAnkX = all...
+                            (ptAnkX >= ankX(1)-0.01*ankXr ...
+                           & ptAnkX <= ankX(2)+0.01*ankXr, 1);
+                        validAnkY = all...
+                            (ptAnkY >= ankY(1)-0.01*ankYr ...
+                           & ptAnkY <= ankY(2)+0.01*ankYr, 1);
+                        validAnk = validAnkX & validAnkY;
+                        aAnk = aAnk(validAnk);
+                        switch i
+                            case 1 % if the next point is the refernce point
+                                aAnk = aAnk(aAnk < aPtNext);
+                            case 2 % if the current point is the reference point
+                                aAnk = aAnk(aAnk > aPtCurr);
+                        end
+                        % ... if the are still multiple points, take the mean to get a single
+                        % ... point
+                        aAnk = mean(aAnk);
+                        % ... define a list and sort the points
+                        aList = [aPtNext, aPtCurr, aAnk]; % initialize the list
+                        switch i
+                            case 1 % inf(F) singularity to reference
+                                aList = sort( aList(aList >= aAnk & aList <= aPtNext) );
+                            case 2 % reference to sup(F) singularity
+                                aList = sort( aList(aList >= aPtCurr & aList <= aAnk) );
+                        end
+                        % ... get the points along the limits
+                        ptList = returnPtAlongLineFromIC(pts{i}, [delX, delY], aList);
+                        ptList = mat2cell(ptList, size(ptList, 1), ones(1, size(ptList, 2)));
+                        % iterate over the number of points and do stuff
+                        validFlagList = false(1, numel(ptList));
+                        for j = 1:numel(ptList)
+                            % current point
+                            ptNow = ptList{j};
+                            % evaluate the F-value at these points and see if the value is
+                            % being violated
+                            FvalNow = F_fxn(aa, ll, ptNow(1), ptNow(2));
+                            % check if any of the points are violating the condition, if
+                            % neither are, then there is no weird point in between
+                            % write an optimizer to check if there is a lower bound or an
+                            % upper bound
+                            if FvalNow >= F_bounds(1) && FvalNow <= F_bounds(2)
+                                validFlagList(j) = true;
+                            end
+                        end
+                        validNum = nnz(validFlagList);
+                        % based on the number of points we shall do the following
+                        % ... if two points it is relatively straightforward
+                        % ... else, if it is three points, then we need to iterate over the two
+                        % ... branches that occur and obtain the solutions separately to see if
+                        % ... there is a F-value violation
+                        switch numel(aList)
+                            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                            case 2 % ONE branch
+                                % if both points are valid generate a normal branch
+                                switch validNum
+                                    case 1
+                                        % only one of the points is valid, find the point where
+                                        % the bounds are violated, then it is that point to the
+                                        % valid point
+                                        aViolation = ptViolatingFbounds...
+                                            (aa, ll, ...
+                                            F_fxn, F_bounds, F_bounds_full, ...
+                                            pts{i}, delX, delY, ...
+                                            aList(1), [aList(1), aList(2)]);
+                                        % if the violation point is valid, then use
+                                        if exist("aViolation", "var")
+                                            [aList, sortIdx] = sort([aList, aViolation]);
+                                            validFlagList = [validFlagList, true];
+                                            validFlagList = validFlagList(sortIdx); % obtain the locations
+                                            aList = aList( ...
+                                                find(validFlagList, 1, "first"):... % starting point
+                                                find(validFlagList, 1, "last")... % end point
+                                                            ); % obtain the valid branch
+                                            slipAxisPoints{end+1} = ...
+                                                returnPtAlongLineFromIC(...
+                                                        pts{i}, [delX, delY], ...
+                                                        [aList(1), aList(2)]...
+                                                                        )';
+                                            branchDirn{end+1} = i;
+                                            clear aViolation;
+                                        else
+                                            error("ERROR! Not sure what's going on here.");
+                                        end
+                                    case 2
+                                        % both points are valid, obtain the slipping axis
+                                        slipAxisPoints{end+1} = ...
+                                            returnPtAlongLineFromIC(...
+                                                    pts{i}, [delX, delY], ...
+                                                    [aList(1), aList(2)]...
+                                                                    )';
+                                        branchDirn{end+1} = i;
+                                    otherwise
+                                        error(['ERROR! The reference point pts{2} should always be valid. ' ...
+                                            'Even if it is, do not place it closer to the corners of the ' ...
+                                            'valid shape space.']);
+                                end
+                                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                            case 3 % TWO branches
+                                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                                % get the working indices
+                                switch validNum
+                                    case 1
+                                        workingIdx = find(validFlagList, 1, "first");
+                                        notWorkingIdx = find(~validFlagList, 2, "first");
+                                        % there can only be one branch here
+                                        aViolation = ptViolatingFbounds...
+                                            (aa, ll, ...
+                                            F_fxn, F_bounds, F_bounds_full, ...
+                                            pts{i}, delX, delY, ...
+                                            aList(2), [aList(1), aList(3)]);
+                                        if exist("aViolation", "var")
+                                            [aList, sortIdx] = sort([aList(workingIdx), aViolation]);
+                                            validFlagList = [validFlagList, true];
+                                            validFlagList = validFlagList(sortIdx);
+                                            slipAxisPoints{end+1} = ...
+                                                returnPtAlongLineFromIC(...
+                                                        pts{i}, [delX, delY], ...
+                                                        [aList(1), aList(2)]...
+                                                                        )';
+                                            branchDirn{end+1} = i;
+                                            clear aViolation;
+                                        else
+                                            error("ERROR! Not sure what's going on here.");
+                                        end
+                                    case 2
+                                        workingIdx = find(validFlagList, 2, "first");
+                                        notWorkingIdx = find(~validFlagList, 1, "first");
+                                        % see how many branches are there, and then do it accordingly
+                                        switch any(notWorkingIdx == 2)
+                                            case 1 % 2 branches
+                                                for j = 1:(numel(validFlagList)-1)
+                                                    aSubList = aList(j:j+1);
+                                                    validFlagSubList = validFlagList(j:j+1);
+                                                    aViolation = ptViolatingFbounds...
+                                                        (aa, ll, ...
+                                                        F_fxn, F_bounds, F_bounds_full, ...
+                                                        pts{i}, delX, delY, ...
+                                                        aSubList(1), ...
+                                                        [aSubList(1), ...
+                                                        aSubList(2)]);
+                                                    if exist("aViolation", "var")
+                                                        [aSubList, sortIdx] = sort([aSubList(workingIdx(j)-j+1), aViolation]);
+                                                        validFlagSubList = [validFlagSubList(workingIdx(j)-j+1), true];
+                                                        validFlagSubList = validFlagSubList(sortIdx);
+                                                        slipAxisPoints{end+1} = ...
+                                                            returnPtAlongLineFromIC(...
+                                                                    pts{i}, [delX, delY], ...
+                                                                    [aSubList(1), aSubList(2)]...
+                                                                                    )';
+                                                        branchDirn{end+1} = i;
+                                                        clear aViolation;
+                                                    else
+                                                        error("ERROR! Not sure what's going on here.");
+                                                    end
+                                                end
+                                            case 0 % 1 branch
+                                                endWorkingIdx = workingIdx(workingIdx == 1 || workingIdx == 3);
+                                                aEndWorkingPt = aList(endWorkingIdx);
+                                                validFlagEndWorking = validFlagList(endWorkingIdx);
+                                                aViolation = ptViolatingFbounds...
+                                                        (aa, ll, ...
+                                                        F_fxn, F_bounds, F_bounds_full, ...
+                                                        pts{i}, delX, delY, ...
+                                                        aList(2), ...
+                                                        [aList(1), ...
+                                                        aList(3)]);
+                                                if exist("aViolation", "var")
+                                                    [aList, sortIdx] = sort([aEndWorkingPt, aViolation]);
+                                                    validFlagList = [validFlagList, true];
+                                                    validFlagList = validFlagList(sortIdx);
+                                                    slipAxisPoints{end+1} = ...
+                                                        returnPtAlongLineFromIC(...
+                                                                pts{i}, [delX, delY], ...
+                                                                [aList(1), aList(2)]...
+                                                                                )';
+                                                    branchDirn{end+1} = i;
+                                                    clear aViolation;
+                                                else
+                                                    error("ERROR! Not sure what's going on here.");
+                                                end
+                                            otherwise
+                                                error('ERROR! You should not be here.');
+                                        end
+                                    otherwise
+                                        error('ERROR! You really should not be here.');
+                                end
+                                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        end
+                    end
+                    % Check for the number of branches and return the
+                    % perperndicular coodinates based on path length
+                    % ... first step find the distance to the branches from
+                    % ... 'r'
+                    dist = cell(1, numel(slipAxisPoints));
+                    for i = 1:numel(slipAxisPoints)
+                        switch branchDirn{i}
+                            case 1
+                                mul = -1;
+                            case 2
+                                mul = +1;
+                        end
+                        dist{i} = mul*vecnorm(...
+                            slipAxisPoints{i} - repmat(r, 2, 1), ...
+                                            2, 2);
+                    end
+                    % ... based on this distance, merge branches if
+                    % ... required
+                    modifiedDist = [];
+                    modifiedSlipAxisPoints = [];
+                    branchLength = [];
+                    branchFlag = false(1, numel(slipAxisPoints));
+                    for i = 1:numel(slipAxisPoints)-1
+                        % check if both points are not added
+                        if ~branchFlag(i) && ~branchFlag(i+1)
+                            % get the ending point and starting point 
+                            % between two branches
+                            currEndDist = dist{i}(2); 
+                            nextStartDist = dist{i+1}(1);
+                            % see if they are within a certain 
+                            % threshold
+                            branchDistDiff= nextStartDist-currEndDist;
+                            if branchDistDiff < 1e-3*ankr % <0.1% of range
+                                modifiedSlipAxisPoints{end+1} = ...
+                                    [slipAxisPoints{i}(1, :); 
+                                    slipAxisPoints{i+1}(2, :)];
+                                modifiedDist{end+1} = ...
+                                    [dist{i}(1); 
+                                    dist{i+1}(2)];
+                                branchLength{end+1} = ...
+                                    norm(...
+                                    diff(modifiedDist{end}, 1, 1)...
+                                            );
+                                branchFlag(i) = true;
+                                branchFlag(i+1) = true;
+                            end
+                        else % IF NO MERGING, JUST ADD NORMALLY
+                            % check point by point and add them separately
+                            % since the branches are not "connected"
+                            if ~branchFlag(i)
+                                modifiedSlipAxisPoints{end+1} = ...
+                                    slipAxisPoints{i};
+                                modifiedDist{end+1} = dist{i};
+                                branchLength{end+1} = ...
+                                    norm(...
+                                    diff(modifiedDist{end}, 1, 1)...
+                                            );
+                                branchFlag(i) = true;
+                            end
+                            if ~branchFlag(i+1)
+                                modifiedSlipAxisPoints{end+1} = ...
+                                    slipAxisPoints{i+1};
+                                modifiedDist{end+1} = dist{i+1};
+                                branchLength{end+1} = ...
+                                    norm(...
+                                    diff(modifiedDist{end}, 1, 1)...
+                                            );
+                                branchFlag(i+1) = true;
+                            end
+                        end
+                    end
+                    % compute the total branch length
+                    thisPath2.aPerpF.totalLength = 0;
+                    thisPath2.aPerpF.numPtsTotal = numPtsTotal;
+                    for i = 1:numel(branchLength)
+                        thisPath2.aPerpF.totalLength = ...
+                            thisPath2.aPerpF.totalLength + branchLength{i};
+                    end
+                    totalLength = thisPath2.aPerpF.totalLength;
+                    % store the modified slip axis points in struct, and
+                    % then construct the usual slipping axis or
+                    % perpendicular coordinates
+                    thisPath2.aPerpF = []; 
+                    remainingNumPts = numPtsTotal;
+                    for i = 1:numel(modifiedSlipAxisPoints)
+                        numPtsNow = ...
+                            round(branchLength{i}/totalLength*numPtsTotal);
+                        if numPtsNow < 1
+                            numPtsNow = 1; % condition
+                        end
+                        % ... cap the last branch to whatever is remaining
+                        if i == numel(modifiedSlipAxisPoints)
+                            numPtsNow = remainingNumPts; 
+                        else % remove points
+                            remainingNumPts = remainingNumPts - numPtsNow; 
+                        end
+                        % % % % % % % % % %  compute
+                        tNow = linspace(...
+                            modifiedDist{i}(1), modifiedDist{i}(2), ...
+                            numPtsNow)';
+                        yNow = interp1(...
+                            modifiedDist{i}, modifiedSlipAxisPoints{i}, ...
+                            tNow, ...
+                            "linear");
+                        Fnow = F_fxn(aa, ll, yNow(:, 1), yNow(:, 2));
+                        thisPath2.aPerpF.branches.pts{i} = numPtsNow;
+                        thisPath2.aPerpF.branches.modifiedSlipAxisPoints{i} = ...
+                            modifiedSlipAxisPoints{i};
+                        thisPath2.aPerpF.branches.modifiedDist{i} = ...
+                            modifiedDist{i};
+                        thisPath2.aPerpF.branches.branchLength{i} = ...
+                            branchLength{i};
+                        thisPath2.aPerpF.t{i} = tNow;
+                        thisPath2.aPerpF.y{i} = yNow;
+                        thisPath2.aPerpF.F{i} = Fnow;
+                    end
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            end
         end
 
         % function to compute the level-set colors at each 
@@ -484,7 +878,7 @@ classdef Path2_Mobility
         % ... and calls the constructor creating the new object
         function [ thatPath2 ] = constructComplementaryStance(thisPath2,...
                                         kin, kinfunc, p_kin, p_info, ...
-                                                intTime, refPt, phaseReq)
+                                        intTime, refPt, phaseReq, slipMode)
             % compute the complimentary submanifold index
             temp = zeros(1, 2); temp(thisPath2.sCol) = 1;
             thatCol = find(~temp);
@@ -492,7 +886,7 @@ classdef Path2_Mobility
             % construct the complimentary submanifold "Path2_Mobility" obj
             thatPath2 = Path2_Mobility(sThatIdx,...
                                        kin, kinfunc, p_kin, p_info,...
-                                       intTime, refPt, phaseReq);
+                                       intTime, refPt, phaseReq, slipMode);
         end
 
         % check if the provided stance submanifolds are complementary
@@ -1621,4 +2015,48 @@ classdef Path2_Mobility
     end % END OF STATIC METHODS
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+end
+
+%% AUXILIARY FUNCTIONS
+
+% compute the F-value at a point along a line from 'refPt' constructed
+% using a 'unitPhasor' with a multiplier 'aValue'
+function fVal = FalongLine(aa, ll, F_fxn, refPt, unitPhasor, aValue)
+    pt = returnPtAlongLineFromIC(refPt, unitPhasor, aValue)';
+    fVal = F_fxn(aa, ll, pt(1), pt(2));
+end
+
+% compute the location at which the bounds of F are barely violated
+function aViolation = ptViolatingFbounds(aa, ll, ...
+    F_fxn, F_bounds, F_bounds_full, ...
+    refPt, delX, delY, ...
+    optIC, optLims)
+
+    aViolation = [];
+
+    [aLowViolation, fValViolation] = ...
+    fmincon( @(a) abs(F_bounds(1) - ...
+        FalongLine(aa, ll, F_fxn, refPt, [delX, delY], a)), ...
+        optIC, ...
+        [], [], [], [], ...
+        optLims(1), optLims(2), ...
+        [], ...
+        optimoptions("fmincon", "Display", "off") ...
+            );
+    if fValViolation < 1e-5*diff(F_bounds_full)
+        aViolation = aLowViolation;
+    else
+        [aHighViolation, fValViolation] = ...
+        fmincon( @(a) abs(F_bounds(2) - ...
+            FalongLine(aa, ll, F_fxn, refPt, [delX, delY], a)), ...
+            optIC, ...
+            [], [], [], [], ...
+            optLims(1), optLims(2), ...
+            [], ...
+            optimoptions("fmincon", "Display", "off") ...
+                );
+        if fValViolation < 1e-5*diff(F_bounds_full)
+            aViolation = aHighViolation;
+        end
+    end
 end
