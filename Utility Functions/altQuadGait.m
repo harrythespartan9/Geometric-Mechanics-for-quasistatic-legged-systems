@@ -297,8 +297,7 @@ classdef altQuadGait
                 error(['ERROR! The input discretization number should be ' ...
                     'atleast 3 and preferably odd.']);
             else
-                % ... if even, convert to odd by removing a dimension a
-                % discretization point
+                % ... if even, convert to odd by removing a dimension a pt
                 if rem(dNumU, 2) == 0
                     dNumU = dNumU - 1;
                 end
@@ -325,7 +324,7 @@ classdef altQuadGait
             % ... ... obtain the number of discretizations for different
             tIC = cell(1, 2); tFC = tIC; disc = tFC;
             for k = 1:2
-                kStart = 2*(k-1)+1; kEnd = 2*k; % mesh indices
+                kStart = 2*(k-1)+1; kEnd = 2*k; % mesh indices: in pairs (1, 2) (3, 4)
                 [uGrid{kStart}, uGrid{kEnd}] = ...
                         meshgrid(u{kStart}, u{kEnd}); % meshed inputs
                 % ... unpack subgait integration times and max times
@@ -403,7 +402,7 @@ classdef altQuadGait
             % ... ... 3) again iterate over the input space and assign it
             % ... ... element by element
             zSubI = zSub{1}; zSubJ = zSub{2};
-            zSubIcols = nan(0, 3); zSubJcols = zSubIcols;
+            zSubIcols = nan(0, 3); zSubJcols = zSubIcols; % init
             % ... ... iterate and compile
             for i = 1:dNumU % scaling for Ith subgait
                 for j = 1:dNumU % sliding for Ith subgait
@@ -644,7 +643,12 @@ classdef altQuadGait
                                     (thisAltGait, inputs, T, ~, Tmax)
             % Compute initial and final condition times based on the
             % current input mode
-            u1 = inputs(1); u2  = inputs(2);
+            switch size(inputs, 1) > 1
+                case 1
+                    u1 = inputs(:, 1); u2  = inputs(:, 2);
+                case 0
+                    u1 = inputs(1);    u2  = inputs(2);
+            end
             T0 =      T(1); Tpi =      T(2);
             % assign the initial and final times as they remain unchanged
             initTime = -u1*T0 ;
@@ -682,8 +686,8 @@ classdef altQuadGait
                     end
                     % compute the initial and final condition integration
                     % times
-                    tIC = initTime + capTerm*u2;
-                    tFC = finTime  + capTerm*u2;
+                    tIC = initTime + capTerm.*u2;
+                    tFC = finTime  + capTerm.*u2;
             end
         end
 

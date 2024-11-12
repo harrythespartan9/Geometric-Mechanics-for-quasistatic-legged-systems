@@ -200,11 +200,14 @@ classdef Path2_Mobility
             % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
             thisPath2 = Path2_Mobility.computePerpendicularCoordinates...
                                                     ( thisPath2, slipMode );
-            thisPath2.aPerpF.color = interpColorAndCondition...
-                ( ...
-                linspace(F_inf, F_sup, size(thisPath2.p_info.jetDark, 1))', ...
-                thisPath2.p_info.jetDark, thisPath2.aPerpF.F ...
-                );
+            thisPath2.aPerpF.color = cell(size(thisPath2.aPerpF.F));
+            for i = 1:numel(thisPath2.aPerpF.color)
+                thisPath2.aPerpF.color{i} = interpColorAndCondition...
+                    ( ...
+                    linspace(F_inf, F_sup, size(thisPath2.p_info.jetDark, 1))', ...
+                    thisPath2.p_info.jetDark, thisPath2.aPerpF.F{i} ...
+                    );
+            end
             thisPath2 = Path2_Mobility.computeParallelCoordinates...
                                                             ( thisPath2 );
             thisPath2 = Path2_Mobility.computeSpecificParallelCoordinates...
@@ -703,7 +706,19 @@ classdef Path2_Mobility
         % ... rotating the gradient 90degs clockwise (ensures an 
         % ... anticlockwise generator vector field around the singularity) 
         function thisPath2 = computeParallelCoordinates( thisPath2 )
+            % unpack somethings we use more frequently
+            aa = thisPath2.a; ll = thisPath2.l;
+            aInf = thisPath2.aInf; aSup = thisPath2.aSup;
+            ai = thisPath2.ai; aLimits = thisPath2.aLimits;
+            yPerp = thisPath2.aPerpF.y;
+            tPerp = thisPath2.aPerpF.t;
+            intTime = thisPath2.intTime;
+            paraFdirn = thisPath2.paraFdirn;
+            dz = thisPath2.dz;
+            phaseReq = thisPath2.phaseReq; % check phase requirements
+            slipMode = thisPath2.slipMode; % check slipping
             % iterate and find centroid of level-set
+            % ... this has to accomodate the number of branches you have
             % ... we iterate over each solution point and try to identify
             % ... the centroid about which they connect on themselves
             % ... for our case, the centroid is either the infimum or
@@ -713,31 +728,75 @@ classdef Path2_Mobility
             % ... infimum or supremum) the centroid is moving towards
             % ... to do this, we shall initialize two quantities and store
             % ... that information:
-            yExtremal = nan(size(thisPath2.aPerpF.y));
-            yRefPhase = nan(size(thisPath2.aPerpF.t));
-            tInt = 100*[1 1]; % choose large integration time
-            for i = 1:size(thisPath2.aPerpF.y, 1)
-                [~, yNow] = ode23(@(t, y) -thisPath2.paraFdirn(...
-                    thisPath2.a, thisPath2.l, y(1), y(2)),...
-                    [0 tInt(1)], thisPath2.aPerpF.y(i, :)); % backward pass
-                [~, yNow] = ode23(@(t, y) +thisPath2.paraFdirn(...
-                    thisPath2.a, thisPath2.l, y(1), y(2)),...
-                    [0 sum(tInt)], yNow(end, :)); % forward pass
-                errInf = repmat(thisPath2.aInf, size(yNow, 1), 1) - yNow; 
-                errInf = min(vecnorm(errInf, 2, 2)); % distance from Inf
-                errSup = repmat(thisPath2.aSup, size(yNow, 1), 1) - yNow; 
-                errSup = min(vecnorm(errSup, 2, 2)); % distance from Sup
-                switch errInf < errSup
-                    case 1
-                        yExtremal(i, :) = thisPath2.aInf; 
-                    case 0
-                        yExtremal(i, :) = thisPath2.aSup;
-                end
-                yPhasorNow = (thisPath2.aPerpF.y(i, :)-yExtremal(i, :))/...
-                        norm(thisPath2.aPerpF.y(i, :) - yExtremal(i, :)); 
-                yRefPhase(i) = atan2(yPhasorNow(2), yPhasorNow(1));
+            switch phaseReq
+                case "NoPhaseLimits" % no centroid needed
+                    eventList = {'shape_bounds'};
+                otherwise
+                    eventList = {'shape_bounds', 'phase_bounds'};
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    switch slipMode
+                        case 'legacy'
+                            yExtremal = nan(size(yPerp));
+                            yRefPhase = nan(size(tPerp));
+                            tInt = 100*[1 1]; % choose large integration time
+                            for i = 1:size(yPerp, 1)
+                                [~, yNow] = ode23(@(t, y) -paraFdirn(...
+                                    aa, ll, y(1), y(2)),...
+                                    [0 tInt(1)], yPerp(i, :)); % backward pass
+                                [~, yNow] = ode23(@(t, y) +paraFdirn(...
+                                    aa, ll, y(1), y(2)),...
+                                    [0 sum(tInt)], yNow(end, :)); % forward pass
+                                errInf = repmat(aInf, size(yNow, 1), 1) - yNow; 
+                                errInf = min(vecnorm(errInf, 2, 2)); % distance from Inf
+                                errSup = repmat(aSup, size(yNow, 1), 1) - yNow; 
+                                errSup = min(vecnorm(errSup, 2, 2)); % distance from Sup
+                                switch errInf < errSup
+                                    case 1
+                                        yExtremal(i, :) = aInf; 
+                                    case 0
+                                        yExtremal(i, :) = aSup;
+                                end
+                                yPhasorNow = (yPerp(i, :)-yExtremal(i, :))/...
+                                         norm(yPerp(i, :)-yExtremal(i, :)); 
+                                yRefPhase(i) = atan2(yPhasorNow(2), yPhasorNow(1));
+                            end
+                            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                        case 'branched'
+                            yExtremal = cell(size(yPerp));
+                            yRefPhase = nan(size(tPerp));
+                            for bItr = 1:numel(yPerp)
+                                yPerpNow = yPerp{bItr};
+                                tPerpNow = tPerp{bItr};
+                                yExtremal{bItr} = nan(size(yPerpNow));
+                                yRefPhase{bItr} = nan(size(tPerpNow));
+                                tInt = 100*[1 1]; % choose large integration time
+                                for i = 1:size(yPerpNow, 1)
+                                    [~, yNow] = ode23(@(t, y) -paraFdirn(...
+                                        aa, ll, y(1), y(2)),...
+                                        [0 tInt(1)], yPerpNow(i, :)); % backward pass
+                                    [~, yNow] = ode23(@(t, y) +paraFdirn(...
+                                        aa, ll, y(1), y(2)),...
+                                        [0 sum(tInt)], yNow(end, :)); % forward pass
+                                    errInf = repmat(aInf, size(yNow, 1), 1) - yNow; 
+                                    errInf = min(vecnorm(errInf, 2, 2)); % distance from Inf
+                                    errSup = repmat(aSup, size(yNow, 1), 1) - yNow; 
+                                    errSup = min(vecnorm(errSup, 2, 2)); % distance from Sup
+                                    switch errInf < errSup
+                                        case 1
+                                            yExtremal{bItr}(i, :) = aInf; 
+                                        case 0
+                                            yExtremal{bItr}(i, :) = aSup;
+                                    end
+                                    yPhasorNow = (yPerpNow(i, :)-yExtremal{bItr}(i, :))/...
+                                             norm(yPerpNow(i, :)-yExtremal{bItr}(i, :)); 
+                                    yRefPhase{bItr}(i) = atan2(yPhasorNow(2), yPhasorNow(1));
+                                end
+                            end
+                    end
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
             % the main solution
+            % ... also make this compatible with the slipMode
             % ... the main solution is going to have a very similar
             % ... structure to the perpendicular solution, except at each
             % ... perpendicular solution, we need to compute a whole
@@ -748,123 +807,221 @@ classdef Path2_Mobility
             % ... the integration time provided in the 'intTime' property
             % ... needs to be met ny the solution before a terminating
             % ... EVENT occurs and this is stored as a validation flag
-            thisPath2.aParallF = [];
-            thisPath2.aParallF.isValid = true(size(thisPath2.aPerpF.t));
-            thisPath2.aParallF.eventInfo = cell(size(thisPath2.aPerpF.t));
-            thisPath2.aParallF.y = cell(size(thisPath2.aPerpF.t)); 
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            switch slipMode
+                case 'legacy'
+                    thisPath2.aParallF = [];
+                    thisPath2.aParallF.isValid = true(size(tPerp));
+                    thisPath2.aParallF.eventInfo = cell(size(tPerp));
+                    thisPath2.aParallF.y = cell(size(tPerp)); % init 
                             thisPath2.aParallF.t = thisPath2.aParallF.y;
-            thisPath2.aParallF.dz = thisPath2.aParallF.y;
-            switch thisPath2.phaseReq
-                case "NoPhaseLimits"
-                    eventList = {'shape_bounds'};
-                otherwise
-                    eventList = {'shape_bounds', 'phase_bounds'};
-            end
-            argStruct = []; argStruct.functions = []; % struct init
-            argStruct.bounds.alphaLimits = thisPath2.aLimits; % bounds
+                    thisPath2.aParallF.dz = thisPath2.aParallF.y;
+                    argStruct = []; argStruct.functions = []; % struct init
+                    argStruct.bounds.alphaLimits = aLimits; % bounds
+                    if strcmp(phaseReq, 'NoPhaseLimits')
                         argStruct.bounds.angleThreshold = deg2rad(5);
-            for i = 1:numel(thisPath2.aParallF.y)
-                % ... initialize current event info cell
-                thisPath2.aParallF.eventInfo{i} = cell(1, 2);
-                % ... select initial conditions
-                y0now = thisPath2.aPerpF.y(i, :);
-                % ... select the current EVENT options
-                argStruct.parameters.yExtremal = yExtremal(i, :); % params
-                    argStruct.parameters.yRefPhase = yRefPhase(i);
-                optionsNow = odeset(  ...
-                    'Events', ...
-                    @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
-                    eventList) ...
-                    );
-                % ... integrate forward and backward to find the limits of
-                % ... the F level-set in terms of path length within the 
-                % ... allowable shape space bounds and phase bounds as 
-                % ... considered earlier
-                tMax = nan(1, 2);
-                % ... ... integrate backward and get the time bounds
-                [~, ~, teNow, ~, ~] = ...
-                ode89( @(t,y) -thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                [0, 1e2], y0now, optionsNow ); % for a long time,
-                                               % event will happen quicker
-                if ~isempty(teNow)
-                    tMax(1) = teNow;
-                end
-                % ... ... same for forward path
-                [~, ~, teNow, ~, ~] = ...
-                ode89( @(t,y) thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                [0, 1e2], y0now, optionsNow ); % for a long time, even will 
-                                               % happen quicker
-                if ~isempty(teNow)
-                    tMax(2) = teNow;
-                end
-                % ... integrate backward path for the main solution
-                [tNow, yNow, teNow, ~, ieNow] = ...
-                ode89( @(t,y) -thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                [0, thisPath2.intTime(1)], y0now, optionsNow );
-                if isempty(teNow)
-                    tBwd = tNow(end);
-                    thisPath2.aParallF.eventInfo{i}{1} = '';
-                else
-                    thisPath2.aParallF.isValid(i) = false; % not a valid level-set
-                    tBwd = teNow; ieBwd = ieNow;
-                    switch ieBwd
-                        case 1
-                            thisPath2.aParallF.eventInfo{i}{1} = [...
-                                                        'shape bounds ' ...
-                                                            'violation'...
-                                                                    ];
-                        case 2
-                            thisPath2.aParallF.eventInfo{i}{1} = [...
-                                                'self-connected sets' ...
-                                                            ' violation'...
-                                                                    ];
                     end
-                end
-                % ... integrate full path from end of backward path
-                tMain = tBwd + thisPath2.intTime(2);
-                yNow = yNow(tNow <= tBwd, :);
-                [tNow, yNow, teNow, ~, ieNow] = ...
-                    ode89( @(t,y) thisPath2.paraFdirn(...
-                                thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                    linspace(0, tMain, size(thisPath2.ai, 1)),...
-                    yNow(end, :), optionsNow );
-                if isempty(teNow)
-                    tFull = tNow(end);
-                    thisPath2.aParallF.eventInfo{i}{2} = '';
-                else
-                    thisPath2.aParallF.isValid(i) = false; % not a valid level-set
-                    tFull = teNow; ieFull = ieNow;
-                    switch ieFull
-                        case 1
-                            thisPath2.aParallF.eventInfo{i}{2} = [...
-                                                        'shape bounds ' ...
-                                                            'violation'...
-                                                                    ];
-                        case 2
-                            thisPath2.aParallF.eventInfo{i}{2} = [...
-                                                'self-connected sets' ...
-                                                            ' violation'...
-                                                                    ];
+                    for i = 1:numel(thisPath2.aParallF.y)
+                        % ... initialize current event info cell
+                        thisPath2.aParallF.eventInfo{i} = cell(1, 2);
+                        % ... select initial conditions
+                        y0now = yPerp(i, :);
+                        % ... select the current EVENT options
+                        if strcmp(phaseReq, 'NoPhaseLimits') % params
+                            argStruct.parameters.yExtremal =yExtremal(i,:);
+                            argStruct.parameters.yRefPhase = yRefPhase(i);
+                        end
+                        optionsNow = odeset(  ...
+                            'Events', ...
+                            @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
+                            eventList) ...
+                            );
+                        % ... integrate forward and backward to find the limits of
+                        % ... the F level-set in terms of path length within the 
+                        % ... allowable shape space bounds and phase bounds as 
+                        % ... considered earlier
+                        tMax = nan(1, 2);
+                        % ... ... integrate backward and get the time bounds
+                        [~, ~, teNow, ~, ~] = ...
+                        ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
+                        [0, 1e2], y0now, optionsNow ); % for a long time,
+                                                       % event will happen quicker
+                        if ~isempty(teNow)
+                            tMax(1) = teNow;
+                        end
+                        % ... ... same for forward path
+                        [~, ~, teNow, ~, ~] = ...
+                        ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
+                        [0, 1e2], y0now, optionsNow ); % for a long time, even will 
+                                                       % happen quicker
+                        if ~isempty(teNow)
+                            tMax(2) = teNow;
+                        end
+                        % ... integrate backward path for the main solution
+                        [tNow, yNow, teNow, ~, ieNow] = ...
+                        ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
+                        [0, intTime(1)], y0now, optionsNow );
+                        if isempty(teNow)
+                            tBwd = tNow(end);
+                            thisPath2.aParallF.eventInfo{i}{1} = '';
+                        else
+                            thisPath2.aParallF.isValid(i) = false; % not a valid level-set
+                            tBwd = teNow; ieBwd = ieNow;
+                            switch ieBwd
+                                case 1
+                                    thisPath2.aParallF.eventInfo{i}{1} = [...
+                                                                'shape bounds ' ...
+                                                                    'violation'...
+                                                                            ];
+                                case 2
+                                    thisPath2.aParallF.eventInfo{i}{1} = [...
+                                                        'self-connected sets' ...
+                                                                    ' violation'...
+                                                                            ];
+                            end
+                        end
+                        % ... integrate full path from end of backward path
+                        tMain = tBwd + intTime(2);
+                        yNow = yNow(tNow <= tBwd, :);
+                        [tNow, yNow, teNow, ~, ieNow] = ...
+                            ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
+                            linspace(0, tMain, size(ai, 1)),...
+                            yNow(end, :), optionsNow );
+                        if isempty(teNow)
+                            tFull = tNow(end);
+                            thisPath2.aParallF.eventInfo{i}{2} = '';
+                        else
+                            thisPath2.aParallF.isValid(i) = false; % not a valid level-set
+                            tFull = teNow; ieFull = ieNow;
+                            switch ieFull
+                                case 1
+                                    thisPath2.aParallF.eventInfo{i}{2} = [...
+                                                                'shape bounds ' ...
+                                                                    'violation'...
+                                                                            ];
+                                case 2
+                                    thisPath2.aParallF.eventInfo{i}{2} = [...
+                                                        'self-connected sets' ...
+                                                                    ' violation'...
+                                                                            ];
+                            end
+                        end
+                        % ... offset the time array such that the reference point
+                        % ... provided by 'aPerpF', 'y0now' is at time == 0
+                        % ... do this for both 'tFull' (cutoff threshold) and the
+                        % ... 'tNow' time vector
+                        tNow = tNow - tBwd; tFull = tFull - tBwd;
+                        % ... store the main solution
+                        thisPath2.aParallF.y{i} = yNow(tNow <= tFull, :);
+                        thisPath2.aParallF.t{i} = tNow(tNow <= tFull); % final solution
+                        % ... store the maximum times until shape bounds
+                        thisPath2.aParallF.tMax{i} = tMax;
+                        % ... compute the stratified panel along this solution
+                        thisPath2.aParallF.dz{i} = dz(aa, ll,...
+                                            thisPath2.aParallF.y{i}(:, 1), ...
+                                            thisPath2.aParallF.y{i}(:, 2));
                     end
-                end
-                % ... offset the time array such that the reference point
-                % ... provided by 'aPerpF', 'y0now' is at time == 0
-                % ... do this for both 'tFull' (cutoff threshold) and the
-                % ... 'tNow' time vector
-                tNow = tNow - tBwd; tFull = tFull - tBwd;
-                % ... store the main solution
-                thisPath2.aParallF.y{i} = yNow(tNow <= tFull, :);
-                thisPath2.aParallF.t{i} = tNow(tNow <= tFull); % final solution
-                % ... store the maximum times until shape bounds
-                thisPath2.aParallF.tMax{i} = tMax;
-                % ... compute the stratified panel along this solution
-                thisPath2.aParallF.dz{i} = thisPath2.dz(...
-                                        thisPath2.a, thisPath2.l,...
-                                        thisPath2.aParallF.y{i}(:, 1), ...
-                                        thisPath2.aParallF.y{i}(:, 2));
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'branched'
+                    thisPath2.aParallF = [];
+                    for bItr = 1:numel(yPerp)
+                        % init the current perpendicular coordinates
+                        yPerpNow = yPerp{bItr};
+                        tPerpNow = tPerp{bItr};
+                        % rest of the computation identical to the legacy
+                        % mode
+                        thisPath2.aParallF.isValid{bItr} = true(size(tPerpNow));
+                        thisPath2.aParallF.eventInfo{bItr} = cell(size(tPerpNow));
+                        thisPath2.aParallF.y{bItr} = cell(size(tPerpNow));
+                        thisPath2.aParallF.t{bItr} = thisPath2.aParallF.y{bItr};
+                        thisPath2.aParallF.dz{bItr} = thisPath2.aParallF.y{bItr};
+                        argStruct = []; argStruct.functions = [];
+                        argStruct.parameters = [];
+                        argStruct.bounds.alphaLimits = aLimits;
+                        if ~strcmp(phaseReq, 'NoPhaseLimits')
+                            argStruct.bounds.angleThreshold = deg2rad(5);
+                        end
+                        for i = 1:numel(thisPath2.aParallF.y{bItr})
+                            thisPath2.aParallF.eventInfo{bItr}{i} = cell(1, 2);
+                            y0now = yPerpNow(i, :);
+                            if ~strcmp(phaseReq, 'NoPhaseLimits')
+                                argStruct.parameters.yExtremal=yExtremal(i,:);
+                                argStruct.parameters.yRefPhase=yRefPhase(i);
+                            end
+                            optionsNow = odeset(  ...
+                                'Events', ...
+                                @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
+                                eventList) ...
+                                );
+                            tMax = nan(1, 2);
+                            [~, ~, teNow, ~, ~] = ...
+                            ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
+                            [0, 1e2], y0now, optionsNow );
+                            if ~isempty(teNow)
+                                tMax(1) = teNow;
+                            end
+                            [~, ~, teNow, ~, ~] = ...
+                            ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
+                            [0, 1e2], y0now, optionsNow );
+                            if ~isempty(teNow)
+                                tMax(2) = teNow;
+                            end
+                            [tNow, yNow, teNow, ~, ieNow] = ...
+                            ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
+                            [0, intTime(1)], y0now, optionsNow );
+                            if isempty(teNow)
+                                tBwd = tNow(end);
+                                thisPath2.aParallF.eventInfo{bItr}{i}{1} = '';
+                            else
+                                thisPath2.aParallF.isValid{bItr}(i) = false;
+                                tBwd = teNow; ieBwd = ieNow;
+                                switch ieBwd
+                                    case 1
+                                        thisPath2.aParallF.eventInfo{bItr}{i}{1} = [...
+                                                                    'shape bounds ' ...
+                                                                        'violation'...
+                                                                                ];
+                                    case 2
+                                        thisPath2.aParallF.eventInfo{bItr}{i}{1} = [...
+                                                            'self-connected sets' ...
+                                                                        ' violation'...
+                                                                                ];
+                                end
+                            end
+                            tMain = tBwd + intTime(2);
+                            yNow = yNow(tNow <= tBwd, :);
+                            [tNow, yNow, teNow, ~, ieNow] = ...
+                                ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
+                                linspace(0, tMain, size(ai, 1)),...
+                                yNow(end, :), optionsNow );
+                            if isempty(teNow)
+                                tFull = tNow(end);
+                                thisPath2.aParallF.eventInfo{bItr}{i}{2} = '';
+                            else
+                                thisPath2.aParallF.isValid{bItr}(i) = false;
+                                tFull = teNow; ieFull = ieNow;
+                                switch ieFull
+                                    case 1
+                                        thisPath2.aParallF.eventInfo{bItr}{i}{2} = [...
+                                                                    'shape bounds ' ...
+                                                                        'violation'...
+                                                                                ];
+                                    case 2
+                                        thisPath2.aParallF.eventInfo{bItr}{i}{2} = [...
+                                                            'self-connected sets' ...
+                                                                        ' violation'...
+                                                                                ];
+                                end
+                            end
+                            tNow = tNow - tBwd; tFull = tFull - tBwd;
+                            thisPath2.aParallF.y{bItr}{i} = yNow(tNow <= tFull, :);
+                            thisPath2.aParallF.t{bItr}{i} = tNow(tNow <= tFull);
+                            thisPath2.aParallF.tMax{bItr}{i} = tMax;
+                            thisPath2.aParallF.dz{bItr}{i} = dz(aa, ll,...
+                                    thisPath2.aParallF.y{bItr}{i}(:, 1), ...
+                                    thisPath2.aParallF.y{bItr}{i}(:, 2));
+                        end
+                    end
             end
         end
 
@@ -928,40 +1085,50 @@ classdef Path2_Mobility
             if isempty(intTime)
                 intTime = thisPath2.intTime;
             end
-            tInt = 100*[1 1];
-            [~, yNow] = ode23(@(t, y) -thisPath2.paraFdirn(...
-                thisPath2.a, thisPath2.l, y(1), y(2)),...
-                [0 tInt(1)], refPt);
-            [~, yNow] = ode23(@(t, y) +thisPath2.paraFdirn(...
-                thisPath2.a, thisPath2.l, y(1), y(2)),...
-                [0 sum(tInt)], yNow(end, :));
-            errInf = repmat(thisPath2.aInf, size(yNow, 1), 1) - yNow; 
-            errInf = min(vecnorm(errInf, 2, 2));
-            errSup = repmat(thisPath2.aSup, size(yNow, 1), 1) - yNow; 
-            errSup = min(vecnorm(errSup, 2, 2));
-            switch errInf < errSup
-                case 1
-                    yExtremal = thisPath2.aInf; 
-                case 0
-                    yExtremal = thisPath2.aSup;
-            end
-            yPhasorNow = (refPt - yExtremal)/norm(refPt - yExtremal); 
-            yRefPhase = atan2(yPhasorNow(2), yPhasorNow(1));
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % unpacking is similar to the overall parallel coordinates
+            % function
+            aa = thisPath2.a; ll = thisPath2.l;
+            aInf = thisPath2.aInf; aSup = thisPath2.aSup;
+            ai = thisPath2.ai; aLimits = thisPath2.aLimits;
+            paraFdirn = thisPath2.paraFdirn;
+            F_fxn = thisPath2.F_fxn;
+            dz = thisPath2.dz;
+            phaseReq = thisPath2.phaseReq;
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            argStruct = []; argStruct.functions = []; 
+                argStruct.parameters = [];
+            argStruct.bounds.alphaLimits = aLimits;
             thisPath2.aParaRef = [];
             thisPath2.aParaRef.refPt = refPt;
             thisPath2.aParaRef.isValid = true;
             thisPath2.aParaRef.eventInfo = cell(1, 2);
-            switch thisPath2.phaseReq
+            switch phaseReq
                 case "NoPhaseLimits"
                     eventList = {'shape_bounds'};
                 otherwise
                     eventList = {'shape_bounds', 'phase_bounds'};
+                    tInt = 100*[1 1];
+                    [~, yNow] = ode23(@(t, y) -paraFdirn(aa, ll, y(1), y(2)),...
+                        [0 tInt(1)], refPt);
+                    [~, yNow] = ode23(@(t, y) +paraFdirn(aa, ll, y(1), y(2)),...
+                        [0 sum(tInt)], yNow(end, :));
+                    errInf = repmat(aInf, size(yNow, 1), 1) - yNow; 
+                    errInf = min(vecnorm(errInf, 2, 2));
+                    errSup = repmat(aSup, size(yNow, 1), 1) - yNow; 
+                    errSup = min(vecnorm(errSup, 2, 2));
+                    switch errInf < errSup
+                        case 1
+                            yExtremal = aInf; 
+                        case 0
+                            yExtremal = aSup;
+                    end
+                    yPhasorNow = (refPt - yExtremal)/norm(refPt - yExtremal); 
+                    yRefPhase = atan2(yPhasorNow(2), yPhasorNow(1));
+                    argStruct.bounds.angleThreshold = deg2rad(5);
+                    argStruct.parameters.yExtremal = yExtremal; 
+                    argStruct.parameters.yRefPhase = yRefPhase;
             end
-            argStruct = []; argStruct.functions = []; 
-            argStruct.bounds.alphaLimits = thisPath2.aLimits; 
-                        argStruct.bounds.angleThreshold = deg2rad(5);
-            argStruct.parameters.yExtremal = yExtremal; 
-                argStruct.parameters.yRefPhase = yRefPhase;
             options = odeset(  ...
                 'Events', ...
                 @(t, y) nonslipShapeCoordsEvents(t, y, argStruct, ...
@@ -969,15 +1136,13 @@ classdef Path2_Mobility
                 );
             tMax = nan(1, 2);
             [~, ~, teNow, ~, ~] = ...
-            ode89( @(t,y) -thisPath2.paraFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
                         [0, 1e2], refPt, options );
             if ~isempty(teNow)
                 tMax(1) = teNow;
             end
             [~, ~, teNow, ~, ~] = ...
-            ode89( @(t,y) thisPath2.paraFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
             [0, 1e2], refPt, options );
             if ~isempty(teNow)
                 tMax(2) = teNow;
@@ -994,8 +1159,7 @@ classdef Path2_Mobility
             end
             % ... % ... % ... % ... % ... % ... % ... % ... % ... % ... 
             [tNow, yNow, teNow, ~, ieNow] = ...
-            ode89( @(t,y) -thisPath2.paraFdirn(...
-                        thisPath2.a, thisPath2.l, y(1), y(2)), ...
+            ode89( @(t,y) -paraFdirn(aa, ll, y(1), y(2)), ...
             [0, intTime(1)], refPt, options );
             if isempty(teNow)
                 tBwd = tNow(end);
@@ -1019,9 +1183,8 @@ classdef Path2_Mobility
             tMain = tBwd + intTime(2);
             yNow = yNow(tNow <= tBwd, :);
             [tNow, yNow, teNow, ~, ieNow] = ...
-                ode89( @(t,y) thisPath2.paraFdirn(...
-                            thisPath2.a, thisPath2.l, y(1), y(2)), ...
-                linspace(0, tMain, size(thisPath2.ai, 1)),...
+                ode89( @(t,y) +paraFdirn(aa, ll, y(1), y(2)), ...
+                linspace(0, tMain, size(ai, 1)),...
                 yNow(end, :), options );
             if isempty(teNow)
                 tFull = tNow(end);
@@ -1046,8 +1209,7 @@ classdef Path2_Mobility
             thisPath2.aParaRef.y = yNow(tNow <= tFull, :);
             thisPath2.aParaRef.t = tNow(tNow <= tFull);
             thisPath2.aParaRef.tMax = tMax;
-            thisPath2.aParaRef.dz = thisPath2.dz(...
-                                    thisPath2.a, thisPath2.l,...
+            thisPath2.aParaRef.dz = dz(aa, ll,...
                                     thisPath2.aParaRef.y(:, 1), ...
                                     thisPath2.aParaRef.y(:, 2));
             % ... compute the velocity and acceleration of the 
@@ -1063,8 +1225,7 @@ classdef Path2_Mobility
                 vecnorm(diff(thisPath2.aParaRef.aVel)./...
                 repmat(diff(thisPath2.aParaRef.t(1:end-1)), 1, 2), ...
                 pthOrder, 2);
-            F_ref = thisPath2.F_fxn...
-                        (thisPath2.a, thisPath2.l, refPt(1), refPt(2));
+            F_ref = F_fxn(aa, ll, refPt(1), refPt(2));
             thisPath2.aParaRef.F = F_ref;
             thisPath2.aParaRef.color = ...
                 interpColorAndCondition...
@@ -1108,10 +1269,6 @@ classdef Path2_Mobility
             colLimits = [thisPath2.F_inf, thisPath2.F_sup];
             stanceColor = pInfo.gc_col;
             scatSingSize = pInfo.circS;
-            % ... find starting and ending points along the slip axis for valid
-            % ... level-sets of F
-            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
-            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             % plot the figure .............................................
             figure('Visible', 'on', 'Units', 'pixels',...
                 'Position', [0 0 600 600]); ax = gca; box(ax, "on");
@@ -1131,12 +1288,33 @@ classdef Path2_Mobility
                     'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
                     'LineWidth', lW);
             end
-            % ... contourf plot the level-sets of F
-            % ... ... basic, level-set based plot method
-            % ... ... providing the alpha value at the end helps with this
-            for i = startIdx:endIdx
-                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
-                    'Color', thisPath2.aPerpF.color(i, :));
+            switch thisPath2.slipMode
+                case 'legacy'
+                    % ... find starting and ending points along the slip axis for valid
+                    % ... level-sets of F
+                    startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+                    endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+                    % ... contourf plot the level-sets of F
+                    % ... ... basic, level-set based plot method
+                    % ... ... providing the alpha value at the end helps with this
+                    for i = startIdx:endIdx
+                        plot(ax, thisPath2.aParallF.y{i}(:, 1), ...
+                            thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                            'Color', thisPath2.aPerpF.color(i, :));
+                    end
+                case 'branched'
+                    for bItr = 1:numel(thisPath2.aParallF.y)
+                        startIdx = find(thisPath2.aParallF.isValid{bItr},...
+                                                            1, 'first');
+                        endIdx = find(thisPath2.aParallF.isValid{bItr}, ...
+                                                            1, 'last');
+                        for i = startIdx:endIdx
+                            plot(ax, thisPath2.aParallF.y{bItr}{i}(:, 1), ...
+                                thisPath2.aParallF.y{bItr}{i}(:, 2), ...
+                                'LineWidth', lW,...
+                                'Color', thisPath2.aPerpF.color{bItr}(i, :));
+                        end
+                    end
             end
             % ... setup rest of the figure
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
@@ -1163,8 +1341,6 @@ classdef Path2_Mobility
             colLimits = [thisPath2.F_inf, thisPath2.F_sup];
             stanceColor = pInfo.gc_col;
             scatSingSize = pInfo.circS;
-            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
-            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             domainPercentage = 5; arrowAngle = deg2rad(18);
             arrowSize = domainPercentage/100*...
                             mean(diff(thisPath2.aLimits, 1, 2), 1)*...
@@ -1194,21 +1370,64 @@ classdef Path2_Mobility
                     'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
                     'LineWidth', lW);
             end
-            for i = startIdx:endIdx
-                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
-                    'Color', [thisPath2.aPerpF.color(i, :), lAc]);
+            switch thisPath2.slipMode
+
+                case 'legacy'
+                    startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+                    endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+                    for i = startIdx:endIdx
+                        plot(ax, thisPath2.aParallF.y{i}(:, 1), ...
+                            thisPath2.aParallF.y{i}(:, 2), ...
+                            'LineWidth', lW,...
+                            'Color', [thisPath2.aPerpF.color(i, :), lAc]);
+                    end
+                    % ... plot the slip axis
+                    % ... ... first plot the axis and then add an arrow
+                    plot(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), ...
+                        thisPath2.aPerpF.y(startIdx:endIdx, 2), ...
+                        'LineWidth', lW,...
+                        'Color', stanceColor);
+                    plotPathArrowV2(ax, ...
+                        thisPath2.aPerpF.y(startIdx:endIdx, 1), ...
+                        thisPath2.aPerpF.y(startIdx:endIdx, 2),...
+                        arrowSize, arrowAngle, lW, stanceColor, 'front_end');
+                    % ... plot the nonslip axis
+                    plot(ax, thisPath2.aParaRef.y(:, 1), ...
+                        thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
+                        'Color', stanceColor);
+                    plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), ...
+                        thisPath2.aParaRef.y(:, 2),...
+                        arrowSize, arrowAngle, lW, stanceColor, 'front_end');
+
+                case 'branched'
+                    for bItr = 1:numel(thisPath2.aParallF.y)
+                        startIdx = find(thisPath2.aParallF.isValid{bItr}, 1, 'first');
+                        endIdx = find(thisPath2.aParallF.isValid{bItr}, 1, 'last');
+                        for i = startIdx:endIdx
+                            plot(ax, thisPath2.aParallF.y{bItr}{i}(:, 1), ...
+                                thisPath2.aParallF.y{bItr}{i}(:, 2), ...
+                                'LineWidth', lW,...
+                                'Color', [thisPath2.aPerpF.color{bItr}(i, :), lAc]);
+                        end
+                        % ... plot the slip axis
+                        % ... ... first plot the axis and then add an arrow
+                        plot(ax, thisPath2.aPerpF.y{bItr}(startIdx:endIdx, 1), ...
+                            thisPath2.aPerpF.y{bItr}(startIdx:endIdx, 2), ...
+                            'LineWidth', lW,...
+                            'Color', stanceColor);
+                        plotPathArrowV2(ax, ...
+                            thisPath2.aPerpF.y{bItr}(startIdx:endIdx, 1), ...
+                            thisPath2.aPerpF.y{bItr}(startIdx:endIdx, 2),...
+                            arrowSize, arrowAngle, lW, stanceColor, 'front_end');
+                        % ... plot the nonslip axis
+                        plot(ax, thisPath2.aParaRef.y(:, 1), ...
+                            thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
+                            'Color', stanceColor);
+                        plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), ...
+                            thisPath2.aParaRef.y(:, 2),...
+                            arrowSize, arrowAngle, lW, stanceColor, 'front_end');
+                    end
             end
-            % ... plot the slip axis
-            % ... ... first plot the axis and then add an arrow
-            plot(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2), 'LineWidth', lW,...
-                'Color', stanceColor);
-            plotPathArrowV2(ax, thisPath2.aPerpF.y(startIdx:endIdx, 1), thisPath2.aPerpF.y(startIdx:endIdx, 2),...
-                arrowSize, arrowAngle, lW, stanceColor, 'front_end');
-            % ... plot the nonslip axis
-            plot(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2), 'LineWidth', lW,...
-                'Color', stanceColor);
-            plotPathArrowV2(ax, thisPath2.aParaRef.y(:, 1), thisPath2.aParaRef.y(:, 2),...
-                arrowSize, arrowAngle, lW, stanceColor, 'front_end');
             colormap(ax, pInfo.jetDark); clim(ax, colLimits); 
             colorbar(ax, 'TickLabelInterpreter', 'latex',...
                 'FontSize', pInfo.cbarFS);
@@ -1238,8 +1457,6 @@ classdef Path2_Mobility
             colLimits = [thisPath2.F_inf, thisPath2.F_sup];
             stanceColor = pInfo.gc_col;
             scatSingSize = pInfo.circS;
-            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
-            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             lAc = 0.6;
             if ~isfield(thisPath2.p_info, 'fAc')
                 thisPath2.p_info.fAc = lAc;
@@ -1262,9 +1479,28 @@ classdef Path2_Mobility
                     'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
                     'LineWidth', lW);
             end
-            for i = startIdx:endIdx
-                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
-                    'Color', [thisPath2.aPerpF.color(i, :), lAc]);
+            switch thisPath2.slipMode
+                case 'legacy'
+                    startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+                    endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+                    for i = startIdx:endIdx
+                        plot(ax, thisPath2.aParallF.y{i}(:, 1), ...
+                            thisPath2.aParallF.y{i}(:, 2), ...
+                            'LineWidth', lW,...
+                            'Color', [thisPath2.aPerpF.color(i, :), lAc]);
+                    end
+                case 'branched'
+                    for bItr = 1:numel(thisPath2.aParallF.y)
+                        startIdx = find(thisPath2.aParallF.isValid{bItr}, 1, 'first');
+                        endIdx = find(thisPath2.aParallF.isValid{bItr}, 1, 'last');
+                        for i = startIdx:endIdx
+                            plot(ax, thisPath2.aParallF.y{bItr}{i}(:, 1), ...
+                                thisPath2.aParallF.y{bItr}{i}(:, 2), ...
+                                'LineWidth', lW,...
+                                'Color', ...
+                                [thisPath2.aPerpF.color{bItr}(i, :), lAc]);
+                        end
+                    end
             end
             % ... highlight the requested level-set
             plot(ax, aParaRefNow.y(:, 1), aParaRefNow.y(:, 2), 'LineWidth', lW,...
@@ -1329,8 +1565,6 @@ classdef Path2_Mobility
             colLimits = [thisPath2.F_inf, thisPath2.F_sup];
             stanceColor = pInfo.gc_col;
             scatSingSize = pInfo.circS;
-            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
-            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             fAc = 0.6; fAcSp = 0.8;
             if ~isfield(thisPath2.p_info, 'fAc')
                 thisPath2.p_info.fAc = fAc;
@@ -1364,9 +1598,31 @@ classdef Path2_Mobility
                     'MarkerEdgeColor', pInfo.jetDark(1, :), 'MarkerFaceColor', 'none', ...
                     'LineWidth', lW);
             end
-            for i = startIdx:endIdx
-                plot(ax, thisPath2.aParallF.y{i}(:, 1), thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
-                    'Color', [thisPath2.aPerpF.color(i, :), fAc]);
+            switch thisPath2.slipMode
+                case 'legacy'
+                    startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+                    endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+                    for i = startIdx:endIdx
+                        plot(ax, ...
+                            thisPath2.aParallF.y{i}(:, 1), ...
+                            thisPath2.aParallF.y{i}(:, 2), 'LineWidth', lW,...
+                            'Color', [thisPath2.aPerpF.color(i, :), fAc]);
+                    end
+                case 'branched'
+                    for bItr = 1:numel(thisPath2.aParallF.y)
+                        startIdx = find(thisPath2.aParallF.isValid{bItr},...
+                            1, 'first');
+                        endIdx = find(thisPath2.aParallF.isValid{bItr},...
+                            1, 'last');
+                        for i = startIdx:endIdx
+                            plot(ax, ...
+                                thisPath2.aParallF.y{bItr}{i}(:, 1), ...
+                                thisPath2.aParallF.y{bItr}{i}(:, 2), ...
+                                'LineWidth', lW,...
+                                'Color', ...
+                                [thisPath2.aPerpF.color{bItr}(i, :), fAc]);
+                        end
+                    end
             end
             % ... 1) the current F level-set the stance path belongs to
             % ... 2) the current stance path before plotting scatters
@@ -1454,8 +1710,8 @@ classdef Path2_Mobility
             lW = pInfo.lW; lWc = pInfo.lW_contour;
             stanceColor = pInfo.gc_col;
             scatSingSize = pInfo.circS;
-            startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
-            endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
+            % startIdx = find(thisPath2.aParallF.isValid, 1, 'first');
+            % endIdx = find(thisPath2.aParallF.isValid, 1, 'last');
             fAc = 0.6; fAcSp = 0.8; cfLvl = pInfo.cfLvl; fA = pInfo.fA;
             if ~isfield(thisPath2.p_info, 'fAc')
                 thisPath2.p_info.fAc = fAc;
@@ -1877,18 +2133,32 @@ classdef Path2_Mobility
 
         % method to extract a specific parallel coordinate given the index
         % and parallel coordinate sweep
-        function aParaOut = fetchParallCoordsFromIndex(aParaIn, idx)
+        function aParaOut = fetchParallCoordsFromIndex(aParaIn, idx, bItr)
             fieldsPara = fieldnames(aParaIn);
             aParaOut = [];
-            for i = 1:numel(fieldsPara)
-                switch fieldsPara{i}
-                    case 'isValid'
-                        aParaOut.(fieldsPara{i}) = ...
-                            aParaIn.(fieldsPara{i})(idx);
-                    otherwise
-                        aParaOut.(fieldsPara{i}) = ...
-                            aParaIn.(fieldsPara{i}){idx};
-                end
+            switch nargin < 3
+                case 1 % 'legacy' case
+                    for i = 1:numel(fieldsPara)
+                        switch fieldsPara{i}
+                            case 'isValid'
+                                aParaOut.(fieldsPara{i}) = ...
+                                    aParaIn.(fieldsPara{i})(idx);
+                            otherwise
+                                aParaOut.(fieldsPara{i}) = ...
+                                    aParaIn.(fieldsPara{i}){idx};
+                        end
+                    end
+                case 0 % 'branched' case
+                    for i = 1:numel(fieldsPara)
+                        switch fieldsPara{i}
+                            case 'isValid'
+                                aParaOut.(fieldsPara{i}) = ...
+                                    aParaIn.(fieldsPara{i}){bItr}(idx);
+                            otherwise
+                                aParaOut.(fieldsPara{i}) = ...
+                                    aParaIn.(fieldsPara{i}){bItr}{idx};
+                        end
+                    end
             end
         end
 
@@ -1904,66 +2174,114 @@ classdef Path2_Mobility
             perpCoords = thisPath2.aPerpF; paraCoords = thisPath2.aParallF;
             % compute the reference along the perp coordinates with the
             % same F-value
+            % ... modified to work with new slipping or perpendicular axis 
+            % ... generation mode: "branched"
             % ... this is a two step process: 1) if the reference is very
             % ... close to an already existing point, then we replace the
             % ... requested reference with that pre-computed point
             % ... 2) if the reference doesn't exist, then we interpolate to
             % ... find corresponding reference in the perp coords
-            switch abs(min(vecnorm(perpCoords.y - refPt, 2, 2))) < 1e-6
-                case 1
-                    % find the index with the smallest value below the
-                    % threshold and obtain the corresponding parallel
-                    % coordinates
-                    [~, idxRef] = min(vecnorm(perpCoords.y - refPt, 2, 2));
-                    aParaNow = Path2_Mobility.fetchParallCoordsFromIndex...
-                                                (paraCoords, idxRef);
-                case 0
-                    % if you're here, none of the points are sufficiently
-                    % close, so we explicity compute the parallel
-                    % coordinates
-                    % ... compute the F-lvl requested and the corresponding reference
-                    % ... along the perp coords
-                    refF = F_fxn(a, l, refPt(1), refPt(2));
-                    perpRef = interp1(perpCoords.F, perpCoords.y, refF,...
-                                                            "spline", nan);
-                    % ... Now, we compute the local parallel coordinates if 
-                    % ... the reference at the interpolated perpendicular 
-                    % ... Ref is not nan-- if it is, we return an error to 
-                    % ... signify that a reference outside the allowable 
-                    % ... region of F is chosen
-                    if any(isnan(perpRef))
-                        error(['ERROR! Please choose a reference within ' ...
-                            'the allowable region of F.']);
+            switch thisPath2.slipMode
+                case 'legacy'
+                    switch abs(min(vecnorm(perpCoords.y - refPt, 2, 2))) < 1e-6
+                        case 1
+                            % find the index with the smallest value below the
+                            % threshold and obtain the corresponding parallel
+                            % coordinates
+                            [~, idxRef] = min(vecnorm(perpCoords.y - refPt, 2, 2));
+                            aParaNow = Path2_Mobility.fetchParallCoordsFromIndex...
+                                                        (paraCoords, idxRef);
+                        case 0
+                            % if you're here, none of the points are sufficiently
+                            % close, so we explicity compute the parallel
+                            % coordinates
+                            % ... compute the F-lvl requested and the corresponding reference
+                            % ... along the perp coords
+                            refF = F_fxn(a, l, refPt(1), refPt(2));
+                            perpRef = interp1(perpCoords.F, perpCoords.y, refF,...
+                                                                    "spline", nan);
+                            % ... Now, we compute the local parallel coordinates if 
+                            % ... the reference at the interpolated perpendicular 
+                            % ... Ref is not nan-- if it is, we return an error to 
+                            % ... signify that a reference outside the allowable 
+                            % ... region of F is chosen
+                            if any(isnan(perpRef))
+                                error(['ERROR! Please choose a reference within ' ...
+                                    'the allowable region of F.']);
+                            end
+                            thisPath2 = ...
+                                Path2_Mobility.computeSpecificParallelCoordinates...
+                                ( thisPath2, perpRef ); 
+                            aParaNow = thisPath2.aParaRef;
                     end
-                    thisPath2 = ...
-                        Path2_Mobility.computeSpecificParallelCoordinates...
-                        ( thisPath2, perpRef ); 
-                    aParaNow = thisPath2.aParaRef;
+                    % Now, we compute the the time offset based on the difference
+                    % between the requested reference and the computed parallel
+                    % coordinates. Again, we also offset the maximum times
+                    % according to the tOff value.
+                    % ... again, if the time offset is smaller than 1e-6, just set
+                    % ... it to 0.
+                    refDiff = aParaNow.y - refPt;
+                    tOff = fmincon(@(x) ...
+                                norm(interp1(aParaNow.t, refDiff, x, "pchip")),...
+                                mean(aParaNow.t), [], [], [], [],...
+                                min(aParaNow.t), max(aParaNow.t), [],...
+                                optimoptions("fmincon", "Display", "none") );
+                    if isnan(tOff)
+                        error(['ERROR! If the offset time is "nan", then the ' ...
+                            'problem is ill-conditioned and lies outside ' ...
+                            'slip-nonslip coordinates. Please reframe the problem ' ...
+                            'to these computed coordinates. Use the ' ...
+                            '"highlightNonslipLevelSet" to help visualize if the ' ...
+                            'selected reference point is within this space.']);
+                    end
+                    if abs(tOff) < 1e-6
+                        tOff = 0;
+                    end
+                    tMax = aParaNow.tMax + tOff*[1, -1];
+                case 'branched'
+                    for bItr = 1:numel(perpCoords.y) % iterate over each branch
+                        switch abs(min(vecnorm(perpCoords.y{bItr} - refPt, 2, 2))) < 1e-6
+                            case 1
+                                [~, idxRef] = min(vecnorm(perpCoords.y{bItr} - refPt, 2, 2));
+                                aParaNow = Path2_Mobility.fetchParallCoordsFromIndex...
+                                                (paraCoords, idxRef, bItr);
+                            case 0
+                                refF = F_fxn(a, l, refPt(1), refPt(2));
+                                perpRef = interp1(perpCoords.F{bItr}, perpCoords.y{bItr}, refF,...
+                                                                        "spline", nan);
+                                if any(isnan(perpRef))
+                                    error(['ERROR! Please choose a reference within ' ...
+                                        'the allowable region of F.']);
+                                end
+                                thisPath2 = ...
+                                    Path2_Mobility.computeSpecificParallelCoordinates...
+                                    ( thisPath2, perpRef ); 
+                                aParaNow = thisPath2.aParaRef;
+                        end
+                        refDiff = aParaNow.y - refPt;
+                        tOff = fmincon(@(x) ...
+                                    norm(interp1(aParaNow.t, refDiff, x, "pchip")),...
+                                    mean(aParaNow.t), [], [], [], [],...
+                                    min(aParaNow.t), max(aParaNow.t), [],...
+                                    optimoptions("fmincon", "Display", "none") );
+                        if isnan(tOff)
+                            if bItr > 1
+                                error(['ERROR! If the offset time is "nan", then the ' ...
+                                'problem is ill-conditioned and lies outside ' ...
+                                'slip-nonslip coordinates. Please reframe the problem ' ...
+                                'to these computed coordinates. Use the ' ...
+                                '"highlightNonslipLevelSet" to help visualize if the ' ...
+                                'selected reference point is within this space.']);
+                            end
+                        else
+                            if abs(tOff) < 1e-6
+                                tOff = 0;
+                            end
+                            tMax = aParaNow.tMax + tOff*[1, -1];
+                            return;
+                        end
+                    end
             end
-            % Now, we compute the the time offset based on the difference
-            % between the requested reference and the computed parallel
-            % coordinates. Again, we also offset the maximum times
-            % according to the tOff value.
-            % ... again, if the time offset is smaller than 1e-6, just set
-            % ... it to 0.
-            refDiff = aParaNow.y - refPt;
-            tOff = fmincon(@(x) ...
-                        norm(interp1(aParaNow.t, refDiff, x, "pchip")),...
-                mean(aParaNow.t), [], [], [], [],...
-                min(aParaNow.t), max(aParaNow.t), [],...
-                optimoptions("fmincon", "Display", "none") );
-            if isnan(tOff)
-                error(['ERROR! If the offset time is "nan", then the ' ...
-                    'problem is ill-conditioned and lies outside ' ...
-                    'slip-nonslip coordinates. Please reframe the problem ' ...
-                    'to these computed coordinates. Use the ' ...
-                    '"highlightNonslipLevelSet" to help visualize if the ' ...
-                    'selected reference point is within this space.']);
-            end
-            if abs(tOff) < 1e-6
-                tOff = 0;
-            end
-            tMax = aParaNow.tMax + tOff*[1, -1];
         end
 
         % For subgaits defined using the "computeSubgaitInCoordinates", we
