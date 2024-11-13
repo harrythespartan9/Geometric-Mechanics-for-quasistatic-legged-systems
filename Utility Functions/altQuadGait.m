@@ -305,28 +305,17 @@ classdef altQuadGait
             % initialize and declare input space properties
             thisAltGait.inputSpace = [];
             thisAltGait.inputSpace.dNumU = dNumU;
-            % ... input sweep in each direction: this is defined
-            % ... irrespective of 'inputMode' as that only changes the
-            % ... mapping of the inputs to the path integration times
-            % ... u1, u2 are the scaling & sliding inputs for "ithStance"
-            % ... u3, u4 are the same for "jthStance"
-            u = cell(1, 4); uGrid = cell(1, 4);
-            for k = 1:4 % input discretizations in each dimension
-                if k == 1
-                    u{k} = linspace(-1, 1, dNumU);
-                else
-                    u{k} = u{k-1};
-                end
-            end
+            % ... input range in each direction
+            inputDisc = linspace(-1, 1, dNumU);
+            % ... meshed inputs representing a discretized scaling-sliding
+            % ... space
+            [uGridX, uGridY] = meshgrid(inputDisc, inputDisc);
             % ... data in gridded (subgaitwise) input subspaces
             % ... ... obtain the gridded inputs
             % ... ... obtain integration times for the estimation procedure
             % ... ... obtain the number of discretizations for different
             tIC = cell(1, 2); tFC = tIC; disc = tFC;
             for k = 1:2
-                kStart = 2*(k-1)+1; kEnd = 2*k; % mesh indices: in pairs (1, 2) (3, 4)
-                [uGrid{kStart}, uGrid{kEnd}] = ...
-                        meshgrid(u{kStart}, u{kEnd}); % meshed inputs
                 % ... unpack subgait integration times and max times
                 Tnow = T{k};
                 tMaxNow = thisAltGait.stanceSpace.aLimits{k};
@@ -334,10 +323,10 @@ classdef altQuadGait
                 [tIC{k}, tFC{k}] = ...
                     altQuadGait.computeSubgaitIntegrationTimes...
                     (thisAltGait, ...
-                    [uGrid{kStart}(:), uGrid{kEnd}(:)], ... % col inputs
+                    [uGridX(:), uGridY(:)], ... % col inputs
                     Tnow, [], tMaxNow);
-                tIC{k} = reshape(tIC{k}, size(uGrid{kStart}));
-                tFC{k} = reshape(tFC{k}, size(uGrid{kEnd})); % grid of times
+                tIC{k} = reshape(tIC{k}, size(uGridX));
+                tFC{k} = reshape(tFC{k}, size(uGridY)); % grid of times
                 % ... unpack
                 dnumNow = thisAltGait.stanceSpace.dnum{k};
                 % ... compute the discretizations for each path
@@ -351,12 +340,36 @@ classdef altQuadGait
                 illPathlocs = (~zeroPathLocs & (disc{k} < 2));
                 disc{k}(illPathlocs) = 2; % finite paths with < 2 disc to 2
             end
+            % get the input in the 4-dimensional input space
+            u = cell(1, 4);
+            uStance = {uGridX, uGridY, uGridX, uGridY};
+            for iComp = 1:4
+                switch iComp
+                    case {1, 2}
+                        xStr = 'i'; yStr = 'j';
+                    case {3, 4}
+                        xStr = 'k'; yStr = 'l';
+                end
+                u{iComp} = nan(dNumU*ones(1, 4));
+                for i = 1:dNumU
+                    for j = 1:dNumU
+                        for k = 1:dNumU
+                            for l = 1:dNumU
+                                u{iComp}(i, j, k, l) = ...
+                                                uStance{iComp}(...
+                                                eval(xStr), eval(yStr)...
+                                                                );
+                            end
+                        end
+                    end
+                end
+            end
             % obtain the discretization for the estimation paths
             discNum(:, :, 1) = disc{1}; discNum(:, :, 2) = disc{2};
             discNum = max(discNum, [], 3); % get the max disc for z
             % ... store the inputs in their own fields
             thisAltGait.inputSpace.u = u;
-            thisAltGait.inputSpace.uGrid = uGrid;
+            thisAltGait.inputSpace.uStance = uStance;
             % ... init and store in 'intParam' field and return
             % ... ... integration times for IC and FC poitns
             % ... ... overall discretization number for the estimation path
@@ -643,7 +656,8 @@ classdef altQuadGait
                                     (thisAltGait, inputs, T, ~, Tmax)
             % Compute initial and final condition times based on the
             % current input mode
-            switch size(inputs, 1) > 1
+            numPts = size(inputs, 1); multiplePtsFlag = numPts > 1;
+            switch multiplePtsFlag
                 case 1
                     u1 = inputs(:, 1); u2  = inputs(:, 2);
                 case 0
@@ -668,20 +682,31 @@ classdef altQuadGait
                     % capping term associated with the sliding input
                     % ... we negate Tminus because we are moving backwards
                     Tminus = Tmax(1); Tplus = Tmax(2); 
-                    switch u2 < 0 
-                        case 1 % MOVING LEFT
-                            switch initTime <= finTime
-                                case 1 % initTime closer to Tminus
-                                    capTerm = initTime - Tminus;
-                                case 0 % finTime  closer to Tminus
-                                    capTerm = finTime - Tminus;
-                            end
-                        case 0 % MOVING RIGHT
-                            switch finTime >= initTime
-                                case 1 % finTime  closer to Tplus
-                                    capTerm = Tplus - finTime;
-                                case 0 % initTime closer to Tplus
-                                    capTerm = Tplus - initTime;
+                    switch multiplePtsFlag
+                        case 1 % MULTIPLE POINTS CASE %%%%%%%%%%%%%%%%%%%%%
+                            u2flag = (u2 < 0); % flag 1
+                            fwdBwdFlag = (initTime <= finTime); % flag 2
+                            capTerm = ...
+                                u2flag.*fwdBwdFlag.*(initTime-Tminus)...
+                              + u2flag.*(~fwdBwdFlag).*(finTime-Tminus)...
+                              + (~u2flag).*fwdBwdFlag.*(Tplus - finTime)...
+                              + (~u2flag).*(~fwdBwdFlag).*(Tplus-initTime);
+                        case 0
+                            switch u2 < 0 
+                                case 1 % MOVING LEFT
+                                    switch initTime <= finTime
+                                        case 1 % initTime closer to Tminus
+                                            capTerm = initTime - Tminus;
+                                        case 0 % finTime  closer to Tminus
+                                            capTerm = finTime - Tminus;
+                                    end
+                                case 0 % MOVING RIGHT
+                                    switch finTime >= initTime
+                                        case 1 % finTime  closer to Tplus
+                                            capTerm = Tplus - finTime;
+                                        case 0 % initTime closer to Tplus
+                                            capTerm = Tplus - initTime;
+                                    end
                             end
                     end
                     % compute the initial and final condition integration
