@@ -233,10 +233,12 @@ classdef altQuadGait
                     thisAltGait.stanceSpace.aLimits{2} = ...
                                             thisAltGait.integrationLimits;
                 case 0
+                    % ... converts the integration limits from the stance
+                    % ... phase instances to the alternating gait instance
                     thisAltGait.stanceSpace.aLimits{1} = ...
-                        [min(aI, [], "all"), max(aI, [], "all")];
+                                        [-1, 1].*stanceI.aParaRef.tMax;
                     thisAltGait.stanceSpace.aLimits{2} = ...
-                        [min(aJ, [], "all"), max(aJ, [], "all")];
+                                        [-1, 1].*stanceJ.aParaRef.tMax;
             end
             thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
             thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
@@ -344,21 +346,19 @@ classdef altQuadGait
             u = cell(1, 4);
             uStance = {uGridX, uGridY, uGridX, uGridY};
             for iComp = 1:4
-                switch iComp
-                    case {1, 2}
-                        xStr = 'i'; yStr = 'j';
-                    case {3, 4}
-                        xStr = 'k'; yStr = 'l';
-                end
                 u{iComp} = nan(dNumU*ones(1, 4));
                 for i = 1:dNumU
                     for j = 1:dNumU
                         for k = 1:dNumU
                             for l = 1:dNumU
+                                switch iComp
+                                    case {1, 2}
+                                        iX = i; iY = j;
+                                    case {3, 4}
+                                        iX = k; iY = l;
+                                end
                                 u{iComp}(i, j, k, l) = ...
-                                                uStance{iComp}(...
-                                                eval(xStr), eval(yStr)...
-                                                                );
+                                                uStance{iComp}(iX, iY);
                             end
                         end
                     end
@@ -1012,9 +1012,11 @@ classdef altQuadGait
             stance_j = thisAltGait.jthStance;
             % obtain offset times and max time references
             [refi.tOff, refi.tMax, stance_i] = ...
-                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i);
+                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i, ...
+                                                    thisAltGait.inputMode);
             [refj.tOff, refj.tMax, stance_j] = ...
-                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j);
+                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j, ...
+                                                    thisAltGait.inputMode);
             % obtain the integration times to the stance path initial and 
             % final conditions
             [tIC, tFC] = ...
@@ -1340,9 +1342,11 @@ classdef altQuadGait
             stance_i = thisAltGait.ithStance;
             stance_j = thisAltGait.jthStance;
             [refi.tOff, refi.tMax, stance_i] = ...
-                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i);
+                Path2_Mobility.computeToffFromPerpCoord(refi.P, stance_i, ...
+                                                    thisAltGait.inputMode);
             [refj.tOff, refj.tMax, stance_j] = ...
-                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j);
+                Path2_Mobility.computeToffFromPerpCoord(refj.P, stance_j, ...
+                                                    thisAltGait.inputMode);
             [tIC, tFC] = ...
                 altQuadGait.computeGaitIntegrationTimes...
                 (    thisAltGait, ...

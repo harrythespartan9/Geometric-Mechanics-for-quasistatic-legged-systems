@@ -2306,11 +2306,16 @@ classdef Path2_Mobility
                     if abs(tOff) < 1e-6
                         tOff = 0;
                     end
+                    % ... the minus sign to Tminus helps things work
+                    % correctly on the "altQuadGait" class side of compute
                     switch gaitInputMode
                         case 'std'
-                            tMax = aParaNow.tMax + tOff*[1, -1];
+                            tMax = [-1, 1].*aParaNow.tMax + tOff*[1, -1];
                         case 'path_limit_compliant'
-                            tMax = aParaNow.tMax + tOff*[1, -1];
+                            tMax = [thisPath2.intTime; 
+                                    aParaNow.tMax];
+                            tMax = [-1, 1].*min(tMax, [], 1) ...
+                                                        + tOff*[1, -1];
                     end
                 case 'branched'
                     for bItr = 1:numel(perpCoords.y) % iterate over each branch
@@ -2353,9 +2358,13 @@ classdef Path2_Mobility
                             end
                             switch gaitInputMode
                                 case 'std'
-                                    tMax = aParaNow.tMax + tOff*[1, -1];
+                                    tMax = [-1, 1].*aParaNow.tMax ...
+                                                        + tOff*[1, -1];
                                 case 'path_limit_compliant'
-                                    tMax = aParaNow.tMax + tOff*[1, -1];
+                                    tMax = [thisPath2.intTime; 
+                                            aParaNow.tMax];
+                                    tMax = [-1, 1].*min(tMax, [], 1) ...
+                                                        + tOff*[1, -1];
                             end
                             return;
                         end
