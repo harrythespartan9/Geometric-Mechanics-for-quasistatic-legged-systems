@@ -1037,9 +1037,11 @@ classdef Path2_Mobility
                     '"se2_toyproblems_case_1_mobility.mlx".'])
             end
             paraIn = thisPath2.aParallF; % extract input parallel coords
+            F_in = thisPath2.aPerpF.F; % extract F-values at these coords
             paraOut = []; % init output struct
             paraOut.eventInfo = []; paraOut.isValid = [];
-            paraOut.tMax = []; paraOut.t = []; paraOut.y=[]; paraOut.dz=[];
+            paraOut.t = []; paraOut.tMax = []; paraOut.y=[]; paraOut.dz=[];
+            paraOut.F = [];
             for bItr = 1:numel(paraIn.y) % iterate over branches
                 for i = 1:numel(paraIn.y{bItr}) % iterate over the solns
                     paraOut.eventInfo{end+1} = paraIn.eventInfo{bItr}{i};
@@ -1048,10 +1050,12 @@ classdef Path2_Mobility
                     paraOut.t{end+1} = paraIn.t{bItr}{i};
                     paraOut.y{end+1} = paraIn.y{bItr}{i};
                     paraOut.dz{end+1} = paraIn.dz{bItr}{i};
+                    paraOut.F(end+1) = F_in{bItr}(i);
                 end
             end
             if nargin == 2 % extract just valid if 
-                paraOut = extractValidFlevelSets(paraOut, dNumLvlSet);
+                paraOut = Path2_Mobility.extractValidFlevelSets...
+                                                (paraOut, dNumLvlSet);
             elseif nargin > 2
                 error(['ERROR! This function does not accept more than ' ...
                     '2 input arguments.']);
@@ -1073,7 +1077,7 @@ classdef Path2_Mobility
             validNum = numel(allIdx);
             if dNumLvlSet > validNum
                 error(['ERROR! Not enough points in the parallel ' ...
-                    'coordinates provided.']);
+                    'coordinates to construct required struct.']);
             end
             selectedIdx = allIdx( ... % select a subset of the indices
                 round(linspace(1, validNum, dNumLvlSet))...
@@ -1081,6 +1085,7 @@ classdef Path2_Mobility
             paraOut = [];
             paraOut.eventInfo = []; paraOut.isValid = [];
             paraOut.tMax = []; paraOut.t = []; paraOut.y=[]; paraOut.dz=[];
+            paraOut.F = [];
             for i = selectedIdx
                 paraOut.eventInfo{end+1} = paraIn.eventInfo{i};
                 paraOut.isValid(end+1) = paraIn.isValid(i);
@@ -1088,6 +1093,7 @@ classdef Path2_Mobility
                 paraOut.t{end+1} = paraIn.t{i};
                 paraOut.y{end+1} = paraIn.y{i};
                 paraOut.dz{end+1} = paraIn.dz{i};
+                paraOut.F(end+1) = paraIn.F(i);
             end
         end
 

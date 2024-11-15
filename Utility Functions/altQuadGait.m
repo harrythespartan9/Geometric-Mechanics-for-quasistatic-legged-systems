@@ -14,7 +14,15 @@ classdef altQuadGait
         jthStance           % jth stance phase in the shape subspace Sj which 
                             % is complementary to Si.
 
-        leafExplorationMode % "origin-only" supported for now
+        leafExplorationMode % "origin-only" and 
+                            % "multi-F-levelsets" are the
+                            % exploration modes available-- the second mode
+                            % is more general and explores the interaction
+                            % between multiple leaves
+
+        numLeaves           % number of leaves to explore if the 
+                            % "multi-F-levelsets" 
+                            % leafExplorationMode is active
 
         inputMode           % "std" and "path_limit_compliant" modes are 
                             % supported. 
@@ -55,7 +63,7 @@ classdef altQuadGait
         function thisAltGait = altQuadGait(stance1, stance2, ...
                                             leafModeArg, inputModeArg, ...
                                             integrationLimitsArg, ...
-                                            se2Transforms)
+                                            se2Transforms, numberOfLeaves)
             %ALTERNATINGQUADRUPEDALGAIT Construct an instance of this class
             %   mostly we setup the properties here and make some back
             %   checks to see if tha "Path2_Mobility" instances are
@@ -82,13 +90,21 @@ classdef altQuadGait
                 end
             end
 
-            % only the "origin-only" leaf mode is supported for now, the
-            % other leafs are not too useful at the moment
-            if ~strcmp(leafModeArg, "origin-only")
-                error(['ERROR! We only support the "origin-mode" for ' ...
-                    'mobility exploration at the moment.']);
-            else
-                thisAltGait.leafExplorationMode = leafModeArg;
+            % "origin-only" and "multi-F-levelsets" are the
+            % leaf modes supported at the moment; the
+            % "multi-F-levelsets" can be used to explore the
+            % reachable sets over different 
+            switch leafModeArg
+                case "origin-only"
+                    thisAltGait.leafExplorationMode = leafModeArg;
+                    thisAltGait.numLeaves = [];
+                case "multi-F-levelsets"
+                    thisAltGait.leafExplorationMode = leafModeArg;
+                    thisAltGait.numLeaves = numberOfLeaves;
+                otherwise
+                    error(['ERROR! "origin-only" and ' ...
+                        '"multi-F-levelsets" are the only two ' ...
+                        'modes available.']);
             end
 
             % check the input mode: "std" or "path_limit_compliant"
@@ -199,87 +215,164 @@ classdef altQuadGait
         % construct the stance space panels and lie-brackets for estimating
         % the net displacement and checking gait controllability
         function thisAltGait = computeStanceSpace(thisAltGait)
-            % make sure that you're in the origin-only leaf exploration
-            % mode, else error out as other modes aren't supported right
-            % now
-            if ~strcmp(thisAltGait.leafExplorationMode, 'origin-only')
-                error(['ERROR! Only origin exploration mode is supported ' ...
-                    'for now']);
-            end
-            % unpack the subgait instances
-            stanceI = thisAltGait.ithStance;
-            stanceJ = thisAltGait.jthStance;
-            % obtain the parallel or nonslip coordinates at the origin for
-            % the full level-set
-            stanceI = ...
-                Path2_Mobility.computeSpecificParallelCoordinates...
-                (stanceI, zeros(1, 2), [], true);
-            stanceJ = ...
-                Path2_Mobility.computeSpecificParallelCoordinates...
-                (stanceJ, zeros(1, 2), [], true);
-            % stance space properties
-            % ... get the stance-decoupled properties and store
-            % ... for the limits, if the input-mode is 
-            % ... "path_limit_compliant", we want the limits store in the
-            % ... gait instance as "integrationLimits"
-            aI  = stanceI.aParaRef.t;   aJ = stanceJ.aParaRef.t;
-            dzI = stanceI.aParaRef.dz; dzJ = stanceJ.aParaRef.dz;
-            thisAltGait.stanceSpace.a{1}  = aI;
-            thisAltGait.stanceSpace.a{2}  = aJ;
-            switch strcmp(thisAltGait.inputMode, 'path_limit_compliant')
-                case 1
-                    thisAltGait.stanceSpace.aLimits{1} = ...
+            % leaf exploration mode checks
+            switch thisAltGait.leafExplorationMode
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'origin-only' % ORIGINAL STANCE SPACE COMPUTATIONS
+                    % unpack the subgait instances
+                    stanceI = thisAltGait.ithStance;
+                    stanceJ = thisAltGait.jthStance;
+                    % obtain the parallel or nonslip coordinates at the 
+                    % origin for the full level-set if in "origin-only" 
+                    % leaf exploration mode, else get the whole set of 
+                    % parallel coordinates
+                    stanceI = ...
+                        Path2_Mobility.computeSpecificParallelCoordinates...
+                        (stanceI, zeros(1, 2), [], true);
+                    stanceJ = ...
+                        Path2_Mobility.computeSpecificParallelCoordinates...
+                        (stanceJ, zeros(1, 2), [], true);
+                    % stance space properties
+                    % ... get the stance-decoupled properties and store
+                    % ... for the limits, if the input-mode is 
+                    % ... "path_limit_compliant", we want the limits store 
+                    % ... in the gait instance as "integrationLimits"
+                    aI  = stanceI.aParaRef.t;   aJ = stanceJ.aParaRef.t;
+                    dzI = stanceI.aParaRef.dz; dzJ = stanceJ.aParaRef.dz;
+                    thisAltGait.stanceSpace.a{1}  = aI;
+                    thisAltGait.stanceSpace.a{2}  = aJ;
+                    switch strcmp(thisAltGait.inputMode, ...
+                            'path_limit_compliant')
+                        case 1
+                            thisAltGait.stanceSpace.aLimits{1} = ...
                                             thisAltGait.integrationLimits;
-                    thisAltGait.stanceSpace.aLimits{2} = ...
+                            thisAltGait.stanceSpace.aLimits{2} = ...
                                             thisAltGait.integrationLimits;
-                case 0
-                    % ... converts the integration limits from the stance
-                    % ... phase instances to the alternating gait instance
-                    thisAltGait.stanceSpace.aLimits{1} = ...
+                        case 0
+                            % ... converts the integration limits from the 
+                            % ... stance phase instances to the alternating 
+                            % ... gait instance
+                            switch any(isnan(stanceI.aParaRef.tMax)) || ...
+                                    any(isnan(stanceJ.aParaRef.tMax))
+                                case 1
+                                    thisAltGait.stanceSpace.aLimits{1} = ...
+                                            thisAltGait.integrationLimits;
+                                    thisAltGait.stanceSpace.aLimits{2} = ...
+                                            thisAltGait.integrationLimits;
+                                case 0
+                                    thisAltGait.stanceSpace.aLimits{1} = ...
                                         [-1, 1].*stanceI.aParaRef.tMax;
-                    thisAltGait.stanceSpace.aLimits{2} = ...
+                                    thisAltGait.stanceSpace.aLimits{2} = ...
                                         [-1, 1].*stanceJ.aParaRef.tMax;
-            end
-            thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
-            thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
-            thisAltGait.stanceSpace.dz{1} = dzI;
-            thisAltGait.stanceSpace.dz{2} = dzJ;
-            % ... get the meshed properties as well
-            % ... ... first obtain the indices running along each
-            % ... ... direction, then map the properties accordingly
-            [AI, AJ] = meshgrid(aI, aJ);
-            % ... ... iterate over each column corresponding to the panel
-            % ... ... directions and compute the grid
-            [DZI, DZJ, DZIJ] = stratifiedGridAndLieBracket(dzI, dzJ);
-            % ... compute the information to discuss the span of the
-            % ... involutive closure in the stance subspace
-            dzImagn = vecnorm(DZI, 2, 3); dzJmagn = vecnorm(DZJ, 2, 3);
-            dzIdotJ = dot(DZI, DZJ, 3);
-            idxNonzero = (dzIdotJ ~= 0); % nonzero indices
-            dzIdotJ =   reshape(...
-                dzIdotJ(idxNonzero)./... % normalize
-                (dzImagn(idxNonzero).*dzJmagn(idxNonzero)),...
-                        size(dzIdotJ)); 
-            thisAltGait.stanceSpace.A{1} = AI;
-            thisAltGait.stanceSpace.A{2} = AJ;
-            thisAltGait.stanceSpace.DZ{1} = DZI;
-            thisAltGait.stanceSpace.DZ{2} = DZJ;
-            thisAltGait.stanceSpace.LBDZ = DZIJ;
-            thisAltGait.stanceSpace.dzIdotJ = dzIdotJ;
-            % ... compute the exact location where the theta component of 
-            % ... both panels are zero where the span would be 1
-            thetaSelect = 3;
-            thisAltGait.stanceSpace.a_dzThNull = ...
-                fmincon(   @(a) ...
-                abs(Path2_Mobility.interpThetaPanelFromIntTime...
+                            end
+                    end
+                    thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
+                    thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
+                    thisAltGait.stanceSpace.dz{1} = dzI;
+                    thisAltGait.stanceSpace.dz{2} = dzJ;
+                    % ... get the meshed properties as well
+                    % ... ... first obtain the indices running along each
+                    % ... ... direction, then map the properties 
+                    % ... ... accordingly
+                    [AI, AJ] = meshgrid(aI, aJ);
+                    % ... ... iterate over each column corresponding to the 
+                    % ... ... panel directions and compute the grid
+                    [DZI, DZJ, DZIJ] = ...
+                        stratifiedGridAndLieBracket(dzI, dzJ);
+                    % ... compute the information to discuss the span of 
+                    % ... the involutive closure in the stance subspace
+                    dzImagn = vecnorm(DZI, 2, 3); 
+                                    dzJmagn = vecnorm(DZJ, 2, 3);
+                    dzIdotJ = dot(DZI, DZJ, 3);
+                    idxNonzero = (dzIdotJ ~= 0); % nonzero indices
+                    dzIdotJ =   reshape(...
+                        dzIdotJ(idxNonzero)./... % normalize
+                        (dzImagn(idxNonzero).*dzJmagn(idxNonzero)),...
+                                size(dzIdotJ)); 
+                    thisAltGait.stanceSpace.A{1} = AI;
+                    thisAltGait.stanceSpace.A{2} = AJ;
+                    thisAltGait.stanceSpace.DZ{1} = DZI;
+                    thisAltGait.stanceSpace.DZ{2} = DZJ;
+                    thisAltGait.stanceSpace.LBDZ = DZIJ;
+                    thisAltGait.stanceSpace.dzIdotJ = dzIdotJ;
+                    % ... compute the exact location where the theta 
+                    % ... component of both panels are zero where the span 
+                    % ... would be 1
+                    thetaSelect = 3;
+                    thisAltGait.stanceSpace.a_dzThNull = ...
+                        fmincon(   @(a) ...
+                        abs(Path2_Mobility.interpThetaPanelFromIntTime...
                                         (aI, dzI(:, thetaSelect), a(1))) ...
-                + abs(Path2_Mobility.interpThetaPanelFromIntTime...
+                        + abs(Path2_Mobility.interpThetaPanelFromIntTime...
                                         (aJ, dzJ(:, thetaSelect), a(2))), ...
-                        [0, 0], [], [], [], [], ... % ic and no constraints
-                        [min(aI, [], "all"), min(aJ, [], "all")], ... % lb
-                        [max(aI, [], "all"), max(aJ, [], "all")], ... % ub
-                        [], ... % no nonlinear constraints and switch off display
+                                [0, 0], [], [], [], [], ...
+                                [min(aI, [], "all"), min(aJ, [], "all")], ...
+                                [max(aI, [], "all"), max(aJ, [], "all")], ...
+                                [], ... % no nonlinear constraints
                         optimoptions("fmincon", "Display", "none"));
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'multi-F-levelsets'
+                    numFlevels = thisAltGait.numLeaves;
+                    stanceI = thisAltGait.ithStance;
+                    stanceJ = thisAltGait.jthStance;
+                    % ... we do not need to do things differently for the
+                    % ... general case, we need fixed integration limits
+                    thisAltGait.stanceSpace.aLimits{1} = ...
+                                            thisAltGait.integrationLimits;
+                    thisAltGait.stanceSpace.aLimits{2} = ...
+                                            thisAltGait.integrationLimits;
+                    % ... ... these limits are the same, as required, for
+                    % ... ... any combintation of level-sets obtain from the
+                    % ... ... "Path2_Mobility" class instance
+                    % ... obtain the parallel coordinates and setup
+                    parallSetsI = ...
+                        Path2_Mobility.concatenateParallelCoords...
+                        (stanceI, numFlevels);
+                    parallSetsJ = ...
+                        Path2_Mobility.concatenateParallelCoords...
+                        (stanceJ, numFlevels);
+                    thisAltGait.stanceSpace.parallSetsI = parallSetsI;
+                    thisAltGait.stanceSpace.parallSetsJ = parallSetsJ;
+                    %................ all of them have the same time coords
+                    aI  = parallSetsI.t{1};   aJ = parallSetsJ.t{1};
+                    thisAltGait.stanceSpace.a{1}  = aI;
+                    thisAltGait.stanceSpace.a{2}  = aJ;
+                    thisAltGait.stanceSpace.dnum{1} = size(aI, 1);
+                    thisAltGait.stanceSpace.dnum{2} = size(aJ, 1);
+                    [AI, AJ] = meshgrid(aI, aJ);
+                    thisAltGait.stanceSpace.A{1} = AI;
+                    thisAltGait.stanceSpace.A{2} = AJ;
+                    % ... get the stratified panels (projected local
+                    % connection), their lie-bracktes, null-contours, etc
+                    % needed for the stance space analysis
+                    for i = 1:numel(parallSetsI.t)
+                        for j = 1:numel(parallSetsJ.t)
+                            dzI = parallSetsI.dz{i};
+                            dzJ = parallSetsJ.dz{i};
+                            [DZI, DZJ, DZIJ] = ...
+                                stratifiedGridAndLieBracket(dzI, dzJ);
+                            dzImagn = vecnorm(DZI, 2, 3); 
+                                    dzJmagn = vecnorm(DZJ, 2, 3);
+                            dzIdotJ = dot(DZI, DZJ, 3);
+                            idxNonzero = (dzIdotJ ~= 0);
+                            dzIdotJ =   reshape(...
+                                dzIdotJ(idxNonzero)./...
+                                (dzImagn(idxNonzero).*dzJmagn(idxNonzero)),...
+                                        size(dzIdotJ));
+                            thisAltGait.stanceSpace.dz{i, j}{1}   = dzI;
+                            thisAltGait.stanceSpace.dz{i, j}{2}   = dzJ;
+                            thisAltGait.stanceSpace.DZ{i, j}{1}   = DZI;
+                            thisAltGait.stanceSpace.DZ{i, j}{2}   = DZJ;
+                            thisAltGait.stanceSpace.LBDZ{i, j}    = DZIJ;
+                            thisAltGait.stanceSpace.dzIdotJ{i, j} =dzIdotJ;
+                        end
+                    end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                otherwise
+                    error(['ERROR! "origin-only" and ' ...
+                        '"multi-F-levelsets" are the only two ' ...
+                        'modes available.']);
+            end
         end
 
         % generate the input-space neede to conduct the movility analysis
