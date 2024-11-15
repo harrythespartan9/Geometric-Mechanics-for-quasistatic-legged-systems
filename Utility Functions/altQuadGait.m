@@ -381,11 +381,6 @@ classdef altQuadGait
         % ... each dimension is sampled at ('dNumU') which makes the entire
         % ... sweep have ('dNumU')^4
         function thisAltGait = generateInputSpace( thisAltGait, dNumU, T )
-            % make sure we are in the 'origin-only' mode
-            if ~strcmp(thisAltGait.leafExplorationMode, 'origin-only')
-                error(['ERROR! Only origin exploration mode is supported ' ...
-                    'for now']);
-            end
             % make sure the discretization number is atleast 3; and convert
             % it to an odd number if possible
             if dNumU < 3
@@ -480,83 +475,41 @@ classdef altQuadGait
             dNumU = thisAltGait.inputSpace.dNumU;
             tIC = thisAltGait.inputSpace.intParam.tIC;
             tFC = thisAltGait.inputSpace.intParam.tFC;
-            % ... simulate the body displacement from both subgaits
-            zSub = cell(1, 2); % cells for each subgait
-            for k = 1:numel(stances) % iterate over each subgait
-                zSub{k} = cell(1, 3); % subcells for each component
-                for i = 1:dNumU % iterate over the scaling input
-                    for j = 1:dNumU % over sliding input
-                        % displacement for current input pair in current
-                        % stance
-                        % ... obtain the displacement
-                        % ... split it componentwise and store
-                        zSubNow = ...
-                            Path2_Mobility.simulateFinalBodyPosition...
-                            (zeros(1, 2), ... % origin-only
-                            [tIC{k}(i, j) tFC{k}(i, j)], ... % bwd and fwd times
-                            stances{k}); % current "Path2_Mobility" instance
-                        for iComp = 1:3 % iterate and assign components
-                            zSub{k}{iComp}(i, j) = zSubNow(iComp);
+            % SIMULATE DISPLACEMENTS, COMPILE, STITCH, AND ASSIGN for each
+            % reference point if this is the "multi-F-levesets" leaf
+            % exploration mode, else it is just at the origin
+            % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+            switch thisAltGait.leafExplorationMode
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'origin-only'
+                        % compute the reachable set and init the 
+                        % "sim"ulation field within  'inputSpace' property 
+                        % and assign the results
+                        thisAltGait.inputSpace.sim.z = ...
+                            simulateFinalBodyPositionAfterGait...
+                            (stances, dNumU, tIC, tFC);
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                case 'multi-F-levelsets'
+                    % extract the reference points
+                    refPtI = thisAltGait.stanceSpace.parallSetsI.refPt;
+                    refPtJ = thisAltGait.stanceSpace.parallSetsJ.refPt;
+                    % init the output displacement block and iterate over 
+                    % the number of leaves for each stance phase so that 
+                    % we can mix and match
+                    nLeaves = thisAltGait.numLeaves;
+                    thisAltGait.inputSpace.sim.z = cell(nLeaves, nLeaves);
+                    for idxI = 1:nLeaves
+                        for idxJ = 1:nLeaves
+                            thisAltGait.inputSpace.sim.z...
+                                                    { idxI, idxJ } = ...
+                                simulateFinalBodyPositionAfterGait...
+                                (stances, dNumU, tIC, tFC, ...
+                                { refPtI{idxI, idxJ}, ... % ref point for I
+                                  refPtJ{idxI, idxJ} }); %            for J
                         end
                     end
-                end
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
-            % ... stitch the displacements together
-            % ... ... 1) iterate over the 4-dimensional input space and 
-            % ... ... obtain each displacement component as column vectors
-            % ... ... 2) compute the pagewise product
-            % ... ... 3) again iterate over the input space and assign it
-            % ... ... element by element
-            zSubI = zSub{1}; zSubJ = zSub{2};
-            zSubIcols = nan(0, 3); zSubJcols = zSubIcols; % init
-            % ... ... iterate and compile
-            for i = 1:dNumU % scaling for Ith subgait
-                for j = 1:dNumU % sliding for Ith subgait
-                    for k = 1:dNumU % scaling for Jth subgait
-                        for l = 1:dNumU % sliding for Jth subgait
-                            % current subgait displacements
-                            zSubIcols(end+1, :) = ...
-                                [zSubI{1}(i, j), ...
-                                zSubI{2}(i, j), zSubI{3}(i, j)];
-                            zSubJcols(end+1, :) = ...
-                                [zSubJ{1}(k, l), ...
-                                zSubJ{2}(k, l), zSubJ{3}(k, l)];
-                        end
-                    end
-                end
-            end
-            % ... ... stitch the displacements sequentially
-            % ... ...  also compute the average body velocity
-            zCols = stitchTwoSE2displacements( zSubIcols, zSubJcols );%%%%%
-            % gCircCols = logMapOfALieGroupElement( zCols );%%%%%%%%%%%%%%%%%
-            zCols = mat2cell(zCols, size(zCols, 1), ones(size(zCols,2),1));
-            % gCircCols = mat2cell(gCircCols, ...
-                            % size(gCircCols, 1), ones(size(gCircCols, 2)));
-            % ... ... iterate again and assign
-            z = cell(size(zCols)); 
-            % gCirc = cell(size(gCircCols));
-            for iComp = 1:numel(z)
-                z{iComp} = nan( dNumU*ones(1, 4) ); % init cells
-                % gCirc{iComp} = nan( dNumU*ones(1, 4) );
-                loopCount = 1; % init loop count
-                for i = 1:dNumU
-                    for j = 1:dNumU
-                        for k = 1:dNumU
-                            for l = 1:dNumU
-                                z{iComp}(i, j, k, l) = ...
-                                    zCols{iComp}(loopCount); % assign
-                                % gCirc{iComp}(i, j, k, l) = ...
-                                %     zCols{iComp}(loopCount);
-                                loopCount = loopCount + 1;
-                            end
-                        end
-                    end
-                end
-            end
-            % ... initialize the "sim"ulation field within 'inputSpace'
-            % ... property and assign the results
-            thisAltGait.inputSpace.sim.z = z;
-            % thisAltGait.inputSpace.sim.gCirc = gCirc;
         end
 
         % compute the cost associate with executing the alternating gait
@@ -573,8 +526,8 @@ classdef altQuadGait
             % recompute the specific level-set at the origin
             % ... assumes that the only leaf-exploration mode is
             % ... "origin-only"
-            switch strcmp(thisAltGait.leafExplorationMode, 'origin-only')
-                case 1
+            switch thisAltGait.leafExplorationMode
+                case 'origin-only'
                     for k = 1:numel(stances)
                         stances{k} = ...
                             Path2_Mobility...
@@ -582,8 +535,9 @@ classdef altQuadGait
                                     ( stances{k}, zeros(1,2), [], true );
                     end
                 otherwise
-                    error(['ERROR! Only "origin-only" exploration mode is ' ...
-                        'selected at the moment']);
+                    error(['ERROR! Only "origin-only" and ' ...
+                        '"multi-F-levelsets" leaf exploration modes are ' ...
+                        'supported.']);
             end
             % get the shape velocity and acceleration costs for each 
             % subgait
@@ -1773,7 +1727,10 @@ classdef altQuadGait
 
 end
 
-%% AUXILIARY FUNCTIONS-- can't be accessed outside this class
+%% AUXILIARY FUNCTIONS
+% NOTE: the functions below can't be accessed outside this class, so only
+% add specific functionality; if you want to add general functions, add it
+% instead to the 'Utility Functions' folder.
 
 % this functions extracts the properties of a subgait's configuration
 % trajectory for use by the static methods defined above
@@ -1849,4 +1806,82 @@ function [dzI, dzJ, dzIJ] = stratifiedGridAndLieBracket(dzI, dzJ)
     dzIJ(:, :, 2) = dzJ(:, :, 1).*dzI(:, :, 3) -dzI(:, :, 1).*dzJ(:, :, 3);
     dzIJ(:, :, 3) = zeros([numRows, numCols, 1]); % always zero
     
+end
+
+% simulate the body displacement from an alternating gait cycle
+function z = simulateFinalBodyPositionAfterGait...
+    (stances, dNumU, tIC, tFC, refPt)
+    % check if the reference point is provided, else use the origin in the
+    % shape subspace as a default value for both stance phases
+    if nargin < 5
+        refPt = {zeros(1, 2), zeros(1, 2)};
+    end
+    % ... simulate the body displacement from both subgaits
+    zSub = cell(1, 2); % cells for each subgait
+    for k = 1:numel(stances) % iterate over each subgait
+        zSub{k} = cell(1, 3); % subcells for each component
+        for i = 1:dNumU % iterate over the scaling input
+            for j = 1:dNumU % over sliding input
+                % displacement for current input pair in current
+                % stance
+                % ... obtain the displacement
+                % ... split it componentwise and store
+                zSubNow = ...
+                    Path2_Mobility.simulateFinalBodyPosition...
+                    (refPt{k}, ... % reference point
+                    [tIC{k}(i, j) tFC{k}(i, j)], ... % bwd and fwd times
+                    stances{k}); % current "Path2_Mobility" instance
+                for iComp = 1:3 % iterate and assign components
+                    zSub{k}{iComp}(i, j) = zSubNow(iComp);
+                end
+            end
+        end
+    end
+    % ... stitch the displacements together
+    % ... ... 1) iterate over the 4-dimensional input space and 
+    % ... ... obtain each displacement component as column vectors
+    % ... ... 2) compute the pagewise product
+    % ... ... 3) again iterate over the input space and assign it
+    % ... ... element by element
+    zSubI = zSub{1}; zSubJ = zSub{2};
+    zSubIcols = nan(0, 3); zSubJcols = zSubIcols; % init
+    % ... ... iterate and compile
+    for i = 1:dNumU % scaling for Ith subgait
+        for j = 1:dNumU % sliding for Ith subgait
+            for k = 1:dNumU % scaling for Jth subgait
+                for l = 1:dNumU % sliding for Jth subgait
+                    % current subgait displacements
+                    zSubIcols(end+1, :) = ...
+                        [zSubI{1}(i, j), ...
+                        zSubI{2}(i, j), zSubI{3}(i, j)];
+                    zSubJcols(end+1, :) = ...
+                        [zSubJ{1}(k, l), ...
+                        zSubJ{2}(k, l), zSubJ{3}(k, l)];
+                end
+            end
+        end
+    end
+    % ... ... stitch the displacements sequentially
+    % ... ...  also compute the average body velocity
+    zCols = stitchTwoSE2displacements( zSubIcols, zSubJcols );
+    zCols = mat2cell(zCols, size(zCols, 1), ones(size(zCols,2),1));
+    % ... ... iterate again and assign
+    z = cell(size(zCols)); 
+    % gCirc = cell(size(gCircCols));
+    for iComp = 1:numel(z)
+        z{iComp} = nan( dNumU*ones(1, 4) ); % init cells
+        loopCount = 1; % init loop count
+        for i = 1:dNumU
+            for j = 1:dNumU
+                for k = 1:dNumU
+                    for l = 1:dNumU
+                        z{iComp}(i, j, k, l) = ...
+                            zCols{iComp}(loopCount);
+                        loopCount = loopCount + 1;
+                    end
+                end
+            end
+        end
+    end
+    % END OF FUNCTION %
 end

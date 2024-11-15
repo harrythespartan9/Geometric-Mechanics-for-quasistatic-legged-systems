@@ -920,6 +920,17 @@ classdef Path2_Mobility
                         thisPath2.aParallF.dz{i} = dz(aa, ll,...
                                             thisPath2.aParallF.y{i}(:, 1), ...
                                             thisPath2.aParallF.y{i}(:, 2));
+                        % ... compute the velocity and acceleration of the 
+                        % ... shape trajectory
+                        pthOrder = 1; % one-norm of the velocity components
+                        thisPath2.aParallF.aVel{i} = ...
+                            vecnorm(diff(thisPath2.aParallF.y{i})./...
+                                repmat(diff(thisPath2.aParallF.t{i}), 1, 2), ...
+                                pthOrder, 2);
+                        thisPath2.aParallF.aAccln{i} = ...
+                            vecnorm(diff(thisPath2.aParallF.aVel{i})./...
+                            repmat(diff(thisPath2.aParallF.t{i}(1:end-1)), 1, 2), ...
+                            pthOrder, 2);
                     end
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 case 'branched'
@@ -1020,6 +1031,15 @@ classdef Path2_Mobility
                             thisPath2.aParallF.dz{bItr}{i} = dz(aa, ll,...
                                     thisPath2.aParallF.y{bItr}{i}(:, 1), ...
                                     thisPath2.aParallF.y{bItr}{i}(:, 2));
+                            pthOrder = 1;
+                            thisPath2.aParallF.aVel{bItr}{i} = ...
+                                vecnorm(diff(thisPath2.aParallF.y{bItr}{i})./...
+                                    repmat(diff(thisPath2.aParallF.t{bItr}{i}), 1, 2), ...
+                                    pthOrder, 2);
+                            thisPath2.aParallF.aAccln{bItr}{i} = ...
+                                vecnorm(diff(thisPath2.aParallF.aVel{bItr}{i})./...
+                                repmat(diff(thisPath2.aParallF.t{bItr}{i}(1:end-1)), 1, 2), ...
+                                pthOrder, 2);
                         end
                     end
             end
@@ -1037,11 +1057,15 @@ classdef Path2_Mobility
                     '"se2_toyproblems_case_1_mobility.mlx".'])
             end
             paraIn = thisPath2.aParallF; % extract input parallel coords
-            F_in = thisPath2.aPerpF.F; % extract F-values at these coords
+            F_in = thisPath2.aPerpF.F; % extract F-values
+            refPt_in = thisPath2.aPerpF.y; % extract reference points
             paraOut = []; % init output struct
             paraOut.eventInfo = []; paraOut.isValid = [];
-            paraOut.t = []; paraOut.tMax = []; paraOut.y=[]; paraOut.dz=[];
+            paraOut.t = []; paraOut.tMax = []; 
+            paraOut.y=[]; paraOut.aVel=[]; paraOut.aAccln=[];
+            paraOut.dz=[];
             paraOut.F = [];
+            paraOut.refPt = [];
             for bItr = 1:numel(paraIn.y) % iterate over branches
                 for i = 1:numel(paraIn.y{bItr}) % iterate over the solns
                     paraOut.eventInfo{end+1} = paraIn.eventInfo{bItr}{i};
@@ -1049,8 +1073,11 @@ classdef Path2_Mobility
                     paraOut.tMax{end+1} = paraIn.tMax{bItr}{i};
                     paraOut.t{end+1} = paraIn.t{bItr}{i};
                     paraOut.y{end+1} = paraIn.y{bItr}{i};
+                    paraOut.aVel{end+1} = paraIn.aVel{bItr}{i};
+                    paraOut.aAccln{end+1} = paraIn.aAccln{bItr}{i};
                     paraOut.dz{end+1} = paraIn.dz{bItr}{i};
                     paraOut.F(end+1) = F_in{bItr}(i);
+                    paraOut.refPt(end+1, :) = refPt_in{bItr}(i, :);
                 end
             end
             if nargin == 2 % extract just valid if 
@@ -1084,16 +1111,22 @@ classdef Path2_Mobility
                 );
             paraOut = [];
             paraOut.eventInfo = []; paraOut.isValid = [];
-            paraOut.tMax = []; paraOut.t = []; paraOut.y=[]; paraOut.dz=[];
+            paraOut.tMax = []; paraOut.t = []; 
+            paraOut.y=[]; paraOut.aVel=[]; paraOut.aAccln=[];
+            paraOut.dz=[];
             paraOut.F = [];
+            paraOut.refPt = [];
             for i = selectedIdx
                 paraOut.eventInfo{end+1} = paraIn.eventInfo{i};
                 paraOut.isValid(end+1) = paraIn.isValid(i);
                 paraOut.tMax{end+1} = paraIn.tMax{i};
                 paraOut.t{end+1} = paraIn.t{i};
                 paraOut.y{end+1} = paraIn.y{i};
+                paraOut.aVel{end+1} = paraIn.aVel{i};
+                paraOut.aAccln{end+1} = paraIn.aAccln{i};
                 paraOut.dz{end+1} = paraIn.dz{i};
                 paraOut.F(end+1) = paraIn.F(i);
+                paraOut.refPt(end+1, :) = paraIn.refPt(i, :);
             end
         end
 
@@ -1287,8 +1320,7 @@ classdef Path2_Mobility
             % ... compute the velocity and acceleration of the 
             % ... shape trajectory
             % ... ... just first order differences for now
-            pthOrder = 1; % two-norm for now (identity inner product of 
-                          % velocity and accelerations in the shape space)
+            pthOrder = 1; % one-norm of the velocity components
             thisPath2.aParaRef.aVel = ...
                 vecnorm(diff(thisPath2.aParaRef.y)./...
                     repmat(diff(thisPath2.aParaRef.t), 1, 2), ...
