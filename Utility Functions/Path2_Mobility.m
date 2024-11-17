@@ -922,15 +922,15 @@ classdef Path2_Mobility
                                             thisPath2.aParallF.y{i}(:, 2));
                         % ... compute the velocity and acceleration of the 
                         % ... shape trajectory
-                        pthOrder = 1; % one-norm of the velocity components
+                        pthOrder = 2; % two-norm of the components
+                        aVelNow = diff(thisPath2.aParallF.y{i})./...
+                               repmat(diff(thisPath2.aParallF.t{i}), 1, 2);
+                        aAcclnNow = diff(aVelNow)./...
+                           repmat(diff(thisPath2.aParallF.t{i}(1:end-1)), 1, 2);
                         thisPath2.aParallF.aVel{i} = ...
-                            vecnorm(diff(thisPath2.aParallF.y{i})./...
-                                repmat(diff(thisPath2.aParallF.t{i}), 1, 2), ...
-                                pthOrder, 2);
+                                            vecnorm(aVelNow, pthOrder, 2);
                         thisPath2.aParallF.aAccln{i} = ...
-                            vecnorm(diff(thisPath2.aParallF.aVel{i})./...
-                            repmat(diff(thisPath2.aParallF.t{i}(1:end-1)), 1, 2), ...
-                            pthOrder, 2);
+                                        vecnorm(aAcclnNow, pthOrder, 2);
                     end
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 case 'branched'
@@ -1031,15 +1031,15 @@ classdef Path2_Mobility
                             thisPath2.aParallF.dz{bItr}{i} = dz(aa, ll,...
                                     thisPath2.aParallF.y{bItr}{i}(:, 1), ...
                                     thisPath2.aParallF.y{bItr}{i}(:, 2));
-                            pthOrder = 1;
-                            thisPath2.aParallF.aVel{bItr}{i} = ...
-                                vecnorm(diff(thisPath2.aParallF.y{bItr}{i})./...
-                                    repmat(diff(thisPath2.aParallF.t{bItr}{i}), 1, 2), ...
-                                    pthOrder, 2);
-                            thisPath2.aParallF.aAccln{bItr}{i} = ...
-                                vecnorm(diff(thisPath2.aParallF.aVel{bItr}{i})./...
-                                repmat(diff(thisPath2.aParallF.t{bItr}{i}(1:end-1)), 1, 2), ...
-                                pthOrder, 2);
+                            pthOrder = 2; 
+                            aVelNow = diff(thisPath2.aParallF.y{bItr}{i})./...
+                                    repmat(diff(thisPath2.aParallF.t{bItr}{i}), 1, 2);
+                            aAcclnNow = diff(aVelNow)./...
+                               repmat(diff(thisPath2.aParallF.t{bItr}{i}(1:end-1)), 1, 2);
+                            thisPath2.aParallF.aVel{i} = ...
+                                            vecnorm(aVelNow, pthOrder, 2);
+                            thisPath2.aParallF.aAccln{i} = ...
+                                           vecnorm(aAcclnNow, pthOrder, 2);
                         end
                     end
             end
@@ -1069,15 +1069,15 @@ classdef Path2_Mobility
             for bItr = 1:numel(paraIn.y) % iterate over branches
                 for i = 1:numel(paraIn.y{bItr}) % iterate over the solns
                     paraOut.eventInfo{end+1} = paraIn.eventInfo{bItr}{i};
-                    paraOut.isValid(end+1) = paraIn.isValid{bItr}(i);
-                    paraOut.tMax{end+1} = paraIn.tMax{bItr}{i};
-                    paraOut.t{end+1} = paraIn.t{bItr}{i};
-                    paraOut.y{end+1} = paraIn.y{bItr}{i};
-                    paraOut.aVel{end+1} = paraIn.aVel{bItr}{i};
-                    paraOut.aAccln{end+1} = paraIn.aAccln{bItr}{i};
-                    paraOut.dz{end+1} = paraIn.dz{bItr}{i};
-                    paraOut.F(end+1) = F_in{bItr}(i);
-                    paraOut.refPt(end+1, :) = refPt_in{bItr}(i, :);
+                    paraOut.isValid(end+1)   = paraIn.isValid{bItr}(i);
+                    paraOut.tMax{end+1}      = paraIn.tMax{bItr}{i};
+                    paraOut.t{end+1}         = paraIn.t{bItr}{i};
+                    paraOut.y{end+1}         = paraIn.y{bItr}{i};
+                    paraOut.aVel{end+1}      = paraIn.aVel{bItr}{i};
+                    paraOut.aAccln{end+1}    = paraIn.aAccln{bItr}{i};
+                    paraOut.dz{end+1}        = paraIn.dz{bItr}{i};
+                    paraOut.F(end+1)         = F_in{bItr}(i);
+                    paraOut.refPt(end+1, :)  = refPt_in{bItr}(i, :);
                 end
             end
             if nargin == 2 % extract just valid if 
@@ -1099,6 +1099,8 @@ classdef Path2_Mobility
         % ... note that "paraIn" is a concatenated parallel coordinate
         % ... struct, so it is better to use this function through 
         % ... "concatenateParallelCoords" method above
+        % ... finally, this function cellularizes the struct and returns
+        % ... the parallel coordinates
         function paraOut = extractValidFlevelSets(paraIn, dNumLvlSet)
             allIdx = find(paraIn.isValid); % all valid indices
             validNum = numel(allIdx);
@@ -1118,15 +1120,34 @@ classdef Path2_Mobility
             paraOut.refPt = [];
             for i = selectedIdx
                 paraOut.eventInfo{end+1} = paraIn.eventInfo{i};
-                paraOut.isValid(end+1) = paraIn.isValid(i);
-                paraOut.tMax{end+1} = paraIn.tMax{i};
-                paraOut.t{end+1} = paraIn.t{i};
-                paraOut.y{end+1} = paraIn.y{i};
-                paraOut.aVel{end+1} = paraIn.aVel{i};
-                paraOut.aAccln{end+1} = paraIn.aAccln{i};
-                paraOut.dz{end+1} = paraIn.dz{i};
-                paraOut.F(end+1) = paraIn.F(i);
-                paraOut.refPt(end+1, :) = paraIn.refPt(i, :);
+                paraOut.isValid(end+1)   = paraIn.isValid(i);
+                paraOut.tMax{end+1}      = paraIn.tMax{i};
+                paraOut.t{end+1}         = paraIn.t{i};
+                paraOut.y{end+1}         = paraIn.y{i};
+                paraOut.aVel{end+1}      = paraIn.aVel{i};
+                paraOut.aAccln{end+1}    = paraIn.aAccln{i};
+                paraOut.dz{end+1}        = paraIn.dz{i};
+                paraOut.F(end+1)         = paraIn.F(i);
+                paraOut.refPt(end+1, :)  = paraIn.refPt(i, :);
+            end
+        end
+
+        % convert the parallel coordinates struct with cell array fields to
+        % a cell array of structs
+        function paraOut = ...
+                convertFieldCellsToStructCells( paraIn )
+            paraOut = cell(size(paraIn.t));
+            for i = 1:numel(paraIn.t)
+                paraOut{i}.eventInfo = paraIn.eventInfo{i};
+                paraOut{i}.isValid   = paraIn.isValid(i);
+                paraOut{i}.tMax      = paraIn.tMax{i};
+                paraOut{i}.t         = paraIn.t{i};
+                paraOut{i}.y         = paraIn.y{i};
+                paraOut{i}.aVel      = paraIn.aVel{i};
+                paraOut{i}.aAccln    = paraIn.aAccln{i};
+                paraOut{i}.dz        = paraIn.dz{i};
+                paraOut{i}.F         = paraIn.F(i);
+                paraOut{i}.refPt     = paraIn.refPt(i, :);
             end
         end
 
@@ -1320,15 +1341,15 @@ classdef Path2_Mobility
             % ... compute the velocity and acceleration of the 
             % ... shape trajectory
             % ... ... just first order differences for now
-            pthOrder = 1; % one-norm of the velocity components
-            thisPath2.aParaRef.aVel = ...
-                vecnorm(diff(thisPath2.aParaRef.y)./...
-                    repmat(diff(thisPath2.aParaRef.t), 1, 2), ...
-                    pthOrder, 2); % compute along the column with last arg
-            thisPath2.aParaRef.aAccln = ...
-                vecnorm(diff(thisPath2.aParaRef.aVel)./...
-                repmat(diff(thisPath2.aParaRef.t(1:end-1)), 1, 2), ...
-                pthOrder, 2);
+            pthOrder = 2; % two-norm of components
+            aVelNow = diff(thisPath2.aParaRef.y)./...
+                    repmat(diff(thisPath2.aParaRef.t), 1, 2);
+            aAcclnNow = diff(aVelNow)./...
+               repmat(diff(thisPath2.aParaRef.t(1:end-1)), 1, 2);
+            thisPath2.aParaRef.aVel= ...
+                            vecnorm(aVelNow, pthOrder, 2);
+            thisPath2.aParaRef.aAccln= ...
+                           vecnorm(aAcclnNow, pthOrder, 2);
             F_ref = F_fxn(aa, ll, refPt(1), refPt(2));
             thisPath2.aParaRef.F = F_ref;
             thisPath2.aParaRef.color = ...

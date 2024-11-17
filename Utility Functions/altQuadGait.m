@@ -331,9 +331,11 @@ classdef altQuadGait
                     parallSetsJ = ...
                         Path2_Mobility.concatenateParallelCoords...
                         (stanceJ, numFlevels);
-                    thisAltGait.stanceSpace.parallSetsI = parallSetsI;
-                    thisAltGait.stanceSpace.parallSetsJ = parallSetsJ;
+                    thisAltGait.stanceSpace.parallSets{1} = parallSetsI;
+                    thisAltGait.stanceSpace.parallSets{2} = parallSetsJ;
                     %................ all of them have the same time coords
+                    % so we are just extracting it from the first levelset
+                    % in each stance phase that we have sampled
                     aI  = parallSetsI.t{1};   aJ = parallSetsJ.t{1};
                     thisAltGait.stanceSpace.a{1}  = aI;
                     thisAltGait.stanceSpace.a{2}  = aJ;
@@ -491,8 +493,8 @@ classdef altQuadGait
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 case 'multi-F-levelsets'
                     % extract the reference points
-                    refPtI = thisAltGait.stanceSpace.parallSetsI.refPt;
-                    refPtJ = thisAltGait.stanceSpace.parallSetsJ.refPt;
+                    refPtI = thisAltGait.stanceSpace.parallSets{1}.refPt;
+                    refPtJ = thisAltGait.stanceSpace.parallSets{2}.refPt;
                     % init the output displacement block and iterate over 
                     % the number of leaves for each stance phase so that 
                     % we can mix and match
@@ -528,59 +530,49 @@ classdef altQuadGait
             % ... "origin-only"
             switch thisAltGait.leafExplorationMode
                 case 'origin-only'
+                    % init parallel coords, iterate, and assign them
+                    aParaCoords = cell(size(stances));
                     for k = 1:numel(stances)
-                        stances{k} = ...
+                        temp = ...
                             Path2_Mobility...
                                 .computeSpecificParallelCoordinates...
                                     ( stances{k}, zeros(1,2), [], true );
+                        aParaCoords{k} = temp.aParaRef;
+                    end
+                    % compute and store the cost information in the input
+                    % space
+                    [VEL, ACCLN] = ...
+                                computeShapeSpaceVelAcclnCost...
+                                        (aParaCoords, tIC, tFC, dNumU);
+                    thisAltGait.inputSpace.J.vel = VEL;
+                    thisAltGait.inputSpace.J.accln = ACCLN;
+                case 'multi-F-levelsets'
+                    % init cost and iterate over each leaf and obtain the 
+                    % cost
+                    numLeaves = thisAltGait;
+                    paraI = thisAltGait.stanceSpace.parallSets{1};
+                    paraJ = thisAltGait.stanceSpace.parallSets{2};
+                    paraI = convertFieldCellsToStructCells( paraI );
+                    paraJ = convertFieldCellsToStructCells( paraJ );
+                    thisAltGait.inputSpace.J = cell(numLeaves, numLeaves);
+                    for idxI = 1:numLeaves
+                        for idxJ = 1:numLeaves
+                            aParaCoordsNow = {paraI{idxI, idxJ}, ...
+                                              paraJ{idxI, idxJ}};
+                            [VEL, ACCLN] = ...
+                                computeShapeSpaceVelAcclnCost...
+                                        (aParaCoordsNow, tIC, tFC, dNumU);
+                            thisAltGait.inputSpace.J{idxI, idxJ}.vel = ...
+                                                                    VEL;
+                            thisAltGait.inputSpace.J{idxI, idxJ}.accln = ...
+                                                                    ACCLN;
+                        end
                     end
                 otherwise
                     error(['ERROR! Only "origin-only" and ' ...
                         '"multi-F-levelsets" leaf exploration modes are ' ...
                         'supported.']);
             end
-            % get the shape velocity and acceleration costs for each 
-            % subgait
-            cost = []; cost.aVel = cell(1, 2); cost.aAccln = cell(1, 2);
-            for k = 1:numel(stances)
-                tVelNow = stances{k}.aParaRef.t(1:end-1); 
-                aVelNow = stances{k}.aParaRef.aVel;
-                tAcclnNow = stances{k}.aParaRef.t(1:end-2); 
-                aAcclnNow = stances{k}.aParaRef.aAccln;
-                for i = 1:dNumU
-                    for j = 1:dNumU
-                        tQueryNow = linspace(tIC{k}(i, j), tFC{k}(i, j));
-                        cost.aVel{k}(i, j) = ...
-                            abs(trapz( tQueryNow, ...
-                                interp1(...
-                                    tVelNow, aVelNow, tQueryNow, "pchip"...
-                                         )...
-                                    ));
-                        cost.aAccln{k}(i, j) = ...
-                            abs(trapz( tQueryNow, ...
-                                interp1(...
-                                tAcclnNow, aAcclnNow, tQueryNow, "pchip"...
-                                         )...
-                                    ));
-                    end
-                end
-            end
-            % get the stitched cost
-            J = []; J.vel = nan(dNumU*ones(1, 4)); J.accln = J.vel;
-            for i = 1:dNumU
-                for j = 1:dNumU
-                    for k = 1:dNumU
-                        for l = 1:dNumU
-                            J.vel(i, j, k, l) = ... % shape velocity
-                                cost.aVel{1}(i, j) + cost.aVel{2}(k, l);
-                            J.accln(i, j, k, l) = ... % shape accleration
-                            cost.aAccln{1}(i, j) + cost.aAccln{2}(k, l);
-                        end
-                    end
-                end
-            end
-            % pack and return
-            thisAltGait.inputSpace.J = J;
         end
 
         % compute the cost associate with executing the alternating gait
@@ -589,20 +581,47 @@ classdef altQuadGait
         function thisAltGait = computeMobility(thisAltGait, type)
             switch type
                 case 'sim'
-                    % unpack everything needed
-                    z = thisAltGait.inputSpace.(type).z;
-                    cost = thisAltGait.inputSpace.J;
-                    % define the "cost" types to iterate over
-                    costStr = {'vel', 'accln'};
-                    % iterate and obtain the efficiency formulation
-                    for iCost = 1:numel(costStr)
-                        E.(costStr{iCost}) = cell(size(z));
-                        for iComponent = 1:numel(z)
-                            E.(costStr{iCost}){iComponent} = ...
-                                z{iComponent}./(cost.(costStr{iCost}) + 1);
-                        end
+                    switch thisAltGait.leafExplorationMode
+                        case 'origin-only'
+                            % unpack everything needed
+                            z = thisAltGait.inputSpace.(type).z;
+                            cost = thisAltGait.inputSpace.J;
+                            % define the "cost" types to iterate over
+                            costStr = {'vel', 'accln'};
+                            % iterate and obtain the efficiency formulation
+                            for iCost = 1:numel(costStr)
+                                E.(costStr{iCost}) = cell(size(z));
+                                for iComponent = 1:numel(z)
+                                    E.(costStr{iCost}){iComponent} = ...
+                                        z{iComponent}./...
+                                        (cost.(costStr{iCost}) + 1);
+                                end
+                            end
+                            % pack the efficiency formulation
+                            thisAltGait.inputSpace.(type).E = E;
+                        case 'multi-F-levelsets'
+                            z = thisAltGait.inputSpace.(type).z;
+                            cost = thisAltGait.inputSpace.J;
+                            costStr = {'vel', 'accln'};
+                            numLeaves = thisAltGait.numLeaves;
+                            E = cell(numLeaves, numLeaves);
+                            for idxI = 1:numLeaves
+                                for idxJ = 1:numLeaves
+                                    for iCost = 1:numel(costStr)
+                                        E{idxI, idxJ}.(costStr{iCost}) = ...
+                                                cell(size(z{idxI, idxJ}));
+                                        for iComponent = 1:...
+                                                    numel(z{idxI, idxJ})
+                                            E{idxI, idxJ}.(costStr{iCost})...
+                                                {iComponent}=...
+                                                z{idxI, idxJ}{iComponent}./...
+                                                (cost{idxI, idxJ}.(...
+                                                costStr{iCost}) + 1);
+                                        end
+                                    end
+                                end
+                            end
                     end
-                    % pack the efficiency formulation
                     thisAltGait.inputSpace.(type).E = E;
                 otherwise
                     error(['ERROR! Other methods apart from "sim" are not ' ...
@@ -610,41 +629,132 @@ classdef altQuadGait
             end
         end
 
-        % compute the boundaries for the set ('reachable' or 'mobility') 
-        % provided
-        function computeSetBoundaries(thisAltGait, type)
-            switch type
-                case 'sim'
-                    % unpack the reachable set
-                    z = thisAltGait.inputSpace.(type).z;
-                    zX = z{1}(:); zY = z{2}(:); zYaw = z{3}(:);
-                    % assign boundaries
-                    % ... first to the 3D set
-                    % ... next to the 2D projections
-                    % ... these things make the set easier to visualize
-                    fullyShrunkBoundary3D = boundary(zX, zY, zYaw, 1);
-                    fullyShrunkBoundary2D = cell(1, 3); idxCyclic = 1:3;
-                    for i = 1:3
-                        fullyShrunkBoundary2D{i} = boundary(z{idxCyclic(1)}(:), z{idxCyclic(2)}(:), 1);
-                        idxCyclic = circshift(idxCyclic, -1);
-                    end
-                    idxCyclic = circshift(idxCyclic, -1); % back to original ordering
-                    % define some strings for plotting
-                    dirnLabelTxt = {'Lateral (x)', ...
-                                    'Longitudinal (y)', ... 
-                                    'Rotational ($\theta$)'};
-                    % pack everything
-                    thisAltGait.inputSpace.(type).plot.idxCyclic = idxCyclic;
-                    thisAltGait.inputSpace.(type).plot.dirnLabelTxt = dirnLabelTxt;
-                    thisAltGait.inputSpace.(type).plot.zBounds3D = ...
-                                                    fullyShrunkBoundary3D;
-                    thisAltGait.inputSpace.(type).plot.zBounds2D = ...
-                                                    fullyShrunkBoundary2D;
-                otherwise
-                    error(['ERROR! Other methods apart from "sim" are not ' ...
-                        'supported right now.']);
+        % FLATTEN the reachble sets generated using the "multi-F-levelsets"
+        % leaf exploration mode
+        function [refPt, F, u, J, ...
+                zX, zY, zYaw, Ex, Ey, Eyaw] = ...
+                                flattenMobilityStructs(thisAltGait, type)
+            if ~strcmp(thisAltGait.leafExplorationMode,'multi-F-levelsets')
+                error(['ERROR! This function is only supported by the ' ...
+                    '"multi-F-levelsets" leaf exploration mode in the ' ...
+                    'mobility analysis. For more information, refer ' ...
+                    '"se2_toyproblems_case_1_mobilityMultiF.mlx" ' ...
+                    'livescript.']);
             end
+            if ~strcmp(type, 'sim')
+                error(['ERROR! Only the "simulation" structure in the ' ...
+                    'input space is supported for now.']);
+            end
+            % init the output
+            % ... predeclaring the size can be done, but is kinda annoying
+            % ... shelved for later
+            % ... also obtain the structs for ease of call
+            refPt = []; F = []; u = []; J = []; 
+            zX = []; zY = []; zYaw = [];
+            Ex = []; Ey = []; Eyaw = [];
+            uSpace = thisAltGait.inputSpace;
+            sSpace = thisAltGait.stanceSpace;
+            % scaling and sliding inputs
+            for iComp = 1:numel(uSpace.u)
+                u(:, end+1) = uSpace.u{iComp}(:);
+            end
+            % pre-extract the reference points and the F-value at these 
+            % points, and the inputs
+            for iStance = 1:numel(sSpace.parallSets)
+                refPtTemp(end+1:end+2, :) = ...
+                                sSpace.parallSets{iStance}.refPt';
+                Ftemp(end+1, :) = ...
+                                cell2mat(sSpace.parallSets{iStance}.F);
+            end
+            % define the different velocity and acceleration strings for
+            % accessing the cost and mobility set structs
+            costStr = {'vel', 'accln'};
+            % iterate, extract, and assign the required fields
+            for idxI = 1:thisAltGait.numLeaves
+                for idxJ = 1:thisAltGait.numLeaves
+                    % ... reference point and F-value
+                    refPt(:, end+1) = [refPtTemp(1:2, idxI); 
+                                       refPtTemp(3:4, idxJ)];
+                    F(:, end+1) = [Ftemp(1, idxI); 
+                                   Ftemp(2, idxJ)];
+                    % ... reachable set, cost set (vel and accln), and the
+                    % ... corresponding mobility (vel and accln) set ~ 
+                    % ... reachable / cost
+                    % ... ... we need to iterate over the different 
+                    % ... ... position components, and velocity types for
+                    % ... ... the cost and mobility sets
+                    % ... ... also pre-extract the substructs
+                    zSetNow = uSpace.(type).z{idxI, idxJ};
+                    JsetNow =        uSpace.J{idxI, idxJ};
+                    EsetNow = uSpace.(type).E{idxI, idxJ};
+                    for iComp = 1:numel(zSetNow)
+                        switch iComp
+                            case 1
+                                zX(:, end+1)   = zSetNow{iComp}(:);
+                            case 2
+                                zY(:, end+1)   = zSetNow{iComp}(:);
+                            case 3
+                                zYaw(:, end+1) = zSetNow{iComp}(:);
+                        end
+                        for iC = 1:numel(costStr)
+                            J.(costStr(iC))(:, end+1) = ...
+                                               JsetNow.(costStr(iC))(:);
+                            switch iComp
+                                case 1
+                                    Ex.(costStr(iC))(:, end+1)   = ...
+                                        EsetNow.(costStr(iC)){iComp}(:);
+                                case 2
+                                    Ey.(costStr(iC))(:, end+1)   = ...
+                                        EsetNow.(costStr(iC)){iComp}(:);
+                                case 3
+                                    Eyaw.(costStr(iC))(:, end+1) = ...
+                                        EsetNow.(costStr(iC)){iComp}(:);
+                            end
+                        end
+                    end
+                    % end of inner loops %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                end
+            end
+            % END OF FUNCTION and the levelset iteration loop %%%%%%%%%%%%%
         end
+
+
+        % % NEED TO COMPLETE THIS LATER
+        % % compute the boundaries for the set ('reachable' or 'mobility') 
+        % % provided
+        % function computeSetBoundaries(thisAltGait, type)
+        %     switch type
+        %         case 'sim'
+        %             % unpack the reachable set
+        %             z = thisAltGait.inputSpace.(type).z;
+        %             zX = z{1}(:); zY = z{2}(:); zYaw = z{3}(:);
+        %             % assign boundaries
+        %             % ... first to the 3D set
+        %             % ... next to the 2D projections
+        %             % ... these things make the set easier to visualize
+        %             fullyShrunkBoundary3D = boundary(zX, zY, zYaw, 1);
+        %             fullyShrunkBoundary2D = cell(1, 3); idxCyclic = 1:3;
+        %             for i = 1:3
+        %                 fullyShrunkBoundary2D{i} = boundary(z{idxCyclic(1)}(:), z{idxCyclic(2)}(:), 1);
+        %                 idxCyclic = circshift(idxCyclic, -1);
+        %             end
+        %             idxCyclic = circshift(idxCyclic, -1); % back to original ordering
+        %             % define some strings for plotting
+        %             dirnLabelTxt = {'Lateral (x)', ...
+        %                             'Longitudinal (y)', ... 
+        %                             'Rotational ($\theta$)'};
+        %             % pack everything
+        %             thisAltGait.inputSpace.(type).plot.idxCyclic = idxCyclic;
+        %             thisAltGait.inputSpace.(type).plot.dirnLabelTxt = dirnLabelTxt;
+        %             thisAltGait.inputSpace.(type).plot.zBounds3D = ...
+        %                                             fullyShrunkBoundary3D;
+        %             thisAltGait.inputSpace.(type).plot.zBounds2D = ...
+        %                                             fullyShrunkBoundary2D;
+        %         otherwise
+        %             error(['ERROR! Other methods apart from "sim" are not ' ...
+        %                 'supported right now.']);
+        %     end
+        % end
         
         % this function computes the integration times for both subgaits
         % that form the "thisAltGait" instance
@@ -1879,6 +1989,53 @@ function z = simulateFinalBodyPositionAfterGait...
                             zCols{iComp}(loopCount);
                         loopCount = loopCount + 1;
                     end
+                end
+            end
+        end
+    end
+    % END OF FUNCTION %
+end
+
+% this function computes the velocity and acceleration cost related to
+% actuating the system, or cost for executing paths in the shape space
+function [VEL, ACCLN] = ...
+                    computeShapeSpaceVelAcclnCost...
+                                            (aParaCoords, tIC, tFC, dNumU)
+    % get the shape velocity and acceleration costs for each subgait
+    aVel = cell(1, 2); aAccln = cell(1, 2);
+    for k = 1:numel(aParaCoords) % iterate over each stance phase
+        tVelNow = aParaCoords{k}.t(1:end-1); 
+        aVelNow = aParaCoords{k}.aVel;
+        tAcclnNow = aParaCoords{k}.t(1:end-2); 
+        aAcclnNow = aParaCoords{k}.aAccln;
+        for i = 1:dNumU
+            for j = 1:dNumU
+                tQueryNow = linspace(tIC{k}(i, j), tFC{k}(i, j));
+                aVel{k}(i, j) = ...
+                    abs(trapz( tQueryNow, ...
+                        interp1(...
+                            tVelNow, aVelNow, tQueryNow, "pchip"...
+                                 )...
+                            ));
+                aAccln{k}(i, j) = ...
+                    abs(trapz( tQueryNow, ...
+                        interp1(...
+                        tAcclnNow, aAcclnNow, tQueryNow, "pchip"...
+                                 )...
+                            ));
+            end
+        end
+    end
+    % add the costs from each stance phase
+    VEL = nan(dNumU*ones(1, 4)); ACCLN = VEL;
+    for i = 1:dNumU
+        for j = 1:dNumU
+            for k = 1:dNumU
+                for l = 1:dNumU
+                    VEL  (i, j, k, l) = ... % shape velocity
+                                    aVel{1}(i, j) +   aVel{2}(k, l);
+                    ACCLN(i, j, k, l) = ... % shape accleration
+                                  aAccln{1}(i, j) + aAccln{2}(k, l);
                 end
             end
         end
