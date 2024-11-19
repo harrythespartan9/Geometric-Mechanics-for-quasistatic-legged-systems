@@ -347,8 +347,8 @@ classdef altQuadGait
                     % ... get the stratified panels (projected local
                     % connection), their lie-bracktes, null-contours, etc
                     % needed for the stance space analysis
-                    for i = 1:numel(parallSetsI.t)
-                        for j = 1:numel(parallSetsJ.t)
+                    for i = 1:numFlevels
+                        for j = 1:numFlevels
                             dzI = parallSetsI.dz{i};
                             dzJ = parallSetsJ.dz{i};
                             [DZI, DZJ, DZIJ] = ...
@@ -506,8 +506,8 @@ classdef altQuadGait
                                                     { idxI, idxJ } = ...
                                 simulateFinalBodyPositionAfterGait...
                                 (stances, dNumU, tIC, tFC, ...
-                                { refPtI{idxI, idxJ}, ... % ref point for I
-                                  refPtJ{idxI, idxJ} }); %            for J
+                                { refPtI(idxI, :), ... % ref point for I
+                                  refPtJ(idxJ, :) }); %            for J
                         end
                     end
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -549,16 +549,20 @@ classdef altQuadGait
                 case 'multi-F-levelsets'
                     % init cost and iterate over each leaf and obtain the 
                     % cost
-                    numLeaves = thisAltGait;
+                    numLeaves = thisAltGait.numLeaves;
                     paraI = thisAltGait.stanceSpace.parallSets{1};
                     paraJ = thisAltGait.stanceSpace.parallSets{2};
-                    paraI = convertFieldCellsToStructCells( paraI );
-                    paraJ = convertFieldCellsToStructCells( paraJ );
+                    paraI = ...
+                        Path2_Mobility.convertFieldCellsToStructCells...
+                        ( paraI );
+                    paraJ = ...
+                        Path2_Mobility.convertFieldCellsToStructCells...
+                        ( paraJ );
                     thisAltGait.inputSpace.J = cell(numLeaves, numLeaves);
                     for idxI = 1:numLeaves
                         for idxJ = 1:numLeaves
-                            aParaCoordsNow = {paraI{idxI, idxJ}, ...
-                                              paraJ{idxI, idxJ}};
+                            aParaCoordsNow = {paraI{idxI}, ...
+                                              paraJ{idxJ}};
                             [VEL, ACCLN] = ...
                                 computeShapeSpaceVelAcclnCost...
                                         (aParaCoordsNow, tIC, tFC, dNumU);
@@ -645,13 +649,23 @@ classdef altQuadGait
                 error(['ERROR! Only the "simulation" structure in the ' ...
                     'input space is supported for now.']);
             end
+            % define the different velocity and acceleration strings for
+            % accessing the cost and mobility set structs
+            costStr = {'vel', 'accln'};
             % init the output
             % ... predeclaring the size can be done, but is kinda annoying
             % ... shelved for later
             % ... also obtain the structs for ease of call
-            refPt = []; F = []; u = []; J = []; 
+            refPt = []; refPtTemp = []; F = []; Ftemp = [];
+            u = []; 
+            J = []; Ex = []; Ey = []; Eyaw = [];
+            for iC = 1:numel(costStr) 
+                J.(costStr{iC}) = [];
+                Ex.(costStr{iC}) = [];
+                Ey.(costStr{iC}) = [];
+                Eyaw.(costStr{iC}) = []; % init dynamic field names
+            end
             zX = []; zY = []; zYaw = [];
-            Ex = []; Ey = []; Eyaw = [];
             uSpace = thisAltGait.inputSpace;
             sSpace = thisAltGait.stanceSpace;
             % scaling and sliding inputs
@@ -663,12 +677,8 @@ classdef altQuadGait
             for iStance = 1:numel(sSpace.parallSets)
                 refPtTemp(end+1:end+2, :) = ...
                                 sSpace.parallSets{iStance}.refPt';
-                Ftemp(end+1, :) = ...
-                                cell2mat(sSpace.parallSets{iStance}.F);
+                Ftemp(end+1, :) = sSpace.parallSets{iStance}.F;
             end
-            % define the different velocity and acceleration strings for
-            % accessing the cost and mobility set structs
-            costStr = {'vel', 'accln'};
             % iterate, extract, and assign the required fields
             for idxI = 1:thisAltGait.numLeaves
                 for idxJ = 1:thisAltGait.numLeaves
@@ -697,18 +707,18 @@ classdef altQuadGait
                                 zYaw(:, end+1) = zSetNow{iComp}(:);
                         end
                         for iC = 1:numel(costStr)
-                            J.(costStr(iC))(:, end+1) = ...
-                                               JsetNow.(costStr(iC))(:);
+                            J.(costStr{iC})(:, end+1) = ...
+                                               JsetNow.(costStr{iC})(:);
                             switch iComp
                                 case 1
-                                    Ex.(costStr(iC))(:, end+1)   = ...
-                                        EsetNow.(costStr(iC)){iComp}(:);
+                                    Ex.(costStr{iC})(:, end+1)   = ...
+                                        EsetNow.(costStr{iC}){iComp}(:);
                                 case 2
-                                    Ey.(costStr(iC))(:, end+1)   = ...
-                                        EsetNow.(costStr(iC)){iComp}(:);
+                                    Ey.(costStr{iC})(:, end+1)   = ...
+                                        EsetNow.(costStr{iC}){iComp}(:);
                                 case 3
-                                    Eyaw.(costStr(iC))(:, end+1) = ...
-                                        EsetNow.(costStr(iC)){iComp}(:);
+                                    Eyaw.(costStr{iC})(:, end+1) = ...
+                                        EsetNow.(costStr{iC}){iComp}(:);
                             end
                         end
                     end

@@ -240,6 +240,12 @@ classdef Path2_Mobility
             end
         end
 
+        % function to change the value of 'a' or limb to body link length
+        % ratio
+        function thisPath2 = changeLimbRatio(thisPath2, aNew)
+            thisPath2.a = aNew;
+        end
+
         % function to compute perpendicular limb shape coordinate
         % ... this is the path along the gradient of F that helps us select 
         % ... a specific level-set of F
@@ -323,8 +329,8 @@ classdef Path2_Mobility
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     % obtain stuff needed to obtain the branches
-                    aa = thisPath2.kinfunc.aa;
-                    ll = thisPath2.kinfunc.ll;
+                    aa = thisPath2.a;
+                    ll = thisPath2.l;
                     aInf = thisPath2.aInf;
                     aSup = thisPath2.aSup;
                     r = thisPath2.refPt;
@@ -646,6 +652,17 @@ classdef Path2_Mobility
                             end
                         end
                     end
+                    % sometime we return without a modified branch, so we
+                    % need to assign the normal slip axis points
+                    if isempty(modifiedSlipAxisPoints)
+                        modifiedSlipAxisPoints = slipAxisPoints;
+                        modifiedDist = dist;
+                        for i = 1:numel(modifiedDist)
+                            branchLength{end+1} = norm(...
+                                    diff(modifiedDist{i}, 1, 1)...
+                                            );
+                        end
+                    end
                     % compute the total branch length
                     thisPath2.aPerpF.totalLength = 0;
                     thisPath2.aPerpF.numPtsTotal = numPtsTotal;
@@ -657,7 +674,6 @@ classdef Path2_Mobility
                     % store the modified slip axis points in struct, and
                     % then construct the usual slipping axis or
                     % perpendicular coordinates
-                    thisPath2.aPerpF = []; 
                     remainingNumPts = numPtsTotal;
                     for i = 1:numel(modifiedSlipAxisPoints)
                         numPtsNow = ...
@@ -1036,9 +1052,9 @@ classdef Path2_Mobility
                                     repmat(diff(thisPath2.aParallF.t{bItr}{i}), 1, 2);
                             aAcclnNow = diff(aVelNow)./...
                                repmat(diff(thisPath2.aParallF.t{bItr}{i}(1:end-1)), 1, 2);
-                            thisPath2.aParallF.aVel{i} = ...
+                            thisPath2.aParallF.aVel{bItr}{i} = ...
                                             vecnorm(aVelNow, pthOrder, 2);
-                            thisPath2.aParallF.aAccln{i} = ...
+                            thisPath2.aParallF.aAccln{bItr}{i} = ...
                                            vecnorm(aAcclnNow, pthOrder, 2);
                         end
                     end
@@ -2296,8 +2312,8 @@ classdef Path2_Mobility
                 gaitInputMode = 'std';
             end
             % unpack
-            a = thisPath2.kinfunc.aa;
-            l = thisPath2.kinfunc.ll;
+            a = thisPath2.a;
+            l = thisPath2.l;
             F_fxn = thisPath2.kin.ksq_ij{thisPath2.sIdx};
             perpCoords = thisPath2.aPerpF; paraCoords = thisPath2.aParallF;
             % compute the reference along the perp coordinates with the
@@ -2480,48 +2496,4 @@ classdef Path2_Mobility
     end % END OF STATIC METHODS
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-end
-
-%% AUXILIARY FUNCTIONS
-
-% compute the F-value at a point along a line from 'refPt' constructed
-% using a 'unitPhasor' with a multiplier 'aValue'
-function fVal = FalongLine(aa, ll, F_fxn, refPt, unitPhasor, aValue)
-    pt = returnPtAlongLineFromIC(refPt, unitPhasor, aValue)';
-    fVal = F_fxn(aa, ll, pt(1), pt(2));
-end
-
-% compute the location at which the bounds of F are barely violated
-function aViolation = ptViolatingFbounds(aa, ll, ...
-    F_fxn, F_bounds, F_bounds_full, ...
-    refPt, delX, delY, ...
-    optIC, optLims)
-
-    aViolation = [];
-
-    [aLowViolation, fValViolation] = ...
-    fmincon( @(a) abs(F_bounds(1) - ...
-        FalongLine(aa, ll, F_fxn, refPt, [delX, delY], a)), ...
-        optIC, ...
-        [], [], [], [], ...
-        optLims(1), optLims(2), ...
-        [], ...
-        optimoptions("fmincon", "Display", "off") ...
-            );
-    if fValViolation < 1e-5*diff(F_bounds_full)
-        aViolation = aLowViolation;
-    else
-        [aHighViolation, fValViolation] = ...
-        fmincon( @(a) abs(F_bounds(2) - ...
-            FalongLine(aa, ll, F_fxn, refPt, [delX, delY], a)), ...
-            optIC, ...
-            [], [], [], [], ...
-            optLims(1), optLims(2), ...
-            [], ...
-            optimoptions("fmincon", "Display", "off") ...
-                );
-        if fValViolation < 1e-5*diff(F_bounds_full)
-            aViolation = aHighViolation;
-        end
-    end
 end
