@@ -100,7 +100,8 @@ classdef Path2_Mobility
         % Constructor
         function thisPath2 = Path2_Mobility(sIdx, ...
                                         kin, kinfunc, p_kin, p_info, ...
-                                        intTime, refPt, phaseReq, slipMode)
+                                        intTime, refPt, phaseReq, slipMode, ...
+                                        stanceLimitMode)
             % assign the props
             thisPath2.sIdx = sIdx;
             thisPath2.kin = kin;
@@ -115,19 +116,38 @@ classdef Path2_Mobility
                 thisPath2.phaseReq = phaseReq;
             end
             % general reference for the limb position subspace as provided
+            % ... for the asymmetric case, the reference input is handled
+            % ... outside
             thisPath2.refPt = refPt;
             % get the leg indices that for the current contact state
             [thisPath2.sRow, thisPath2.sCol] = ...
                                     find(kin.cs_IdxFor2bGaits == sIdx);
-            thisPath2.cs = kin.cs( kin.cs_IdxFor2bGaits(...
-                            thisPath2.sRow, thisPath2.sCol), : );
-            % obtain the discretized coordinates for the two limbs in
-            % stance
-            % ... this will be what the meshgrid outputs for a 2D space
-            thisPath2.ai = thisPath2.p_kin.ai;
-            thisPath2.aj = thisPath2.p_kin.aj;
-            thisPath2.aLimits=[p_info{sIdx}.xlimits; 
-                               p_info{sIdx}.ylimits];
+            sRowIdx = kin.cs_IdxFor2bGaits(thisPath2.sRow, thisPath2.sCol);
+            thisPath2.cs = kin.cs( sRowIdx, : );
+            % check if the stance limit mode is not normal and get the
+            % discretized coordinates accordingly
+            if nargin < 10
+                stanceLimitMode = 'symm';
+            end
+            switch stanceLimitMode
+                case 'symm' % standard symmetric kinematics
+                    % obtain the discretized coordinates for the two limbs 
+                    % in stance
+                    % ... this will be what the meshgrid outputs for a 2D 
+                    % ... space
+                    thisPath2.ai = thisPath2.p_kin.ai;
+                    thisPath2.aj = thisPath2.p_kin.aj;
+                    thisPath2.aLimits=[p_info{sIdx}.xlimits; 
+                                       p_info{sIdx}.ylimits];
+                case 'asymm' % asymmetric kinematics from 'kin' struct
+                    aLimits = [kin.alphaStanceLimits(sIdx, 1:2); 
+                               kin.alphaStanceLimits(sIdx, 3:4)];
+                    thisPath2.aLimits = aLimits;
+                    dnum = size(thisPath2.p_kin.ai, 1);
+                    ai = linspace(aLimits(1, 1), aLimits(1, 2), dnum);
+                    aj = linspace(aLimits(2, 1), aLimits(2, 2), dnum);
+                    [thisPath2.ai, thisPath2.aj] = meshgrid(ai, aj);
+            end
             % supremum and infimum of F and the corresponding limb
             % locations
             % ... F is squared, inter-leg distance for the stancing feet
@@ -1177,15 +1197,20 @@ classdef Path2_Mobility
         % ... and calls the constructor creating the new object
         function [ thatPath2 ] = constructComplementaryStance(thisPath2,...
                                         kin, kinfunc, p_kin, p_info, ...
-                                        intTime, refPt, phaseReq, slipMode)
+                                        intTime, refPt, phaseReq, slipMode, ...
+                                        stanceLimitMode)
             % compute the complimentary submanifold index
             temp = zeros(1, 2); temp(thisPath2.sCol) = 1;
             thatCol = find(~temp);
             sThatIdx = kin.cs_IdxFor2bGaits(thisPath2.sRow, thatCol);
             % construct the complimentary submanifold "Path2_Mobility" obj
+            if nargin < 10
+                stanceLimitMode = 'symm';
+            end
             thatPath2 = Path2_Mobility(sThatIdx,...
                                        kin, kinfunc, p_kin, p_info,...
-                                       intTime, refPt, phaseReq, slipMode);
+                                       intTime, refPt, phaseReq, slipMode, ...
+                                       stanceLimitMode);
         end
 
         % check if the provided stance submanifolds are complementary
