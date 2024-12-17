@@ -514,6 +514,45 @@ classdef altQuadGait
             end
         end
 
+        % find the gait-average body velocity set in the tangent space
+        % using the log map
+        function thisAltGait = computeGaitAverageVelocity( thisAltGait )
+            z = thisAltGait.inputSpace.sim.z;
+            gCirc = cell(size(z));
+            switch thisAltGait.leafExplorationMode
+                case 'origin-only' % UNTESTED
+                    zCols = [];
+                    for i = 1:numel(z)
+                        zCols(:, end+1) = z{i}(:);
+                    end
+                    gCircCols = logMapOfALieGroupElement( zCols );
+                    for i = 1:size(zCols, 2)
+                        gCirc{i} = ...
+                            reshape(gCircCols(:, i), size(z{i}));
+                    end
+                case 'multi-F-levelsets'
+                    nLeaves = thisAltGait.numLeaves;
+                    for L1 = 1:nLeaves
+                        for L2 = 1:nLeaves
+                            zNow = z{L1, L2}; gCircNow = cell(size(zNow));
+                            zColsNow = [];
+                            for i = 1:numel(z)
+                                zColsNow(:, end+1) = zNow{i}(:);
+                            end
+                            gCircColsNow = ...
+                                logMapOfALieGroupElement( zColsNow );
+                            for i = 1:size(zColsNow, 2)
+                                gCircNow{i} = ...
+                                    reshape(gCircColsNow(:, i), ...
+                                                            size(zNow{i}));
+                            end
+                            gCirc{L1, L2} = gCircNow;
+                        end
+                    end
+            end
+            thisAltGait.inputSpace.sim.gCirc = gCirc;
+        end
+
         % compute the cost associate with executing the alternating gait
         % ... there are two costs related to the shape velocity and
         % ... acceleration, we want to compute both as a function of the

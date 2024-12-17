@@ -6,7 +6,9 @@ function gCirc = logMapOfALieGroupElement( g )
 %   rotational cases.
     
     % SET the threshold for zeroing out the rotational velocity here
-    rotThresh = 1e-10;
+    % ... as the rotational displacement approaches 0, the log map becomes
+    % ... increasing unstable because of the increasing 
+    rotThresh = 1e-6;
     % argument checks
     errMsg = ['ERROR! The input displacement or the Lie group element ' ...
             'should contain 3 columns of x, y, and theta displacement-' ...
@@ -44,7 +46,7 @@ function gCirc = logMapOfALieGroupElement( g )
     % ... case 2: rows of elements
     % ... subcases within each case handle no rotation and rotation cases
     switch nPoints
-        case 1
+        case 1 % UNTESTED
             switch abs(g(3)) < rotThresh
                 case 1
                     gCirc(1:2) = g(1:2);
@@ -55,7 +57,7 @@ function gCirc = logMapOfALieGroupElement( g )
                                     g(1:2)'... % transform them
                              )';
             end
-        otherwise %%%%% UNTESTED
+        otherwise % TESTED
             if size(g, 1) ~= 3
                 transposeFlag = true;
                 g = g';
