@@ -3,7 +3,7 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
 %NONSLIPSHAPECOORDSEVENTS this function generates hybrid EVENTs based on
 %nonslip coordinates in the two-beat contact state of a pin-constrained
 %quadrupedal robot
-%   This function checks if ode terminating EVENTs are true based on the
+%   This function checks if ODE terminating EVENTs are true based on the
 %   provided 'eventList'. If a new EVENT is needed, it should be first
 %   defined within the switch case statement below.
 
@@ -16,7 +16,7 @@ function [value, isTerminal, direction] = nonslipShapeCoordsEvents(~, y,...
     % By default, just return nonterminal conditions if not EVENT is
     % requested
     if nargin < 4
-        value = 1; isTerminal = 1; direction = 0; return
+        value = 1; isTerminal = 0; direction = 0; return
     end
     
     % unpack the argument structure

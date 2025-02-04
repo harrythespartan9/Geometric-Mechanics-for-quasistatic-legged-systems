@@ -1,8 +1,8 @@
 function pReq = returnPtAlongLineFromIC(pIC, unitPhasor, a)
 %RETURNPTALONGLINEFROMIC return a point along a line
-%   Given the line IC and a phasor multiplier, find a point along the line,
-%   or equivalently, given a list of a values, find all the points they
-%   correspond to along a line.
+%   Given the line IC, 'pIC' and a phasor multiplier, 'a', find a point 
+%   along the line, or equivalently, given a list of multiplier values, 
+%   find all the points they correspond to along a line.
 
     % return the point as a column vector
     switch numel(a)
