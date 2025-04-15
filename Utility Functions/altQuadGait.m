@@ -1026,7 +1026,7 @@ classdef altQuadGait
                             fieldNow = 'jthStance';
                     end
                     % get the current limb indices
-                    cs = thisAltGait.(fieldNow).cs;
+                    cs = thisAltGait.(fieldNow).cs;             
                     % get the transforms to the legs, limb to body hip sprawl
                     % ratio, and hip sprawl length
                     h_b__i = thisAltGait.bodyToLimbTransform;

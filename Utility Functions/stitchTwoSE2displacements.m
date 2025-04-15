@@ -33,16 +33,16 @@ end
 
 %% AUXILIARY FUNCTIONS
 % format the displacement vector and return
-function zTransposed = formatDisplacementVector(z)
+function zFormatted = formatDisplacementVector(z)
     if any(size(z) == 3)
         if ndims(z) > 3
             error(['ERROR! The displacement vector can not have more than 2 ' ...
                 'dimensions.']);
         end
         if size(z, 1) == 3
-            zTransposed = z';
+            zFormatted = z';
         else
-            zTransposed = z;
+            zFormatted = z;
         end
     else
         error(['ERROR! The displacement vector should have three components ' ...
